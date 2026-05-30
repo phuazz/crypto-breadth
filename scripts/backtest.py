@@ -54,8 +54,13 @@ PRICES_PATH = DATA_DIR / "prices.parquet"
 @dataclass
 class Params:
     breadth_ma_window: int = 50           # days
-    momentum_lookbacks_d: tuple = (21, 63, 126)   # ~1m, 3m, 6m
-    rank_top_n: int = 3                   # hold top-N names when "on"
+    # v3.1: parameters updated after expand-window walk-forward (see
+    # scripts/walk_forward_refit.py + commit 0de3ced). The IS-best config
+    # was top-4 + (30, 90, 180) in all seven re-fits (2020 -> 2026), so
+    # the empirical case for the change is unusually clean.
+    # Prior defaults were (21, 63, 126) and rank_top_n=3.
+    momentum_lookbacks_d: tuple = (30, 90, 180)   # 1m / 3m / 6m calendar days
+    rank_top_n: int = 4                           # hold top-N names when "on"
     rebalance_weekday: int = 0            # 0=Monday
     fee_bps_per_side: float = 10.0
 

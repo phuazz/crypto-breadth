@@ -8,9 +8,11 @@ spot. Research-grade — not deployed.
 Sharpe distribution and parameter sensitivity. Auto-generated from
 `scripts/pipeline.py`.
 
-Current version: **v3**. The strategy, the file layout, and the honest
+Current version: **v3.1**. The strategy, the file layout, and the honest
 caveats are all below. For the full session history that produced this, see
-the commit log.
+the commit log. v3.1 adopted top-4 + (30, 90, 180) momentum lookbacks after
+an expand-window walk-forward picked that config in all seven annual
+re-fits — see `scripts/walk_forward_refit.py`.
 
 ---
 
@@ -25,8 +27,9 @@ the commit log.
   contributes almost nothing — a binary (0, 0, 0, 1) gate gives essentially
   the same Sharpe — but the gate itself is structurally important
   (gate ablation: +0.25 Sharpe, +30 pp MaxDD improvement).
-- **Sizing:** composite momentum score (risk-adjusted returns over 21, 63 and
-  126 d), top-3 equal-weight when on.
+- **Sizing:** composite momentum score (risk-adjusted returns over 30, 90 and
+  180 d), top-4 equal-weight when on. Adopted in v3.1 after an expand-window
+  walk-forward picked this config in all seven annual re-fits (2020 → 2026).
 - **Trend entry filter:** a coin can only enter the top-N rank if close > own
   50 d MA AND the MA is rising. Strict — designed to avoid head-fakes.
 - **Trend exit filter:** asymmetric — close < own 50 d MA triggers a forced
@@ -42,16 +45,16 @@ the commit log.
 
 | series | CAGR | Sharpe | MaxDD |
 |---|---|---|---|
-| **strategy (v3)** | **55.1 %** | **1.08** | **−49.6 %** |
+| **strategy (v3.1)** | **77.5 %** | **1.37** | **−42.5 %** |
 | BTC HODL | 22.4 % | 0.64 | −81.2 % |
 | equal-weight investable | 17.1 % | 0.60 | −82.8 % |
 | 60/40 BTC/ETH | 23.5 % | 0.66 | −85.5 % |
 
-**Out-of-sample (2021-01-01 → today):** strategy CAGR 69.0 %, Sharpe 1.20,
-MaxDD −43.3 %.
+**Out-of-sample (2021-01-01 → today):** strategy CAGR 91.3 %, Sharpe 1.45,
+MaxDD −42.5 %.
 
-**Block-bootstrap 90 % CI on full-sample Sharpe:** [0.54, 1.63].
-P(Sharpe > 0) = 100 %. P(Sharpe > 0.8) = 81.8 %.
+**Block-bootstrap 90 % CI on full-sample Sharpe:** [0.82, 1.92].
+P(Sharpe > 0) = 100 %. P(Sharpe > 0.8) = 95.5 %.
 
 **Parameter sensitivity (IS only, OAT ±50 %):** 6 of 7 parameters ROBUST or
 MILDLY SENSITIVE. The 7th (`per_coin_trend_window`) is fragile in IS but
@@ -195,4 +198,4 @@ to avoid `cp1252` console errors.
 
 ---
 
-*Strategy spec for v3 last updated: 2026-05-29.*
+*Strategy spec last updated: 2026-05-30 (v3.1 — walk-forward-validated parameter change to top-4 + (30, 90, 180) lookbacks).*
