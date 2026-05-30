@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>crypto-breadth | v3 strategy</title>
+<meta name="description" content="Breadth-gate + ranked-momentum strategy for crypto majors on Binance USDT spot. Research v3.">
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<style>
+:root {
+  --c-bg: #ffffff;
+  --c-text: #1a1a1a;
+  --c-muted: #6a737d;
+  --c-border: #e1e4e8;
+  --c-card-bg: #fafbfc;
+  --c-positive: #22863a;
+  --c-negative: #b31d28;
+  --c-strategy: #111;
+  --c-btc: #f7931a;
+  --c-eth: #627eea;
+  --c-ew: #22863a;
+  --c-6040: #2980b9;
+  --c-accent: #0366d6;
+  --c-warn-bg: #fff5b1;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: var(--c-text);
+  background: var(--c-bg);
+  line-height: 1.6;
+  font-size: 16px;
+}
+.container {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 32px 24px 80px;
+}
+h1, h2, h3 { font-weight: 600; line-height: 1.3; margin-top: 0; }
+h1 { font-size: 32px; margin-bottom: 8px; letter-spacing: -0.02em; }
+h2 { font-size: 22px; margin: 56px 0 16px; padding-bottom: 8px; border-bottom: 1px solid var(--c-border); }
+h3 { font-size: 16px; margin: 24px 0 8px; }
+a { color: var(--c-accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+p { margin: 0 0 12px; }
+ul { margin: 0 0 12px; padding-left: 24px; }
+li { margin-bottom: 4px; }
+
+header.hero {
+  margin-bottom: 24px;
+}
+header.hero .subtitle {
+  color: var(--c-muted);
+  font-size: 15px;
+  margin-bottom: 12px;
+}
+header.hero .links {
+  font-size: 14px;
+  color: var(--c-muted);
+}
+header.hero .links a { color: var(--c-accent); margin-right: 16px; }
+
+.callout {
+  background: var(--c-card-bg);
+  border-left: 3px solid var(--c-accent);
+  padding: 12px 16px;
+  font-size: 14px;
+  margin: 16px 0 32px;
+  color: var(--c-muted);
+}
+
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin: 24px 0 32px;
+}
+.metric {
+  background: var(--c-card-bg);
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+  padding: 16px 18px;
+}
+.metric .label {
+  color: var(--c-muted);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 6px;
+}
+.metric .value {
+  font-size: 26px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+.metric .sub {
+  font-size: 12px;
+  color: var(--c-muted);
+  margin-top: 4px;
+  font-variant-numeric: tabular-nums;
+}
+.positive { color: var(--c-positive); }
+.negative { color: var(--c-negative); }
+
+.spec-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin: 16px 0 32px;
+}
+.spec {
+  background: var(--c-card-bg);
+  border: 1px solid var(--c-border);
+  border-radius: 6px;
+  padding: 12px 14px;
+}
+.spec .h {
+  font-weight: 600;
+  font-size: 13px;
+  margin-bottom: 4px;
+  color: var(--c-text);
+}
+.spec .b {
+  font-size: 13px;
+  color: var(--c-muted);
+}
+
+.chart {
+  margin: 16px 0 24px;
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+  padding: 8px;
+}
+.chart-tall { min-height: 420px; }
+.chart-med { min-height: 320px; }
+.chart-short { min-height: 240px; }
+
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin: 16px 0;
+}
+
+table.simple {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 14px;
+  margin: 12px 0 24px;
+  font-variant-numeric: tabular-nums;
+}
+table.simple th, table.simple td {
+  text-align: right;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--c-border);
+}
+table.simple th { background: var(--c-card-bg); font-weight: 600; }
+table.simple td:first-child, table.simple th:first-child { text-align: left; }
+
+.caveat {
+  background: var(--c-warn-bg);
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin: 12px 0;
+  border-left: 3px solid #d4a72c;
+}
+.caveat h3 { margin-top: 0; }
+
+footer {
+  margin-top: 64px;
+  padding-top: 24px;
+  border-top: 1px solid var(--c-border);
+  color: var(--c-muted);
+  font-size: 13px;
+}
+
+@media (max-width: 720px) {
+  .metric-grid { grid-template-columns: repeat(2, 1fr); }
+  .spec-grid, .two-col { grid-template-columns: 1fr; }
+  h1 { font-size: 26px; }
+  h2 { font-size: 19px; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+
+<header class="hero">
+  <h1>crypto-breadth <span style="font-size:14px;color:var(--c-muted);font-weight:400;">v3</span></h1>
+  <p class="subtitle" id="hero-subtitle">A breadth-gate + ranked-momentum strategy for crypto majors on Binance USDT spot. Research-grade — not deployed.</p>
+  <p class="links">
+    <a href="https://github.com/phuazz/crypto-breadth">GitHub repository</a>
+    <a href="https://github.com/phuazz/crypto-breadth/blob/main/README.md">README</a>
+    <span id="hero-sample-range" style="color:var(--c-muted)"></span>
+  </p>
+</header>
+
+<section id="headline">
+  <div class="metric-grid">
+    <div class="metric">
+      <div class="label">Full-sample Sharpe</div>
+      <div class="value" id="m-full-sharpe">—</div>
+      <div class="sub" id="m-full-sharpe-sub">—</div>
+    </div>
+    <div class="metric">
+      <div class="label">Full-sample CAGR</div>
+      <div class="value" id="m-full-cagr">—</div>
+      <div class="sub" id="m-full-cagr-sub">vs BTC HODL —</div>
+    </div>
+    <div class="metric">
+      <div class="label">Max drawdown</div>
+      <div class="value" id="m-max-dd">—</div>
+      <div class="sub" id="m-max-dd-sub">vs 60/40 —</div>
+    </div>
+    <div class="metric">
+      <div class="label">Bootstrap 90% CI</div>
+      <div class="value" id="m-ci">—</div>
+      <div class="sub" id="m-ci-sub">P(Sharpe&gt;0.8) —</div>
+    </div>
+  </div>
+  <div class="callout">
+    This page is auto-generated from <code>scripts/pipeline.py</code>. Every chart and number below is computed live from the v3 backtest. Source data: Binance daily OHLCV via CCXT.
+  </div>
+</section>
+
+<section id="how-it-works">
+<h2>How the strategy works</h2>
+<div class="spec-grid">
+  <div class="spec">
+    <div class="h">Universe</div>
+    <div class="b">25 USDT pairs on Binance. <b>Rolling liquidity gate</b>: a coin is investable only if it has ≥90d history AND trailing 30d ADV ≥ $25M. Removes survivorship bias of any fixed list.</div>
+  </div>
+  <div class="spec">
+    <div class="h">Breadth gate</div>
+    <div class="b">% of investable universe above 50d MA. Tiered exposure (0/30/60/100%). Gate ablation: +0.25 Sharpe, +30pp MaxDD improvement.</div>
+  </div>
+  <div class="spec">
+    <div class="h">Sizing</div>
+    <div class="b">Composite momentum score (21d / 63d / 126d, risk-adjusted). Hold top-3 equal-weight when on.</div>
+  </div>
+  <div class="spec">
+    <div class="h">Trend entry filter</div>
+    <div class="b">A coin can only enter the rank if close &gt; own 50d MA AND MA rising. Strict — avoids head-fakes.</div>
+  </div>
+  <div class="spec">
+    <div class="h">Trend exit (daily)</div>
+    <div class="b">Close &lt; own 50d MA forces a sell at the <b>next</b> close (1-bar lag). Looser than entry — avoids whipsaw.</div>
+  </div>
+  <div class="spec">
+    <div class="h">Cadence and fees</div>
+    <div class="b">Weekly Monday rebalance + daily exit overrides. Signal at close T, traded close T+1. 10 bps per side.</div>
+  </div>
+</div>
+</section>
+
+<section id="performance">
+<h2>Equity curve — strategy vs benchmarks</h2>
+<div class="chart chart-tall" id="chart-equity"></div>
+
+<h2>Drawdown</h2>
+<div class="chart chart-med" id="chart-drawdown"></div>
+
+<h2>In-sample vs out-of-sample</h2>
+<div id="isoos-cards" class="metric-grid" style="grid-template-columns:repeat(2,1fr)"></div>
+<table class="simple" id="isoos-table"></table>
+</section>
+
+<section id="returns">
+<h2>Calendar-year returns</h2>
+<div class="chart chart-med" id="chart-yearly"></div>
+
+<h2>Rolling 252-day Sharpe</h2>
+<div class="chart chart-med" id="chart-rolling"></div>
+</section>
+
+<section id="robustness">
+<h2>Bootstrap Sharpe distribution</h2>
+<p style="color:var(--c-muted);font-size:14px;">Block-bootstrap (21-day blocks, 2000 resamples). The 90% confidence interval below is the most honest single statement we can make about the strategy's true Sharpe.</p>
+<div class="chart chart-med" id="chart-bootstrap"></div>
+
+<h2>Parameter sensitivity (IS Sharpe)</h2>
+<p style="color:var(--c-muted);font-size:14px;">Each row holds all other parameters at their default and perturbs only one. The default value (dot) should not sit at the maximum of its bar — if it does, that is a knife-edge fit.</p>
+<div class="chart chart-med" id="chart-sensitivity"></div>
+</section>
+
+<section id="regimes">
+<h2>Regime breakdown</h2>
+<p style="color:var(--c-muted);font-size:14px;">The strategy wins in bears and breakout years, lags BTC in pure BTC-led bull years (2020, 2023, 2024). It is a different risk profile, not a strict BTC improvement.</p>
+<table class="simple" id="regime-table"></table>
+</section>
+
+<section id="attribution">
+<h2>Per-coin contribution to gross PnL</h2>
+<p style="color:var(--c-muted);font-size:14px;">Dollar contribution per coin = sum over time of (yesterday's weight × today's return × yesterday's equity). Sum across coins = total gross PnL before fees.</p>
+<div class="chart chart-med" id="chart-attribution"></div>
+</section>
+
+<section id="caveats">
+<h2>What this strategy is not</h2>
+
+<div class="caveat">
+<h3>Not a strict BTC-improvement</h3>
+<p>The strategy underperforms BTC in pure BTC-led bull years (2020, 2023, 2024). It outperforms in bears (2018, 2022) and in breakout altcoin years (2019, 2021). It is a <b>different risk profile</b>, not a better one in every regime.</p>
+</div>
+
+<div class="caveat">
+<h3>Currently in a real weak patch</h3>
+<p>Anyone deploying since 2024-01-01 would have a 1.4-year Sharpe of −0.48 versus 60/40's −0.17. The strategy has underperformed for ~18 months as of writing. This is a known live issue, not a backtest artifact.</p>
+</div>
+
+<div class="caveat">
+<h3>The 2018 bear is brutal</h3>
+<p>−43% CAGR in 2018 because the rolling liquidity universe had only 3 coins investable that year (BTC, BNB, ETH) and the strict trend filter whipsawed on false bounces. Known structural wound — fix is a candidate v4 change.</p>
+</div>
+
+<h2>What was rejected during research</h2>
+<p><b>Volatility-target overlay.</b> IS Sharpe improved (0.97 vs 0.82) on the IS-best config. OOS Sharpe degraded (1.05 vs 1.20). The relationship between IS and OOS was <i>inverted</i> across the parameter grid — IS-best configs were OOS-worst. Honest IS-only protocol rejected the overlay. See <code>scripts/research/vol_target_search.py</code>.</p>
+</section>
+
+<footer>
+<p>Source: <a href="https://github.com/phuazz/crypto-breadth">github.com/phuazz/crypto-breadth</a>. Generated <span id="generated-at">—</span>.</p>
+<p>This is research output, not a deployed product. No part of this page constitutes financial advice.</p>
+</footer>
+
+</div>
+
+<script id="dashboard-data" type="application/json">{{DATA_PLACEHOLDER}}</script>
+<script>
+// ===== data loading (with dev fetch fallback) =====
+async function loadData() {
+  const raw = document.getElementById("dashboard-data").textContent;
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed && parsed.meta) return parsed;
+  } catch (e) {}
+  // Dev mode: template.html opened directly. Try fetching the JSON sidecar.
+  const r = await fetch("data/dashboard_data.json");
+  if (!r.ok) throw new Error("data fetch failed: " + r.status);
+  return await r.json();
+}
+
+// ===== formatters =====
+function pct(v, decimals) {
+  if (v === null || v === undefined || isNaN(v)) return "—";
+  return (v * 100).toFixed(decimals == null ? 1 : decimals) + "%";
+}
+function num(v, decimals) {
+  if (v === null || v === undefined || isNaN(v)) return "—";
+  return v.toFixed(decimals == null ? 2 : decimals);
+}
+function signedPct(v) {
+  if (v === null || v === undefined || isNaN(v)) return "—";
+  const s = (v >= 0 ? "+" : "") + (v * 100).toFixed(1) + "%";
+  return s;
+}
+function classFor(v) { return v >= 0 ? "positive" : "negative"; }
+
+// ===== renderers =====
+function renderHero(d) {
+  const s = d.summary;
+  const bm = d.benchmarks;
+  document.getElementById("m-full-sharpe").textContent = num(s.full.sharpe);
+  document.getElementById("m-full-sharpe-sub").textContent =
+    "vs 60/40 " + num(bm.bm_6040.sharpe) + " | vs BTC " + num(bm.btc.sharpe);
+  document.getElementById("m-full-cagr").textContent = pct(s.full.cagr);
+  document.getElementById("m-full-cagr-sub").textContent =
+    "vs BTC HODL " + pct(bm.btc.cagr) + " | vs 60/40 " + pct(bm.bm_6040.cagr);
+  document.getElementById("m-max-dd").textContent = pct(s.full.max_dd);
+  document.getElementById("m-max-dd-sub").textContent =
+    "vs BTC " + pct(bm.btc.max_dd) + " | vs 60/40 " + pct(bm.bm_6040.max_dd);
+  const ci = d.bootstrap;
+  document.getElementById("m-ci").textContent = "[" + num(ci.p05) + ", " + num(ci.p95) + "]";
+  document.getElementById("m-ci-sub").textContent =
+    "P(Sh>0.8) = " + pct(ci.p_gt_0p8, 0) + " | median " + num(ci.p50);
+
+  document.getElementById("hero-sample-range").textContent =
+    " | sample " + d.meta.sample_start + " → " + d.meta.sample_end;
+  document.getElementById("generated-at").textContent = d.meta.generated_at;
+}
+
+const PLOTLY_CONFIG = { displayModeBar: false, responsive: true };
+const PLOTLY_LAYOUT_BASE = {
+  font: { family: "-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif", size: 12, color: "#1a1a1a" },
+  margin: { l: 60, r: 20, t: 30, b: 50 },
+  paper_bgcolor: "rgba(0,0,0,0)",
+  plot_bgcolor: "rgba(0,0,0,0)",
+  hovermode: "x unified",
+  legend: { orientation: "h", x: 0, y: 1.12 },
+  xaxis: { showgrid: true, gridcolor: "#eef0f2", zeroline: false },
+  yaxis: { showgrid: true, gridcolor: "#eef0f2", zeroline: false },
+};
+
+function renderEquity(d) {
+  const e = d.equity;
+  const traces = [
+    { x: e.dates, y: e.strategy, name: "Strategy v3", line: { color: "#111", width: 2 } },
+    { x: e.dates, y: e.btc, name: "BTC HODL", line: { color: "#f7931a", width: 1.2 } },
+    { x: e.dates, y: e.ew, name: "Equal-weight investable", line: { color: "#22863a", width: 1.2 } },
+    { x: e.dates, y: e["6040"], name: "60/40 BTC/ETH", line: { color: "#2980b9", width: 1.2 } },
+  ];
+  const layout = Object.assign({}, PLOTLY_LAYOUT_BASE, {
+    yaxis: Object.assign({}, PLOTLY_LAYOUT_BASE.yaxis, { type: "log", title: "wealth multiple (log)" }),
+    shapes: [{
+      type: "line", xref: "x", x0: d.meta.oos_start, x1: d.meta.oos_start,
+      yref: "paper", y0: 0, y1: 1,
+      line: { color: "#999", width: 1, dash: "dash" }
+    }],
+    annotations: [{
+      x: d.meta.oos_start, y: 1, yref: "paper", text: "IS / OOS split",
+      showarrow: false, xanchor: "left", yanchor: "top",
+      font: { size: 11, color: "#999" }
+    }]
+  });
+  Plotly.newPlot("chart-equity", traces, layout, PLOTLY_CONFIG);
+}
+
+function renderDrawdown(d) {
+  const dd = d.drawdown;
+  const traces = [{
+    x: dd.dates, y: dd.strategy, name: "Drawdown",
+    fill: "tozeroy", line: { color: "#c0392b", width: 0.5 },
+    fillcolor: "rgba(192,57,43,0.3)"
+  }];
+  const layout = Object.assign({}, PLOTLY_LAYOUT_BASE, {
+    showlegend: false,
+    yaxis: Object.assign({}, PLOTLY_LAYOUT_BASE.yaxis, { tickformat: ".0%" })
+  });
+  Plotly.newPlot("chart-drawdown", traces, layout, PLOTLY_CONFIG);
+}
+
+function renderIsOos(d) {
+  const rows = [
+    { label: "Strategy v3", key: "strategy", colour: "#111" },
+    { label: "BTC HODL", key: "btc", colour: "#f7931a" },
+    { label: "Equal-weight", key: "ew", colour: "#22863a" },
+    { label: "60/40 BTC/ETH", key: "bm_6040", colour: "#2980b9" },
+  ];
+  // Cards: strategy IS / strategy OOS
+  const sIs = d.summary.is, sOos = d.summary.oos;
+  const cards = document.getElementById("isoos-cards");
+  cards.innerHTML =
+    `<div class="metric">
+      <div class="label">Strategy in-sample (2018–2020)</div>
+      <div class="value">${num(sIs.sharpe)} <span style="font-size:14px;color:var(--c-muted);font-weight:400">Sharpe</span></div>
+      <div class="sub">CAGR ${pct(sIs.cagr)}  |  MaxDD ${pct(sIs.max_dd)}</div>
+    </div>
+    <div class="metric">
+      <div class="label">Strategy out-of-sample (2021+)</div>
+      <div class="value">${num(sOos.sharpe)} <span style="font-size:14px;color:var(--c-muted);font-weight:400">Sharpe</span></div>
+      <div class="sub">CAGR ${pct(sOos.cagr)}  |  MaxDD ${pct(sOos.max_dd)}</div>
+    </div>`;
+
+  // Table: all series, IS and OOS
+  const t = document.getElementById("isoos-table");
+  let html = `<thead><tr><th>series</th>
+    <th colspan="3" style="text-align:center;border-left:1px solid var(--c-border)">in-sample (2018–2020)</th>
+    <th colspan="3" style="text-align:center;border-left:1px solid var(--c-border)">out-of-sample (2021+)</th></tr>
+    <tr><th></th>
+    <th style="border-left:1px solid var(--c-border)">CAGR</th><th>Sharpe</th><th>MaxDD</th>
+    <th style="border-left:1px solid var(--c-border)">CAGR</th><th>Sharpe</th><th>MaxDD</th>
+    </tr></thead><tbody>`;
+  rows.forEach(r => {
+    const is = d.is_oos[r.key].is, oos = d.is_oos[r.key].oos;
+    html += `<tr>
+      <td><span style="display:inline-block;width:10px;height:10px;background:${r.colour};margin-right:6px;border-radius:2px"></span>${r.label}</td>
+      <td style="border-left:1px solid var(--c-border)">${pct(is.cagr)}</td><td>${num(is.sharpe)}</td><td>${pct(is.max_dd)}</td>
+      <td style="border-left:1px solid var(--c-border)">${pct(oos.cagr)}</td><td>${num(oos.sharpe)}</td><td>${pct(oos.max_dd)}</td>
+    </tr>`;
+  });
+  html += "</tbody>";
+  t.innerHTML = html;
+}
+
+function renderYearly(d) {
+  const y = d.yearly_returns;
+  const traces = [
+    { x: y.years, y: y.strategy, name: "Strategy v3", type: "bar", marker: { color: "#111" } },
+    { x: y.years, y: y.btc, name: "BTC HODL", type: "bar", marker: { color: "#f7931a" } },
+    { x: y.years, y: y["6040"], name: "60/40 BTC/ETH", type: "bar", marker: { color: "#2980b9" } },
+  ];
+  const layout = Object.assign({}, PLOTLY_LAYOUT_BASE, {
+    barmode: "group",
+    yaxis: Object.assign({}, PLOTLY_LAYOUT_BASE.yaxis, { tickformat: ".0%", title: "calendar-year return" })
+  });
+  Plotly.newPlot("chart-yearly", traces, layout, PLOTLY_CONFIG);
+}
+
+function renderRolling(d) {
+  const r = d.rolling_sharpe;
+  const traces = [{
+    x: r.dates, y: r.values, name: "Rolling 252d Sharpe",
+    line: { color: "#111", width: 1.5 }
+  }];
+  const fullSh = d.summary.full.sharpe;
+  const layout = Object.assign({}, PLOTLY_LAYOUT_BASE, {
+    showlegend: false,
+    yaxis: Object.assign({}, PLOTLY_LAYOUT_BASE.yaxis, { title: "Sharpe" }),
+    shapes: [
+      { type: "line", xref: "paper", x0: 0, x1: 1, yref: "y", y0: 0, y1: 0,
+        line: { color: "#666", width: 1 } },
+      { type: "line", xref: "paper", x0: 0, x1: 1, yref: "y", y0: 1, y1: 1,
+        line: { color: "#22863a", width: 0.8, dash: "dot" } },
+      { type: "line", xref: "paper", x0: 0, x1: 1, yref: "y", y0: fullSh, y1: fullSh,
+        line: { color: "#b31d28", width: 0.8, dash: "dash" } },
+    ],
+    annotations: [
+      { x: r.dates[Math.floor(r.dates.length * 0.97)], y: fullSh, xref: "x", yref: "y",
+        text: "full-sample " + num(fullSh), showarrow: false,
+        xanchor: "right", yanchor: "bottom",
+        font: { size: 10, color: "#b31d28" } }
+    ]
+  });
+  Plotly.newPlot("chart-rolling", traces, layout, PLOTLY_CONFIG);
+}
+
+function renderBootstrap(d) {
+  const b = d.bootstrap;
+  const traces = [{
+    x: b.bins_mid, y: b.counts, type: "bar",
+    marker: { color: "#bdc3c7", line: { color: "#7f8c8d", width: 0.5 } },
+    name: "bootstrap Sharpes"
+  }];
+  const layout = Object.assign({}, PLOTLY_LAYOUT_BASE, {
+    showlegend: false,
+    xaxis: Object.assign({}, PLOTLY_LAYOUT_BASE.xaxis, { title: "Sharpe" }),
+    yaxis: Object.assign({}, PLOTLY_LAYOUT_BASE.yaxis, { title: "count" }),
+    shapes: [
+      { type: "line", xref: "x", x0: b.p05, x1: b.p05, yref: "paper", y0: 0, y1: 1,
+        line: { color: "#b31d28", width: 1.5, dash: "dash" } },
+      { type: "line", xref: "x", x0: b.p50, x1: b.p50, yref: "paper", y0: 0, y1: 1,
+        line: { color: "#111", width: 1.5 } },
+      { type: "line", xref: "x", x0: b.p95, x1: b.p95, yref: "paper", y0: 0, y1: 1,
+        line: { color: "#b31d28", width: 1.5, dash: "dash" } },
+    ],
+    annotations: [
+      { x: b.p05, y: 1, yref: "paper", text: "p05 " + num(b.p05),
+        showarrow: false, xanchor: "right", yanchor: "top", font: { size: 11 } },
+      { x: b.p50, y: 1, yref: "paper", text: "median " + num(b.p50),
+        showarrow: false, xanchor: "left", yanchor: "top", font: { size: 11 } },
+      { x: b.p95, y: 1, yref: "paper", text: "p95 " + num(b.p95),
+        showarrow: false, xanchor: "left", yanchor: "top", font: { size: 11 } },
+    ]
+  });
+  Plotly.newPlot("chart-bootstrap", traces, layout, PLOTLY_CONFIG);
+}
+
+function renderSensitivity(d) {
+  const s = d.sensitivity;
+  // sort by max ascending
+  const sorted = s.slice().sort((a, b) => a.max - b.max);
+  const labels = sorted.map(r => r.param);
+  const mins = sorted.map(r => r.min);
+  const ranges = sorted.map(r => r.max - r.min);
+  const defaults = sorted.map(r => r.default);
+
+  const traces = [
+    {
+      type: "bar", orientation: "h",
+      x: ranges, y: labels, base: mins,
+      marker: { color: "#bdc3c7", line: { color: "#7f8c8d", width: 0.5 } },
+      name: "IS Sharpe range",
+      hovertemplate: "min %{base:.2f}, max %{x:.2f}<extra>%{y}</extra>"
+    },
+    {
+      type: "scatter", mode: "markers",
+      x: defaults, y: labels,
+      marker: { color: "#111", size: 10, symbol: "circle" },
+      name: "default",
+      hovertemplate: "default %{x:.2f}<extra>%{y}</extra>"
+    }
+  ];
+  const layout = Object.assign({}, PLOTLY_LAYOUT_BASE, {
+    barmode: "stack",
+    xaxis: Object.assign({}, PLOTLY_LAYOUT_BASE.xaxis, { title: "IS Sharpe" }),
+    yaxis: Object.assign({}, PLOTLY_LAYOUT_BASE.yaxis, { automargin: true }),
+    legend: { orientation: "h", x: 0, y: 1.12 }
+  });
+  Plotly.newPlot("chart-sensitivity", traces, layout, PLOTLY_CONFIG);
+}
+
+function renderRegimes(d) {
+  const t = document.getElementById("regime-table");
+  let html = `<thead><tr>
+    <th>regime</th><th>window</th>
+    <th>strat CAGR</th><th>strat Sharpe</th>
+    <th>BTC CAGR</th><th>60/40 CAGR</th>
+    <th>verdict</th></tr></thead><tbody>`;
+  d.regimes.forEach(r => {
+    const win = r.strat_cagr - Math.max(r.btc_cagr, r.bm_6040_cagr);
+    html += `<tr>
+      <td>${r.label}</td>
+      <td>${r.start} → ${r.end}</td>
+      <td class="${classFor(r.strat_cagr)}">${pct(r.strat_cagr)}</td>
+      <td>${num(r.strat_sharpe)}</td>
+      <td class="${classFor(r.btc_cagr)}">${pct(r.btc_cagr)}</td>
+      <td class="${classFor(r.bm_6040_cagr)}">${pct(r.bm_6040_cagr)}</td>
+      <td style="font-size:12px;color:var(--c-muted)">${r.verdict || ""}</td>
+    </tr>`;
+  });
+  html += "</tbody>";
+  t.innerHTML = html;
+}
+
+function renderAttribution(d) {
+  const a = d.attribution;
+  // Sort by full-sample contribution ascending (so largest at top with horizontal bars)
+  const idx = a.coins.map((c, i) => i).sort((x, y) => a.full[x] - a.full[y]);
+  const labels = idx.map(i => a.coins[i]);
+  const vals_full = idx.map(i => a.full[i]);
+  const vals_oos = idx.map(i => a.oos[i]);
+  const colours_full = vals_full.map(v => v >= 0 ? "#22863a" : "#b31d28");
+
+  const traces = [
+    {
+      type: "bar", orientation: "h",
+      x: vals_full, y: labels,
+      name: "full-sample",
+      marker: { color: colours_full },
+      hovertemplate: "%{y}: %{x:+.2f}<extra></extra>"
+    },
+    {
+      type: "bar", orientation: "h",
+      x: vals_oos, y: labels,
+      name: "OOS only",
+      marker: { color: vals_oos.map(v => v >= 0 ? "rgba(34,134,58,0.4)" : "rgba(179,29,40,0.4)") },
+      hovertemplate: "%{y}: %{x:+.2f}<extra>OOS</extra>"
+    }
+  ];
+  const layout = Object.assign({}, PLOTLY_LAYOUT_BASE, {
+    barmode: "group",
+    xaxis: Object.assign({}, PLOTLY_LAYOUT_BASE.xaxis, { title: "$ contribution to gross PnL (units of starting capital)" }),
+    yaxis: Object.assign({}, PLOTLY_LAYOUT_BASE.yaxis, { automargin: true }),
+    height: Math.max(360, labels.length * 22 + 60)
+  });
+  Plotly.newPlot("chart-attribution", traces, layout, PLOTLY_CONFIG);
+}
+
+// ===== boot =====
+loadData()
+  .then(d => {
+    renderHero(d);
+    renderEquity(d);
+    renderDrawdown(d);
+    renderIsOos(d);
+    renderYearly(d);
+    renderRolling(d);
+    renderBootstrap(d);
+    renderSensitivity(d);
+    renderRegimes(d);
+    renderAttribution(d);
+  })
+  .catch(e => {
+    console.error(e);
+    const c = document.querySelector(".container");
+    c.insertAdjacentHTML("afterbegin",
+      "<div style='background:#ffebe9;border:1px solid #ffd0d0;padding:14px;border-radius:6px;margin-bottom:16px'>" +
+      "<b>Could not load dashboard data.</b> If you are viewing template.html directly without running scripts/pipeline.py, " +
+      "the data placeholder has not been replaced. Run <code>python scripts/pipeline.py</code> to generate docs/index.html. " +
+      "Detail: " + e + "</div>");
+  });
+</script>
+</body>
+</html>

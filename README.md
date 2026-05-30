@@ -3,6 +3,11 @@
 A breadth-gate + ranked-momentum strategy for crypto majors on Binance USDT
 spot. Research-grade — not deployed.
 
+**Live dashboard:** [phuazz.github.io/crypto-breadth](https://phuazz.github.io/crypto-breadth/)
+— interactive Plotly equity curve, drawdown, regime breakdown, bootstrap
+Sharpe distribution and parameter sensitivity. Auto-generated from
+`scripts/pipeline.py`.
+
 Current version: **v3**. The strategy, the file layout, and the honest
 caveats are all below. For the full session history that produced this, see
 the commit log.
@@ -77,9 +82,11 @@ above will mislead anyone who skips them:
 
 ```
 crypto-breadth/
+├── template.html              # source for the GitHub Pages microsite
 ├── scripts/
 │   ├── fetch_data.py          # daily Binance OHLCV (cron candidate)
 │   ├── backtest.py            # PRODUCTION strategy v3
+│   ├── pipeline.py            # template.html + data -> docs/index.html
 │   ├── walk_forward.py        # year-by-year + block-bootstrap Sharpe CI
 │   ├── sensitivity.py         # OAT parameter robustness check
 │   ├── generate_tearsheet.py  # one-page PNG summary
@@ -94,7 +101,10 @@ crypto-breadth/
 │   ├── prices_meta.json       # investability summary
 │   ├── backtest_equity.parquet
 │   ├── backtest_diagnostics.png
+│   ├── dashboard_data.json    # sidecar consumed by docs/index.html
 │   └── tearsheet.png
+├── docs/
+│   └── index.html             # GitHub Pages build output (served as the site)
 └── README.md (this file)
 ```
 
@@ -116,7 +126,18 @@ python scripts/backtest.py          # after any signal change
 python scripts/walk_forward.py      # periodic monitoring
 python scripts/sensitivity.py       # if Params change
 python scripts/generate_tearsheet.py  # produces data/tearsheet.png
+python scripts/pipeline.py          # rebuilds docs/index.html for Pages
 ```
+
+### Local preview of the dashboard
+
+```
+python scripts/pipeline.py
+npx serve docs                       # then open http://localhost:3000
+```
+
+Or open `template.html` directly — it falls back to fetching
+`data/dashboard_data.json` so it works standalone for development.
 
 On Windows the scripts print Unicode arrows; set `PYTHONIOENCODING=utf-8`
 to avoid `cp1252` console errors.
