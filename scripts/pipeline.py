@@ -46,6 +46,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 TEMPLATE_PATH = PROJECT_ROOT / "template.html"
 DOCS_DIR = PROJECT_ROOT / "docs"
 DATA_JSON_PATH = PROJECT_ROOT / "data" / "dashboard_data.json"
+WALK_FORWARD_JSON = PROJECT_ROOT / "data" / "walk_forward.json"
 
 
 # ----- production pipeline --------------------------------------------------
@@ -500,6 +501,15 @@ def main() -> int:
         "monitor": monitor,
         "trades": trades,
     }
+
+    # ----- merge walk-forward results if present ----------------
+    if WALK_FORWARD_JSON.exists():
+        try:
+            wf = json.loads(WALK_FORWARD_JSON.read_text(encoding="utf-8"))
+            payload["walk_forward"] = wf
+            print(f"  merged walk-forward results ({len(wf.get('anchors', []))} anchors)")
+        except Exception as e:
+            print(f"  warn: could not load walk-forward JSON: {e!r}")
 
     # ----- write JSON sidecar -----
     DATA_JSON_PATH.parent.mkdir(parents=True, exist_ok=True)

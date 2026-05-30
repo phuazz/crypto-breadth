@@ -608,6 +608,7 @@ footer.bottom a:hover { text-decoration: underline; }
     <a href="#performance" class="nav-link" data-target="performance">Performance</a>
     <a href="#returns" class="nav-link" data-target="returns">Returns</a>
     <a href="#robustness" class="nav-link" data-target="robustness">Robustness</a>
+    <a href="#walkforward" class="nav-link" data-target="walkforward">Walk-forward</a>
     <a href="#regimes" class="nav-link" data-target="regimes">Regimes</a>
     <a href="#attribution" class="nav-link" data-target="attribution">Attribution</a>
     <a href="#trades" class="nav-link" data-target="trades">Trade ledger</a>
@@ -694,6 +695,25 @@ footer.bottom a:hover { text-decoration: underline; }
   <h2>Parameter sensitivity (IS Sharpe)</h2>
   <p class="section-sub">Each row holds all other parameters at their default and perturbs only one. The black dot is the default IS Sharpe; the grey bar is the min–max range across perturbations. A knife-edge fit would have the default at the maximum of its bar — that is not the case for any parameter here.</p>
   <div class="chart chart-med" id="chart-sensitivity"></div>
+</section>
+
+<section id="walkforward">
+  <h2>Walk-forward with annual re-fitting</h2>
+  <p class="section-sub">For each anchor year Y from 2020 onwards: fit on 2018-01-01 → end-of-(Y−1), then apply that IS-best config to year Y. Compare three deployment styles: default (no tuning), IS-tuned-once (best on 2018–2020, frozen), and proper annual refit. If the walk-forward refit does not beat IS-tuned-once on OOS Sharpe, the answer is "do not tune" — defaults stay.</p>
+
+  <h3>Aggregate OOS comparison (2020+)</h3>
+  <table class="simple" id="wf-summary"></table>
+
+  <h3>Walk-forward equity (2020 = 1.0)</h3>
+  <div class="chart chart-med" id="chart-walkforward"></div>
+
+  <h3>Year-by-year picks</h3>
+  <p class="section-sub">Each row is one re-fit. The picked column is the IS-best config on data up to the IS-end date. The OOS column is that config's actual Sharpe / CAGR on the next 12 months. If the same label keeps winning, the parameter signal is stable — if picks rotate, the search is noise.</p>
+  <table class="simple" id="wf-anchors"></table>
+
+  <h3>Parameter stability</h3>
+  <p class="section-sub">How often each config was picked across the re-fits. A heavy concentration on one label = stable signal. Even spread = noise.</p>
+  <table class="simple" id="wf-stability"></table>
 </section>
 
 <section id="regimes">
@@ -1133,6 +1153,105 @@ function renderAttribution(d) {
   Plotly.newPlot("chart-attribution", traces, layout, PLOTLY_CFG);
 }
 
+function renderWalkForward(d) {
+  const wf = d.walk_forward;
+  const wrap = document.getElementById("walkforward");
+  if (!wf) {
+    wrap.style.display = "none";
+    // Hide the nav link too
+    const link = document.querySelector('nav.tabs a[href="#walkforward"]');
+    if (link) link.style.display = "none";
+    return;
+  }
+
+  // Aggregate summary table
+  const s = wf.summary;
+  const rows = [
+    { key: "default", lbl: "default (no tuning)" },
+    { key: "is_tuned_once", lbl: "IS-tuned once (frozen)" },
+    { key: "walk_forward_refit", lbl: "Walk-forward refit (annual)" }
+  ];
+  let h = `<thead><tr><th>variant</th>
+    <th>CAGR</th><th>Sharpe</th><th>MaxDD</th>
+    <th>vs default Sharpe</th></tr></thead><tbody>`;
+  const defaultSh = s.default.sharpe;
+  rows.forEach(r => {
+    const v = s[r.key];
+    const delta = v.sharpe - defaultSh;
+    const sign = delta >= 0 ? "+" : "";
+    const dCls = delta > 0.05 ? "good" : (delta < -0.05 ? "bad" : "");
+    h += `<tr>
+      <td><strong>${r.lbl}</strong></td>
+      <td class="${cls(v.cagr)}">${pct(v.cagr)}</td>
+      <td>${num(v.sharpe)}</td>
+      <td>${pct(v.max_dd)}</td>
+      <td class="${dCls}">${r.key === "default" ? "—" : sign + num(delta)}</td>
+    </tr>`;
+  });
+  h += "</tbody>";
+  document.getElementById("wf-summary").innerHTML = h;
+
+  // Equity chart
+  const wkEqDef = wf.equity_default;
+  const wkEqIs = wf.equity_is_once;
+  const wkEqRf = wf.equity_chained;
+  const traces = [
+    { x: wkEqDef.dates, y: wkEqDef.values, name: "default (no tuning)",
+      type: "scatter", mode: "lines", line: { color: "#6b727a", width: 1.4 },
+      hovertemplate: "Default: %{y:.2f}x<extra></extra>" },
+    { x: wkEqIs.dates, y: wkEqIs.values, name: "IS-tuned once (frozen)",
+      type: "scatter", mode: "lines", line: { color: "#f7931a", width: 1.4, dash: "dot" },
+      hovertemplate: "IS-once: %{y:.2f}x<extra></extra>" },
+    { x: wkEqRf.dates, y: wkEqRf.values, name: "Walk-forward refit (annual)",
+      type: "scatter", mode: "lines", line: { color: "#1351b4", width: 2 },
+      hovertemplate: "WF refit: %{y:.2f}x<extra></extra>" },
+  ];
+  const layout = Object.assign({}, LAYOUT_BASE, {
+    yaxis: Object.assign({}, LAYOUT_BASE.yaxis, { type: "log", title: { text: "wealth multiple (log)", font: { size: 11 } } })
+  });
+  Plotly.newPlot("chart-walkforward", traces, layout, PLOTLY_CFG);
+
+  // Year-by-year picks
+  let h2 = `<thead><tr>
+    <th>anchor year</th><th>IS window</th>
+    <th>picked config</th><th>IS Sharpe</th>
+    <th>OOS CAGR</th><th>OOS Sharpe</th><th>OOS MaxDD</th>
+    <th>vs default OOS Sh</th></tr></thead><tbody>`;
+  wf.anchors.forEach(a => {
+    const oos = a.oos || {};
+    const defOos = a.default_oos || {};
+    const delta = (oos.sharpe != null && defOos.sharpe != null)
+      ? (oos.sharpe - defOos.sharpe) : null;
+    const sign = delta == null ? "" : (delta >= 0 ? "+" : "");
+    const dCls = delta == null ? "" : (delta > 0.05 ? "good" : (delta < -0.05 ? "bad" : ""));
+    h2 += `<tr>
+      <td><strong>${a.anchor_year}</strong></td>
+      <td class="mono muted">2018-01-01 → ${a.is_end}</td>
+      <td><code>${a.best_label}</code></td>
+      <td>${num(a.is_sharpe)}</td>
+      <td class="${cls(oos.cagr)}">${pct(oos.cagr)}</td>
+      <td>${num(oos.sharpe)}</td>
+      <td>${pct(oos.max_dd)}</td>
+      <td class="${dCls}">${delta == null ? "—" : sign + num(delta)}</td>
+    </tr>`;
+  });
+  h2 += "</tbody>";
+  document.getElementById("wf-anchors").innerHTML = h2;
+
+  // Stability table
+  let h3 = `<thead><tr><th>config</th><th>picks</th><th>share</th><th></th></tr></thead><tbody>`;
+  wf.param_stability.forEach(p => {
+    h3 += `<tr>
+      <td><code>${p.label}</code></td>
+      <td>${p.count} / ${wf.meta.n_anchors}</td>
+      <td>${pct(p.share, 0)}</td>
+      <td><span class="weight-bar" style="width:140px"><span style="width:${(p.share * 100).toFixed(1)}%;background:var(--accent)"></span></span></td>
+    </tr>`;
+  });
+  h3 += "</tbody>";
+  document.getElementById("wf-stability").innerHTML = h3;
+}
+
 function renderMonitor(d) {
   const m = d.monitor;
 
@@ -1269,6 +1388,7 @@ loadData()
     renderAttribution(d);
     renderMonitor(d);
     renderLedger(d);
+    renderWalkForward(d);
     setupActiveNav();
   })
   .catch(e => {
