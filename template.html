@@ -358,6 +358,155 @@ table.simple .series-chip {
 table.simple .good { color: var(--good); }
 table.simple .bad { color: var(--bad); }
 
+/* ===== monitor section ===== */
+.monitor-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin: 16px 0 20px;
+}
+@media (max-width: 900px) { .monitor-grid { grid-template-columns: repeat(2, 1fr); } }
+.m-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 14px 16px;
+}
+.m-card .lbl {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-soft);
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.m-card .v {
+  font-size: 24px;
+  font-weight: 700;
+  font-family: "JetBrains Mono", "Inter", monospace;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+  color: var(--ink);
+}
+.m-card .v.good { color: var(--good); }
+.m-card .v.bad { color: var(--bad); }
+.m-card .sub {
+  font-size: 12px;
+  color: var(--ink-faint);
+  margin-top: 6px;
+  line-height: 1.4;
+  font-variant-numeric: tabular-nums;
+}
+.m-card.alert {
+  border-left: 3px solid var(--accent);
+  background: var(--accent-soft);
+}
+
+table.holdings {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 13.5px;
+  margin: 8px 0 20px;
+  font-variant-numeric: tabular-nums;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+table.holdings th, table.holdings td { padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--border); }
+table.holdings thead th {
+  background: var(--bg-soft); font-weight: 600; color: var(--ink-soft);
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em;
+}
+table.holdings td.right, table.holdings th.right { text-align: right; }
+table.holdings tbody tr:last-child td { border-bottom: none; }
+.weight-bar {
+  display: inline-block;
+  width: 80px;
+  height: 6px;
+  background: var(--bg-soft);
+  border-radius: 3px;
+  margin-right: 10px;
+  vertical-align: middle;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+.weight-bar > span {
+  display: block; height: 100%;
+  background: var(--accent);
+}
+
+/* ===== trade ledger ===== */
+.ledger-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: 12px 0 8px;
+  font-size: 13px;
+}
+.ledger-controls select {
+  font: inherit; font-size: 13px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-card);
+  color: var(--ink);
+  cursor: pointer;
+}
+.ledger-controls .count {
+  color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+  margin-left: auto;
+}
+
+table.ledger {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 13px;
+  margin: 8px 0 20px;
+  font-variant-numeric: tabular-nums;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+table.ledger th, table.ledger td {
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+table.ledger thead th {
+  background: var(--bg-soft); font-weight: 600; color: var(--ink-soft);
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em;
+  position: sticky; top: 0;
+}
+table.ledger td.right, table.ledger th.right { text-align: right; }
+table.ledger tbody tr:hover { background: var(--bg-soft); }
+table.ledger tbody tr:last-child td { border-bottom: none; }
+.chip {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+.chip.entry { background: var(--good-soft); color: var(--good); border: 1px solid rgba(29,122,58,0.3); }
+.chip.exit  { background: var(--bad-soft); color: var(--bad); border: 1px solid rgba(179,38,30,0.3); }
+.chip.resize { background: var(--accent-soft); color: var(--accent); border: 1px solid rgba(19,81,180,0.3); }
+.chip.muted { background: var(--bg-soft); color: var(--ink-faint); border: 1px solid var(--border); }
+
+.ledger-table-wrap {
+  max-height: 540px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.ledger-table-wrap table.ledger { margin: 0; border: none; border-radius: 0; }
+
 /* ===== caveats ===== */
 .caveat {
   background: var(--warn-soft);
@@ -454,17 +603,50 @@ footer.bottom a:hover { text-decoration: underline; }
 
 <nav class="tabs">
   <div class="container">
+    <a href="#monitor" class="nav-link" data-target="monitor">Monitor</a>
     <a href="#how" class="nav-link" data-target="how">How it works</a>
     <a href="#performance" class="nav-link" data-target="performance">Performance</a>
     <a href="#returns" class="nav-link" data-target="returns">Returns</a>
     <a href="#robustness" class="nav-link" data-target="robustness">Robustness</a>
     <a href="#regimes" class="nav-link" data-target="regimes">Regimes</a>
     <a href="#attribution" class="nav-link" data-target="attribution">Attribution</a>
+    <a href="#trades" class="nav-link" data-target="trades">Trade ledger</a>
     <a href="#caveats" class="nav-link" data-target="caveats">Caveats</a>
   </div>
 </nav>
 
 <div class="container">
+
+<section id="monitor">
+  <h2>Latest signal</h2>
+  <p class="section-sub">What the strategy would have you holding right now, based on the most recent close. This is research output, not a deployed portfolio — if the backtest data fetch has not run today, the timestamp will lag. The strategy reads breadth → tier → rank, then daily-exits any name that has broken its own trend.</p>
+
+  <div class="monitor-grid">
+    <div class="m-card alert">
+      <div class="lbl">As of</div>
+      <div class="v" id="mon-asof">—</div>
+      <div class="sub" id="mon-asof-sub">—</div>
+    </div>
+    <div class="m-card">
+      <div class="lbl">Breadth → tier</div>
+      <div class="v" id="mon-breadth">—</div>
+      <div class="sub" id="mon-breadth-sub">—</div>
+    </div>
+    <div class="m-card">
+      <div class="lbl">Target exposure</div>
+      <div class="v" id="mon-exposure">—</div>
+      <div class="sub" id="mon-exposure-sub">—</div>
+    </div>
+    <div class="m-card">
+      <div class="lbl">Activity</div>
+      <div class="v" id="mon-activity">—</div>
+      <div class="sub" id="mon-activity-sub">—</div>
+    </div>
+  </div>
+
+  <h3>Holdings as of last close</h3>
+  <table class="holdings" id="holdings-table"></table>
+</section>
 
 <section id="how">
   <h2>How the strategy works</h2>
@@ -524,6 +706,43 @@ footer.bottom a:hover { text-decoration: underline; }
   <h2>Per-coin contribution to gross PnL</h2>
   <p class="section-sub">Dollar contribution per coin = sum of (yesterday's weight × today's return × yesterday's equity) over the sample. Faded bars are OOS-only contributions. No single coin contributes more than 25% of positive OOS gross PnL — the alpha is genuinely cross-sectional.</p>
   <div class="chart chart-med" id="chart-attribution"></div>
+</section>
+
+<section id="trades">
+  <h2>Trade ledger</h2>
+  <p class="section-sub">Every per-coin trade event executed during the backtest, decomposed from the daily weights series. A trade event is either a weekly rebalance (signal generated at the previous close, traded at the next close on a 1-bar lag) or a daily trend-exit override. Drift between events is not counted as a trade.</p>
+
+  <div class="ledger-controls">
+    <label>Trigger:
+      <select id="filter-trigger">
+        <option value="all">All</option>
+        <option value="rebal">Weekly rebal only</option>
+        <option value="daily exit">Daily exit only</option>
+        <option value="rebal + exit">Rebal + exit (same day)</option>
+      </select>
+    </label>
+    <label>Action:
+      <select id="filter-action">
+        <option value="all">All</option>
+        <option value="entry">Entries only</option>
+        <option value="exit">Exits only</option>
+        <option value="resize">Resizes only</option>
+      </select>
+    </label>
+    <label>Show:
+      <select id="filter-limit">
+        <option value="50">Last 50</option>
+        <option value="200" selected>Last 200</option>
+        <option value="500">Last 500</option>
+        <option value="all">All</option>
+      </select>
+    </label>
+    <span class="count" id="ledger-count">—</span>
+  </div>
+
+  <div class="ledger-table-wrap">
+    <table class="ledger" id="ledger-table"></table>
+  </div>
 </section>
 
 <section id="caveats">
@@ -914,6 +1133,111 @@ function renderAttribution(d) {
   Plotly.newPlot("chart-attribution", traces, layout, PLOTLY_CFG);
 }
 
+function renderMonitor(d) {
+  const m = d.monitor;
+
+  document.getElementById("mon-asof").textContent = m.as_of;
+  document.getElementById("mon-asof-sub").textContent =
+    m.investable_today + " coins investable today";
+
+  document.getElementById("mon-breadth").textContent = pct(m.breadth, 0);
+  document.getElementById("mon-breadth-sub").textContent = m.tier_label;
+
+  const expEl = document.getElementById("mon-exposure");
+  expEl.textContent = pct(m.exposure, 0);
+  if (m.exposure >= 0.99) expEl.classList.add("good");
+  else if (m.exposure < 0.01) expEl.classList.add("bad");
+  const heldGross = 1 - m.cash_weight;
+  document.getElementById("mon-exposure-sub").textContent =
+    "Currently held " + pct(heldGross, 0) + " · cash " + pct(m.cash_weight, 0);
+
+  // Activity card
+  const dr = m.days_since_rebal;
+  const de = m.days_since_exit;
+  document.getElementById("mon-activity").textContent =
+    (dr == null ? "—" : (dr + "d")) + " / " + (de == null ? "—" : (de + "d"));
+  document.getElementById("mon-activity-sub").textContent =
+    "since last rebal / daily exit (" +
+    m.n_rebal_days + " rebals, " + m.n_exit_days + " exit days total)";
+
+  // Holdings table
+  let h = `<thead><tr><th>coin</th><th class="right">weight</th><th>allocation</th></tr></thead><tbody>`;
+  if (m.holdings.length === 0) {
+    h += `<tr><td colspan="3" style="text-align:center;color:var(--ink-faint);padding:18px">All cash. The strategy is gated off right now.</td></tr>`;
+  } else {
+    m.holdings.forEach(p => {
+      const w = p.weight;
+      h += `<tr>
+        <td><strong>${p.coin}</strong></td>
+        <td class="right mono">${pct(w, 1)}</td>
+        <td><span class="weight-bar"><span style="width:${(w * 100 / 0.35).toFixed(1)}%"></span></span></td>
+      </tr>`;
+    });
+  }
+  if (m.cash_weight > 0.005) {
+    h += `<tr>
+      <td><strong class="muted">Cash (USDT)</strong></td>
+      <td class="right mono muted">${pct(m.cash_weight, 1)}</td>
+      <td><span class="weight-bar"><span style="width:${(m.cash_weight * 100 / 0.35).toFixed(1)}%;background:var(--ink-faint)"></span></span></td>
+    </tr>`;
+  }
+  h += "</tbody>";
+  document.getElementById("holdings-table").innerHTML = h;
+}
+
+// ===== trade ledger (with live filtering) =====
+function renderLedger(d) {
+  const trades = d.trades || [];
+
+  function apply() {
+    const fTrig = document.getElementById("filter-trigger").value;
+    const fAct = document.getElementById("filter-action").value;
+    const fLim = document.getElementById("filter-limit").value;
+    let filtered = trades.filter(t =>
+      (fTrig === "all" || t.trigger === fTrig) &&
+      (fAct === "all" || t.action === fAct)
+    );
+    const total = filtered.length;
+    if (fLim !== "all") {
+      const n = parseInt(fLim, 10);
+      filtered = filtered.slice(0, n);
+    }
+    document.getElementById("ledger-count").textContent =
+      "Showing " + filtered.length + " of " + total +
+      " (" + trades.length + " total events across all filters)";
+
+    let h = `<thead><tr>
+      <th>date</th>
+      <th>trigger</th>
+      <th>coin</th>
+      <th>action</th>
+      <th class="right">old → new</th>
+      <th class="right">Δ weight</th>
+    </tr></thead><tbody>`;
+    filtered.forEach(t => {
+      const deltaSign = t.delta >= 0 ? "+" : "";
+      const deltaCls = t.delta >= 0 ? "good" : "bad";
+      const trigChip = t.trigger === "daily exit" ? "exit" :
+                       (t.trigger === "rebal + exit" ? "muted" : "muted");
+      h += `<tr>
+        <td class="mono muted">${t.date}</td>
+        <td><span class="chip ${trigChip}">${t.trigger}</span></td>
+        <td><strong>${t.coin}</strong></td>
+        <td><span class="chip ${t.action}">${t.action}</span></td>
+        <td class="right mono">${pct(t.old_w, 1)} → ${pct(t.new_w, 1)}</td>
+        <td class="right mono ${deltaCls}">${deltaSign}${pct(t.delta, 1)}</td>
+      </tr>`;
+    });
+    h += "</tbody>";
+    document.getElementById("ledger-table").innerHTML = h;
+  }
+
+  document.getElementById("filter-trigger").addEventListener("change", apply);
+  document.getElementById("filter-action").addEventListener("change", apply);
+  document.getElementById("filter-limit").addEventListener("change", apply);
+  apply();
+}
+
 // ===== sticky-nav active-section highlighter =====
 function setupActiveNav() {
   const links = document.querySelectorAll("nav.tabs a.nav-link");
@@ -943,6 +1267,8 @@ loadData()
     renderSensitivity(d);
     renderRegimes(d);
     renderAttribution(d);
+    renderMonitor(d);
+    renderLedger(d);
     setupActiveNav();
   })
   .catch(e => {

@@ -118,6 +118,134 @@ def per_coin_attribution(close: pd.DataFrame, result: dict) -> pd.DataFrame:
     return w_lag.mul(daily_ret, axis=0).mul(eq_lag, axis=0)
 
 
+def extract_trade_history(close: pd.DataFrame, result: dict) -> list[dict]:
+    """Decompose every trade day into per-coin events.
+
+    A trade day is any day where the backtest's `turnover` series is > 0 —
+    that captures both weekly rebalances and daily trend-exit overrides.
+
+    For each trade day, the previous day's weights are drifted forward by
+    today's returns (then re-normalised, including idle cash). The
+    difference between the actual end-of-day weight and the drifted weight
+    is the trade — anything else is just price drift and we ignore it.
+
+    Threshold: 0.5% absolute weight change per coin to count as a trade.
+    """
+    weights = result["weights"]
+    turnover = result["turnover"]
+    daily_exits = result["daily_exit_count"]
+    daily_ret = close.pct_change().fillna(0.0)
+
+    trade_days = turnover[turnover > 1e-4].index
+    events = []
+    for dt in trade_days:
+        idx = weights.index.get_loc(dt)
+        if idx == 0:
+            continue
+        w_curr = weights.iloc[idx]
+        w_prev = weights.iloc[idx - 1]
+        r = daily_ret.iloc[idx]
+        prev_cash = max(0.0, 1.0 - w_prev.sum())
+        new_values = w_prev * (1.0 + r)
+        total = new_values.sum() + prev_cash
+        if total > 0:
+            w_drift = new_values / total
+        else:
+            w_drift = new_values * 0.0
+
+        is_exit_day = bool(daily_exits.loc[dt] > 0)
+        is_rebal_day = bool(turnover.loc[dt] > 0)
+        # A day can have both — label by what fired.
+        if is_exit_day and is_rebal_day:
+            trigger = "rebal + exit"
+        elif is_exit_day:
+            trigger = "daily exit"
+        else:
+            trigger = "rebal"
+
+        for coin in w_curr.index:
+            actual = float(w_curr[coin])
+            drifted = float(w_drift[coin])
+            delta = actual - drifted
+            if abs(delta) < 0.005:
+                continue
+            if drifted < 0.005 and actual >= 0.005:
+                action = "entry"
+            elif drifted >= 0.005 and actual < 0.005:
+                action = "exit"
+            else:
+                action = "resize"
+            events.append({
+                "date": str(dt.date()),
+                "trigger": trigger,
+                "coin": coin,
+                "action": action,
+                "old_w": drifted,
+                "new_w": actual,
+                "delta": delta,
+            })
+
+    # Newest first
+    events.sort(key=lambda e: e["date"], reverse=True)
+    return events
+
+
+def current_state(
+    close: pd.DataFrame, volume: pd.DataFrame, result: dict,
+    breadth: pd.Series, target_exposure: pd.Series, mask: pd.DataFrame, p: Params,
+) -> dict:
+    """Latest signal — what the strategy would have you holding right now."""
+    weights = result["weights"]
+    turnover = result["turnover"]
+    daily_exits = result["daily_exit_count"]
+
+    last_date = weights.index[-1]
+    last_w = weights.iloc[-1]
+    holdings = []
+    for c in last_w.index:
+        w = float(last_w[c])
+        if w > 0.005:
+            holdings.append({"coin": c, "weight": w})
+    holdings.sort(key=lambda h: -h["weight"])
+    cash_weight = float(max(0.0, 1.0 - last_w.sum()))
+
+    last_breadth = float(breadth.iloc[-1])
+    last_exposure = float(target_exposure.iloc[-1])
+    if last_exposure <= 0.01:
+        tier_label = "0% — all cash"
+    elif last_exposure <= 0.31:
+        tier_label = "30% tier"
+    elif last_exposure <= 0.61:
+        tier_label = "60% tier"
+    else:
+        tier_label = "100% — full risk"
+
+    trade_days = turnover[turnover > 1e-4].index
+    exit_days = daily_exits[daily_exits > 0].index
+    last_rebal = trade_days[-1] if len(trade_days) > 0 else None
+    last_exit = exit_days[-1] if len(exit_days) > 0 else None
+
+    investable_today = int(mask.loc[last_date].sum())
+    investable_names = sorted(mask.columns[mask.loc[last_date]].tolist())
+
+    return {
+        "as_of": str(last_date.date()),
+        "holdings": holdings,
+        "cash_weight": cash_weight,
+        "breadth": last_breadth,
+        "exposure": last_exposure,
+        "tier_label": tier_label,
+        "investable_today": investable_today,
+        "investable_names": investable_names,
+        "last_rebal": str(last_rebal.date()) if last_rebal is not None else None,
+        "last_exit": str(last_exit.date()) if last_exit is not None else None,
+        "days_since_rebal": int((last_date - last_rebal).days) if last_rebal is not None else None,
+        "days_since_exit": int((last_date - last_exit).days) if last_exit is not None else None,
+        "n_rebal_days": int(len(trade_days)),
+        "n_exit_days": int(len(exit_days)),
+    }
+
+
 def regime_breakdown(eq: pd.Series, bm_btc: pd.Series, bm_6040: pd.Series) -> list[dict]:
     """Strategy + key benchmarks per regime window."""
     rows = []
@@ -298,6 +426,17 @@ def main() -> int:
         "oos": [_f(x) for x in oos_contrib.values],
     }
 
+    print("Current state (latest signal) ...")
+    breadth = breadth_pct_above_ma(close, p.breadth_ma_window, mask)
+    target_exposure = breadth_to_tier(breadth, p.tier_thresholds, p.tier_exposures)
+    monitor = current_state(close, volume, res, breadth, target_exposure, mask, p)
+    print(f"  as of {monitor['as_of']}: {len(monitor['holdings'])} holdings, "
+          f"cash {monitor['cash_weight']:.0%}, breadth {monitor['breadth']:.0%}")
+
+    print("Extracting trade history ...")
+    trades = extract_trade_history(close, res)
+    print(f"  {len(trades)} trade events")
+
     print("Parameter sensitivity sweep ...")
     sensitivity = sensitivity_sweep(close, volume, p)
 
@@ -358,6 +497,8 @@ def main() -> int:
         "regimes": regimes,
         "sensitivity": sensitivity,
         "attribution": attribution,
+        "monitor": monitor,
+        "trades": trades,
     }
 
     # ----- write JSON sidecar -----
