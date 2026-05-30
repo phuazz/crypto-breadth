@@ -119,7 +119,10 @@ def per_coin_attribution(close: pd.DataFrame, result: dict) -> pd.DataFrame:
     return w_lag.mul(daily_ret, axis=0).mul(eq_lag, axis=0)
 
 
-def extract_trade_history(close: pd.DataFrame, result: dict) -> list[dict]:
+def extract_trade_history(
+    close: pd.DataFrame, result: dict,
+    breadth: pd.Series, target_exposure: pd.Series,
+) -> list[dict]:
     """Decompose every trade day into per-coin events.
 
     A trade day is any day where the backtest's `turnover` series is > 0 —
@@ -129,6 +132,9 @@ def extract_trade_history(close: pd.DataFrame, result: dict) -> list[dict]:
     today's returns (then re-normalised, including idle cash). The
     difference between the actual end-of-day weight and the drifted weight
     is the trade — anything else is just price drift and we ignore it.
+
+    Each event also gets the breadth % and target exposure at the trade
+    date attached, so the dashboard can show "signal at trade."
 
     Threshold: 0.5% absolute weight change per coin to count as a trade.
     """
@@ -156,13 +162,22 @@ def extract_trade_history(close: pd.DataFrame, result: dict) -> list[dict]:
 
         is_exit_day = bool(daily_exits.loc[dt] > 0)
         is_rebal_day = bool(turnover.loc[dt] > 0)
-        # A day can have both — label by what fired.
         if is_exit_day and is_rebal_day:
             trigger = "rebal + exit"
         elif is_exit_day:
             trigger = "daily exit"
         else:
             trigger = "rebal"
+
+        # Signal context at this trade date
+        try:
+            sig_breadth = float(breadth.loc[dt])
+        except KeyError:
+            sig_breadth = None
+        try:
+            sig_exposure = float(target_exposure.loc[dt])
+        except KeyError:
+            sig_exposure = None
 
         for coin in w_curr.index:
             actual = float(w_curr[coin])
@@ -184,11 +199,37 @@ def extract_trade_history(close: pd.DataFrame, result: dict) -> list[dict]:
                 "old_w": drifted,
                 "new_w": actual,
                 "delta": delta,
+                "sig_breadth": _f(sig_breadth) if sig_breadth is not None else None,
+                "sig_exposure": _f(sig_exposure) if sig_exposure is not None else None,
             })
 
-    # Newest first
     events.sort(key=lambda e: e["date"], reverse=True)
     return events
+
+
+def weights_history_for_chart(result: dict, freq: str = "W-MON") -> dict:
+    """Resample the daily weights to a tractable frequency for the stacked
+    area chart. Only includes coins that have been held at least once.
+
+    Returns dict with: dates, coins (list of names actually used), and
+    a 2D array `weights[i][j]` = weight of coin j on date i (and a cash
+    track appended as the final column).
+    """
+    weights = result["weights"]
+    # Weekly snapshots
+    w_weekly = weights.resample(freq).last().dropna(how="all")
+    # Add cash as 1 - sum(weights)
+    cash = (1.0 - w_weekly.sum(axis=1)).clip(lower=0.0)
+    # Filter to coins ever held
+    ever_held = (weights.max(axis=0) > 0.01)
+    coins_used = sorted(weights.columns[ever_held].tolist())
+    out = w_weekly[coins_used].copy()
+    out["__cash__"] = cash
+    return {
+        "dates": out.index.strftime("%Y-%m-%d").tolist(),
+        "coins": coins_used + ["Cash"],
+        "weights": [[_f(v) for v in row] for row in out.values],
+    }
 
 
 def current_state(
@@ -435,8 +476,21 @@ def main() -> int:
           f"cash {monitor['cash_weight']:.0%}, breadth {monitor['breadth']:.0%}")
 
     print("Extracting trade history ...")
-    trades = extract_trade_history(close, res)
+    trades = extract_trade_history(close, res, breadth, target_exposure)
     print(f"  {len(trades)} trade events")
+
+    # "This week's changes" — trades within the last 14 days of the sample.
+    if trades:
+        last_date_str = monitor["as_of"]
+        last_date = pd.Timestamp(last_date_str)
+        cutoff = last_date - pd.Timedelta(days=14)
+        recent_trades = [t for t in trades if pd.Timestamp(t["date"]) >= cutoff]
+    else:
+        recent_trades = []
+    print(f"  this week's changes: {len(recent_trades)} trade events in last 14 days")
+
+    print("Weights-history for stacked area chart ...")
+    exposure_history = weights_history_for_chart(res)
 
     print("Parameter sensitivity sweep ...")
     sensitivity = sensitivity_sweep(close, volume, p)
@@ -500,6 +554,8 @@ def main() -> int:
         "attribution": attribution,
         "monitor": monitor,
         "trades": trades,
+        "recent_trades": recent_trades,
+        "exposure_history": exposure_history,
     }
 
     # ----- merge walk-forward results if present ----------------

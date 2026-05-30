@@ -437,6 +437,67 @@ table.holdings tbody tr:last-child td { border-bottom: none; }
   background: var(--accent);
 }
 
+/* ===== section number prefix ===== */
+section h2 .sec-no {
+  display: inline-block;
+  background: var(--accent-soft);
+  color: var(--accent);
+  padding: 2px 10px;
+  margin-right: 10px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  vertical-align: middle;
+  letter-spacing: 0.02em;
+}
+
+/* ===== two-col monitor (holdings + this-week changes) ===== */
+.monitor-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin: 8px 0 24px;
+}
+@media (max-width: 900px) { .monitor-cols { grid-template-columns: 1fr; } }
+.monitor-panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.monitor-panel .panel-head {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-soft);
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+.monitor-panel .panel-head .title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-soft);
+  font-weight: 700;
+}
+.monitor-panel .panel-head .meta {
+  font-size: 12px;
+  color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+.monitor-panel table { margin: 0; border: none; border-radius: 0; }
+.monitor-panel .panel-foot {
+  padding: 10px 16px;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+}
+.monitor-panel .panel-foot a {
+  color: var(--accent);
+  text-decoration: none;
+}
+.monitor-panel .panel-foot a:hover { text-decoration: underline; }
+
 /* ===== trade ledger ===== */
 .ledger-controls {
   display: flex;
@@ -446,7 +507,7 @@ table.holdings tbody tr:last-child td { border-bottom: none; }
   margin: 12px 0 8px;
   font-size: 13px;
 }
-.ledger-controls select {
+.ledger-controls select, .ledger-controls input[type="text"] {
   font: inherit; font-size: 13px;
   padding: 6px 10px;
   border: 1px solid var(--border);
@@ -455,11 +516,39 @@ table.holdings tbody tr:last-child td { border-bottom: none; }
   color: var(--ink);
   cursor: pointer;
 }
+.ledger-controls input[type="text"] {
+  cursor: text;
+  min-width: 200px;
+}
 .ledger-controls .count {
   color: var(--ink-faint);
   font-variant-numeric: tabular-nums;
   margin-left: auto;
 }
+.chip-arrow {
+  display: inline-block;
+  width: 10px;
+  margin-right: 2px;
+  font-weight: 700;
+}
+.was {
+  color: var(--ink-faint);
+  font-size: 11.5px;
+  margin-left: 6px;
+}
+.signal-pill {
+  display: inline-block;
+  padding: 2px 7px;
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 11.5px;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+.signal-pill.low { color: var(--bad); border-color: rgba(179,38,30,0.3); background: var(--bad-soft); }
+.signal-pill.mid { color: var(--warn); border-color: rgba(183,110,0,0.3); background: var(--warn-soft); }
+.signal-pill.high { color: var(--good); border-color: rgba(29,122,58,0.3); background: var(--good-soft); }
 
 table.ledger {
   border-collapse: collapse;
@@ -606,6 +695,7 @@ footer.bottom a:hover { text-decoration: underline; }
     <a href="#monitor" class="nav-link" data-target="monitor">Monitor</a>
     <a href="#how" class="nav-link" data-target="how">How it works</a>
     <a href="#performance" class="nav-link" data-target="performance">Performance</a>
+    <a href="#exposure" class="nav-link" data-target="exposure">Exposure</a>
     <a href="#returns" class="nav-link" data-target="returns">Returns</a>
     <a href="#robustness" class="nav-link" data-target="robustness">Robustness</a>
     <a href="#walkforward" class="nav-link" data-target="walkforward">Walk-forward</a>
@@ -619,7 +709,7 @@ footer.bottom a:hover { text-decoration: underline; }
 <div class="container">
 
 <section id="monitor">
-  <h2>Latest signal</h2>
+  <h2><span class="sec-no">1</span>Latest signal</h2>
   <p class="section-sub">What the strategy would have you holding right now, based on the most recent close. This is research output, not a deployed portfolio — if the backtest data fetch has not run today, the timestamp will lag. The strategy reads breadth → tier → rank, then daily-exits any name that has broken its own trend.</p>
 
   <div class="monitor-grid">
@@ -645,8 +735,24 @@ footer.bottom a:hover { text-decoration: underline; }
     </div>
   </div>
 
-  <h3>Holdings as of last close</h3>
-  <table class="holdings" id="holdings-table"></table>
+  <div class="monitor-cols">
+    <div class="monitor-panel">
+      <div class="panel-head">
+        <span class="title">Current holdings</span>
+        <span class="meta" id="holdings-meta">—</span>
+      </div>
+      <table class="holdings" id="holdings-table"></table>
+      <div class="panel-foot"><a href="#trades">Full trade ledger →</a></div>
+    </div>
+    <div class="monitor-panel">
+      <div class="panel-head">
+        <span class="title">Recent changes (last 14 d)</span>
+        <span class="meta" id="changes-meta">—</span>
+      </div>
+      <table class="holdings" id="changes-table"></table>
+      <div class="panel-foot"><a href="#trades">Full rebalance ledger →</a></div>
+    </div>
+  </div>
 </section>
 
 <section id="how">
@@ -663,7 +769,7 @@ footer.bottom a:hover { text-decoration: underline; }
 </section>
 
 <section id="performance">
-  <h2>Equity curve vs benchmarks</h2>
+  <h2><span class="sec-no">2</span>Equity curve vs benchmarks</h2>
   <p class="section-sub">All series rebased to 1.0 on the strategy's first day. Log scale. The vertical line marks the IS / OOS split (2021-01-01). The amber shaded bands flag the two notable crypto bear regimes — these are where the strategy is structurally weakest.</p>
   <div class="chart chart-tall" id="chart-equity"></div>
 
@@ -671,14 +777,20 @@ footer.bottom a:hover { text-decoration: underline; }
   <p class="section-sub">Strategy only. Benchmark drawdowns are deeper (BTC −81%, 60/40 −86%, EW −83%) and are visible by inference in the equity chart above.</p>
   <div class="chart chart-med" id="chart-drawdown"></div>
 
-  <h2>In-sample vs out-of-sample</h2>
+  <h2><span class="sec-no">3</span>In-sample vs out-of-sample</h2>
   <p class="section-sub">IS = 2018-01-01 to 2020-12-31. OOS = 2021-01-01 onwards. The strategy's Sharpe is higher OOS than IS — unusual, and a consequence of the IS sample being mostly the small-universe 2018 bear where the strategy whipsaws.</p>
   <div class="two-col" id="window-cards"></div>
   <table class="simple" id="isoos-table"></table>
 </section>
 
+<section id="exposure">
+  <h2><span class="sec-no">4</span>Exposure history</h2>
+  <p class="section-sub">Weekly stacked-to-100% snapshots of every coin the strategy has ever held, since 2018. The strategy compounds when there is enough breadth and concentrates into the top-4 momentum names. When breadth drops below the 30% tier, allocation collapses to <strong>Cash (USDT)</strong> — visible as the pale grey band rising to fill the chart. This is the strategy's regime behaviour as a single picture.</p>
+  <div class="chart chart-tall" id="chart-exposure"></div>
+</section>
+
 <section id="returns">
-  <h2>Calendar-year returns</h2>
+  <h2><span class="sec-no">5</span>Calendar-year returns</h2>
   <p class="section-sub">The strategy wins in 2018, 2022 (bears) and 2021 (breakout). It lags BTC in pure BTC-led bull years (2020, 2023, 2024). It is currently in a weak patch (2024–2025–2026 YTD).</p>
   <div class="chart chart-med" id="chart-yearly"></div>
 
@@ -688,7 +800,7 @@ footer.bottom a:hover { text-decoration: underline; }
 </section>
 
 <section id="robustness">
-  <h2>Bootstrap Sharpe confidence interval</h2>
+  <h2><span class="sec-no">6</span>Bootstrap Sharpe confidence interval</h2>
   <p class="section-sub">Block-bootstrap (21-day blocks, 2000 resamples) — the most honest single statement we can make about the strategy's true Sharpe given the sample. Anything inside the median band [p25, p75] is the realistic operating range.</p>
   <div class="chart chart-med" id="chart-bootstrap"></div>
 
@@ -698,7 +810,7 @@ footer.bottom a:hover { text-decoration: underline; }
 </section>
 
 <section id="walkforward">
-  <h2>Walk-forward with annual re-fitting</h2>
+  <h2><span class="sec-no">7</span>Walk-forward with annual re-fitting</h2>
   <p class="section-sub">For each anchor year Y from 2020 onwards: fit on 2018-01-01 → end-of-(Y−1), then apply that IS-best config to year Y. Compare three deployment styles: default (no tuning), IS-tuned-once (best on 2018–2020, frozen), and proper annual refit. If the walk-forward refit does not beat IS-tuned-once on OOS Sharpe, the answer is "do not tune" — defaults stay.</p>
 
   <h3>Aggregate OOS comparison (2020+)</h3>
@@ -717,19 +829,19 @@ footer.bottom a:hover { text-decoration: underline; }
 </section>
 
 <section id="regimes">
-  <h2>Regime breakdown</h2>
+  <h2><span class="sec-no">8</span>Regime breakdown</h2>
   <p class="section-sub">Each row is a calendar-defined regime window. CAGR sign-colored. Verdict compares strategy CAGR to the best of (BTC HODL, 60/40 BTC/ETH).</p>
   <table class="simple" id="regime-table"></table>
 </section>
 
 <section id="attribution">
-  <h2>Per-coin contribution to gross PnL</h2>
+  <h2><span class="sec-no">9</span>Per-coin contribution to gross PnL</h2>
   <p class="section-sub">Dollar contribution per coin = sum of (yesterday's weight × today's return × yesterday's equity) over the sample. Faded bars are OOS-only contributions. No single coin contributes more than 25% of positive OOS gross PnL — the alpha is genuinely cross-sectional.</p>
   <div class="chart chart-med" id="chart-attribution"></div>
 </section>
 
 <section id="trades">
-  <h2>Trade ledger</h2>
+  <h2><span class="sec-no">10</span>Trade ledger</h2>
   <p class="section-sub">Every per-coin trade event executed during the backtest, decomposed from the daily weights series. A trade event is either a weekly rebalance (signal generated at the previous close, traded at the next close on a 1-bar lag) or a daily trend-exit override. Drift between events is not counted as a trade.</p>
 
   <div class="ledger-controls">
@@ -757,6 +869,7 @@ footer.bottom a:hover { text-decoration: underline; }
         <option value="all">All</option>
       </select>
     </label>
+    <input type="text" id="filter-text" placeholder="Filter by coin (e.g. BTC) or date (e.g. 2022)" />
     <span class="count" id="ledger-count">—</span>
   </div>
 
@@ -902,7 +1015,7 @@ function bearRegimeAnnotations() {
 function renderEquity(d) {
   const e = d.equity;
   const traces = [
-    { x: e.dates, y: e.strategy, name: "Strategy v3", type: "scatter", mode: "lines",
+    { x: e.dates, y: e.strategy, name: "Strategy v3.1", type: "scatter", mode: "lines",
       line: { color: "#111418", width: 2 },
       hovertemplate: "Strategy: %{y:.2f}x<extra></extra>" },
     { x: e.dates, y: e.btc, name: "BTC HODL", type: "scatter", mode: "lines",
@@ -929,9 +1042,77 @@ function renderEquity(d) {
   const layout = Object.assign({}, LAYOUT_BASE, {
     yaxis: Object.assign({}, LAYOUT_BASE.yaxis, { type: "log", title: { text: "wealth multiple (log)", font: { size: 11 } } }),
     shapes: shapes, annotations: annotations,
-    legend: { orientation: "h", x: 0, y: 1.10, font: { size: 11 } }
+    legend: { orientation: "h", x: 0, y: 1.10, font: { size: 11 } },
+    xaxis: Object.assign({}, LAYOUT_BASE.xaxis, {
+      rangeselector: {
+        buttons: [
+          { count: 1, label: "1M", step: "month", stepmode: "backward" },
+          { count: 6, label: "6M", step: "month", stepmode: "backward" },
+          { label: "YTD", step: "year", stepmode: "todate" },
+          { count: 1, label: "1Y", step: "year", stepmode: "backward" },
+          { count: 3, label: "3Y", step: "year", stepmode: "backward" },
+          { count: 5, label: "5Y", step: "year", stepmode: "backward" },
+          { step: "all", label: "MAX" }
+        ],
+        bgcolor: "#f7f8fa",
+        activecolor: "#1351b4",
+        font: { size: 11, color: "#4a5159" },
+        x: 1, xanchor: "right", y: 1.08
+      }
+    })
   });
   Plotly.newPlot("chart-equity", traces, layout, PLOTLY_CFG);
+}
+
+// Stable palette so the same coin gets the same colour across runs.
+const COIN_COLOURS = [
+  "#1351b4", "#f7931a", "#1d7a3a", "#b3261e", "#7e57c2", "#0e7490",
+  "#dc2626", "#2563eb", "#16a34a", "#ea580c", "#0891b2", "#9333ea",
+  "#65a30d", "#c026d3", "#0f766e", "#4338ca", "#a16207", "#9f1239",
+  "#0369a1", "#15803d", "#b91c1c", "#6d28d9", "#7c2d12", "#155e75",
+  "#1e3a8a"
+];
+
+function renderExposure(d) {
+  const ex = d.exposure_history;
+  if (!ex) return;
+  const dates = ex.dates;
+  const coins = ex.coins;
+  // weights[i][j] = weight of coin j on date i
+  // Build one trace per coin (and Cash as last). Stack to 100%.
+  const nCoins = coins.length;
+  // Sort by total contribution so visually meaningful ones are at the bottom
+  const totals = coins.map((_, j) =>
+    ex.weights.reduce((acc, row) => acc + (row[j] || 0), 0)
+  );
+  const order = coins.map((c, j) => j).sort((a, b) => totals[a] - totals[b]);
+  const traces = order.map((j, plotIdx) => {
+    const coin = coins[j];
+    const yvals = ex.weights.map(row => row[j] || 0);
+    const isCash = coin === "Cash";
+    return {
+      x: dates,
+      y: yvals,
+      name: coin,
+      type: "scatter",
+      mode: "lines",
+      stackgroup: "exposure",
+      groupnorm: "percent",
+      hovertemplate: coin + ": %{y:.1%}<extra></extra>",
+      line: { width: 0.5, color: isCash ? "#cbd5e1" : COIN_COLOURS[plotIdx % COIN_COLOURS.length] },
+      fillcolor: isCash ? "#e2e8f0" : undefined
+    };
+  });
+  const shapes = bearRegimeShapes("paper");
+  const annotations = bearRegimeAnnotations();
+  const layout = Object.assign({}, LAYOUT_BASE, {
+    yaxis: Object.assign({}, LAYOUT_BASE.yaxis, { range: [0, 100], ticksuffix: "%", title: { text: "% of NAV (stacked)", font: { size: 11 } } }),
+    shapes: shapes,
+    annotations: annotations,
+    legend: { orientation: "h", y: -0.18, font: { size: 10 } },
+    hovermode: "x unified"
+  });
+  Plotly.newPlot("chart-exposure", traces, layout, PLOTLY_CFG);
 }
 
 function renderDrawdown(d) {
@@ -1254,6 +1435,7 @@ function renderWalkForward(d) {
 
 function renderMonitor(d) {
   const m = d.monitor;
+  const NOTIONAL = 100_000;  // $ on $100K for "$ ON $100K" column
 
   document.getElementById("mon-asof").textContent = m.as_of;
   document.getElementById("mon-asof-sub").textContent =
@@ -1279,72 +1461,142 @@ function renderMonitor(d) {
     "since last rebal / daily exit (" +
     m.n_rebal_days + " rebals, " + m.n_exit_days + " exit days total)";
 
-  // Holdings table
-  let h = `<thead><tr><th>coin</th><th class="right">weight</th><th>allocation</th></tr></thead><tbody>`;
+  // Panel head meta lines
+  document.getElementById("holdings-meta").textContent = "as of " + m.as_of;
+  const recent = d.recent_trades || [];
+  document.getElementById("changes-meta").textContent =
+    recent.length + " event" + (recent.length === 1 ? "" : "s");
+
+  // Holdings table — with $ on $100K column
+  let h = `<thead><tr>
+    <th>coin</th>
+    <th class="right">% NAV</th>
+    <th class="right">$ on $100K</th>
+    <th>allocation</th>
+  </tr></thead><tbody>`;
   if (m.holdings.length === 0) {
-    h += `<tr><td colspan="3" style="text-align:center;color:var(--ink-faint);padding:18px">All cash. The strategy is gated off right now.</td></tr>`;
+    h += `<tr><td colspan="4" style="text-align:center;color:var(--ink-faint);padding:18px">All cash. The strategy is gated off right now.</td></tr>`;
   } else {
     m.holdings.forEach(p => {
       const w = p.weight;
+      const dollars = (w * NOTIONAL).toLocaleString("en-US", { maximumFractionDigits: 0 });
       h += `<tr>
         <td><strong>${p.coin}</strong></td>
         <td class="right mono">${pct(w, 1)}</td>
+        <td class="right mono muted">$${dollars}</td>
         <td><span class="weight-bar"><span style="width:${(w * 100 / 0.35).toFixed(1)}%"></span></span></td>
       </tr>`;
     });
   }
   if (m.cash_weight > 0.005) {
+    const dollars = (m.cash_weight * NOTIONAL).toLocaleString("en-US", { maximumFractionDigits: 0 });
     h += `<tr>
       <td><strong class="muted">Cash (USDT)</strong></td>
       <td class="right mono muted">${pct(m.cash_weight, 1)}</td>
+      <td class="right mono muted">$${dollars}</td>
       <td><span class="weight-bar"><span style="width:${(m.cash_weight * 100 / 0.35).toFixed(1)}%;background:var(--ink-faint)"></span></span></td>
     </tr>`;
   }
   h += "</tbody>";
   document.getElementById("holdings-table").innerHTML = h;
+
+  // Recent changes table
+  let ch = `<thead><tr>
+    <th>date</th>
+    <th>action</th>
+    <th>coin</th>
+    <th class="right">old → new</th>
+  </tr></thead><tbody>`;
+  if (recent.length === 0) {
+    ch += `<tr><td colspan="4" style="text-align:center;color:var(--ink-faint);padding:18px">No trades in the last 14 days.</td></tr>`;
+  } else {
+    recent.slice(0, 12).forEach(t => {
+      const arrow = t.action === "entry" ? "▲" : (t.action === "exit" ? "▼" : "↔");
+      ch += `<tr>
+        <td class="mono muted">${t.date}</td>
+        <td><span class="chip ${t.action}"><span class="chip-arrow">${arrow}</span>${t.action}</span></td>
+        <td><strong>${t.coin}</strong></td>
+        <td class="right mono">${pct(t.old_w, 1)} → ${pct(t.new_w, 1)}</td>
+      </tr>`;
+    });
+    if (recent.length > 12) {
+      ch += `<tr><td colspan="4" style="text-align:center;color:var(--ink-faint);font-size:12px;padding:8px">+ ${recent.length - 12} earlier events — see full trade ledger</td></tr>`;
+    }
+  }
+  ch += "</tbody>";
+  document.getElementById("changes-table").innerHTML = ch;
 }
 
 // ===== trade ledger (with live filtering) =====
 function renderLedger(d) {
   const trades = d.trades || [];
+  const NOTIONAL = 100_000;
+
+  function signalPill(breadth, exposure) {
+    if (breadth == null) return "—";
+    const bp = (breadth * 100).toFixed(0) + "% breadth";
+    const ex = exposure == null ? "" : " · " + (exposure * 100).toFixed(0) + "% gross";
+    let cls = "mid";
+    if (breadth >= 0.70) cls = "high";
+    else if (breadth < 0.30) cls = "low";
+    return `<span class="signal-pill ${cls}">${bp}${ex}</span>`;
+  }
+
+  function actionChip(action) {
+    const arrow = action === "entry" ? "▲" : (action === "exit" ? "▼" : "↔");
+    return `<span class="chip ${action}"><span class="chip-arrow">${arrow}</span>${action}</span>`;
+  }
 
   function apply() {
     const fTrig = document.getElementById("filter-trigger").value;
     const fAct = document.getElementById("filter-action").value;
     const fLim = document.getElementById("filter-limit").value;
-    let filtered = trades.filter(t =>
-      (fTrig === "all" || t.trigger === fTrig) &&
-      (fAct === "all" || t.action === fAct)
-    );
+    const fText = (document.getElementById("filter-text").value || "").trim().toLowerCase();
+
+    let filtered = trades.filter(t => {
+      if (fTrig !== "all" && t.trigger !== fTrig) return false;
+      if (fAct !== "all" && t.action !== fAct) return false;
+      if (fText) {
+        const hay = (t.coin + " " + t.date).toLowerCase();
+        if (!hay.includes(fText)) return false;
+      }
+      return true;
+    });
     const total = filtered.length;
     if (fLim !== "all") {
       const n = parseInt(fLim, 10);
       filtered = filtered.slice(0, n);
     }
     document.getElementById("ledger-count").textContent =
-      "Showing " + filtered.length + " of " + total +
-      " (" + trades.length + " total events across all filters)";
+      filtered.length + " of " + total +
+      " events (" + trades.length + " total)";
 
     let h = `<thead><tr>
       <th>date</th>
       <th>trigger</th>
       <th>coin</th>
       <th>action</th>
-      <th class="right">old → new</th>
-      <th class="right">Δ weight</th>
+      <th class="right">new weight</th>
+      <th class="right">$ on $100K</th>
+      <th>signal at trade</th>
     </tr></thead><tbody>`;
     filtered.forEach(t => {
-      const deltaSign = t.delta >= 0 ? "+" : "";
-      const deltaCls = t.delta >= 0 ? "good" : "bad";
-      const trigChip = t.trigger === "daily exit" ? "exit" :
-                       (t.trigger === "rebal + exit" ? "muted" : "muted");
+      const trigChip = t.trigger === "daily exit"
+        ? `<span class="chip exit">daily exit</span>`
+        : `<span class="chip muted">${t.trigger}</span>`;
+      const dollars = (t.new_w * NOTIONAL).toLocaleString("en-US", { maximumFractionDigits: 0 });
+      const dollarCls = t.new_w < 0.005 ? "muted" : "";
+      const wasNote = t.old_w >= 0.005
+        ? `<span class="was">(was ${pct(t.old_w, 1)})</span>`
+        : "";
       h += `<tr>
         <td class="mono muted">${t.date}</td>
-        <td><span class="chip ${trigChip}">${t.trigger}</span></td>
+        <td>${trigChip}</td>
         <td><strong>${t.coin}</strong></td>
-        <td><span class="chip ${t.action}">${t.action}</span></td>
-        <td class="right mono">${pct(t.old_w, 1)} → ${pct(t.new_w, 1)}</td>
-        <td class="right mono ${deltaCls}">${deltaSign}${pct(t.delta, 1)}</td>
+        <td>${actionChip(t.action)}</td>
+        <td class="right mono">${pct(t.new_w, 1)}${wasNote}</td>
+        <td class="right mono ${dollarCls}">$${dollars}</td>
+        <td>${signalPill(t.sig_breadth, t.sig_exposure)}</td>
       </tr>`;
     });
     h += "</tbody>";
@@ -1354,6 +1606,7 @@ function renderLedger(d) {
   document.getElementById("filter-trigger").addEventListener("change", apply);
   document.getElementById("filter-action").addEventListener("change", apply);
   document.getElementById("filter-limit").addEventListener("change", apply);
+  document.getElementById("filter-text").addEventListener("input", apply);
   apply();
 }
 
@@ -1378,6 +1631,7 @@ loadData()
   .then(d => {
     renderHero(d);
     renderEquity(d);
+    renderExposure(d);
     renderDrawdown(d);
     renderIsOos(d);
     renderYearly(d);
