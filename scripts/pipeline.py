@@ -883,7 +883,7 @@ def main() -> int:
 
     payload = {
         "meta": {
-            "version": "v3",
+            "version": "v3.1",
             "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
             "sample_start": str(eq.index[0].date()),
             "sample_end": str(eq.index[-1].date()),
