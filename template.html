@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>crypto-breadth | v3 strategy</title>
+<title>crypto-breadth — breadth-gated momentum on Binance majors</title>
 <meta name="description" content="Breadth-gate + ranked-momentum strategy for crypto majors on Binance USDT spot. Research v3.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1844,7 +1844,8 @@ function statusLine(latest, coin, c) {
   // "Last action" sub-line — c.events is sorted newest-first by pipeline.py.
   // Show the most recent trade event if it happened within the last 30 days
   // so the user can connect the current state to the action that produced it
-  // (e.g. "trend-eligible right now, but we exited 3 days ago").
+  // (e.g. "trend-eligible right now, but we exited 3 days ago because price
+  // closed below the 50d MA").
   let lastActionLine = "";
   if (c && c.events && c.events.length > 0 && c.dates && c.dates.length) {
     const ev = c.events[0];
@@ -1860,10 +1861,36 @@ function statusLine(latest, coin, c) {
                       daysAgo === 1 ? "yesterday" :
                       `${daysAgo}d ago`;
       const sizeStr = `${pct(ev.old_w, 1)} → ${pct(ev.new_w, 1)}`;
+
+      // Plain-English "why" — driven by (action × trigger).
+      let why = "";
+      const trig = ev.trigger || "";
+      if (ev.action === "entry") {
+        why = "passed the trend filter (close above own 50d MA, MA rising) " +
+              "and entered the top-N momentum rank at the weekly rebalance.";
+      } else if (ev.action === "exit") {
+        if (trig === "daily exit") {
+          why = "close dropped below own 50d MA mid-week, triggering the " +
+                "daily trend-exit override (asymmetric — designed to cut " +
+                "losers before the next Monday rebal).";
+        } else if (trig === "rebal + exit") {
+          why = "two things happened the same day: close dropped below 50d MA " +
+                "(daily exit fired) AND the coin also fell out of top-N at the " +
+                "weekly rebal.";
+        } else {
+          why = "fell out of the top-N momentum rank at the weekly " +
+                "rebalance — another coin scored higher and took its slot.";
+        }
+      } else {  // resize
+        why = "weight adjusted at the weekly rebalance — composite " +
+              "momentum score moved relative to the other ranked names.";
+      }
+
       lastActionLine =
         `<br><span class="stat-line">Last action: ` +
         `<strong class="${verbCls}">${verb}</strong> on <strong>${ev.date}</strong> ` +
-        `<span class="muted">(${sizeStr}, ${whenStr})</span></span>`;
+        `<span class="muted">(${sizeStr}, ${whenStr}, trigger: ${trig})</span></span>` +
+        `<br><span class="stat-line" style="color: var(--ink-soft); font-size: 13px"><strong>Why:</strong> ${why}</span>`;
     }
   }
 

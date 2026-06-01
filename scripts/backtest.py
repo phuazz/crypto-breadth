@@ -294,6 +294,7 @@ def run_backtest(
     fee_drag = pd.Series(0.0, index=dates)
     equity = pd.Series(1.0, index=dates)
     daily_exit_count = pd.Series(0, index=dates)
+    rebal_executed = pd.Series(False, index=dates)
 
     current_w = pd.Series(0.0, index=symbols)
     current_cash = 1.0
@@ -346,6 +347,7 @@ def run_backtest(
             equity.iloc[i] = equity.iloc[i] * (1.0 - fees)
             current_w = target.copy()
             current_cash = max(0.0, target_cash)
+            rebal_executed.iloc[i] = True
 
         weights.iloc[i] = current_w
 
@@ -358,6 +360,7 @@ def run_backtest(
         "turnover": turnover,
         "fee_drag": fee_drag,
         "daily_exit_count": daily_exit_count,
+        "rebal_executed": rebal_executed,
     }
 
 

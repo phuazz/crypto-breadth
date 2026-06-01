@@ -146,6 +146,11 @@ def extract_trade_history(
     weights = result["weights"]
     turnover = result["turnover"]
     daily_exits = result["daily_exit_count"]
+    # `rebal_executed` flags days when the weekly rebal block actually ran.
+    # Older code used turnover > 0 as a proxy, but turnover is also bumped
+    # by daily-exit forced sells, so that proxy mis-labelled pure daily
+    # exits as "rebal + exit". This is the accurate signal.
+    rebal_executed = result.get("rebal_executed")
     daily_ret = close.pct_change().fillna(0.0)
 
     trade_days = turnover[turnover > 1e-4].index
@@ -166,8 +171,12 @@ def extract_trade_history(
             w_drift = new_values * 0.0
 
         is_exit_day = bool(daily_exits.loc[dt] > 0)
-        is_rebal_day = bool(turnover.loc[dt] > 0)
-        if is_exit_day and is_rebal_day:
+        if rebal_executed is not None:
+            is_rebal_day = bool(rebal_executed.loc[dt])
+        else:
+            # Fallback for old run_backtest result dicts (not flagged)
+            is_rebal_day = bool(turnover.loc[dt] > 0) and not is_exit_day
+        if is_rebal_day and is_exit_day:
             trigger = "rebal + exit"
         elif is_exit_day:
             trigger = "daily exit"
