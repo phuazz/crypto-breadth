@@ -866,14 +866,20 @@ def main() -> int:
 
     # ----- assemble payload -----
     print("Building payload ...")
-    eq_weekly = downsample_to_weekly(eq)
-    btc_weekly = downsample_to_weekly(bm_btc)
-    ew_weekly = downsample_to_weekly(bm_ew)
-    bm6040_weekly = downsample_to_weekly(bm_6040)
+    # Equity series stays DAILY in the payload so the dashboard can:
+    #   1. Rebase to 0% at any user-selected window start (the "linear
+    #      cumulative-return" view replaces the wealth-multiple-log view)
+    #   2. Compute week-to-date, period return, annualised, in-window
+    #      Sharpe, and in-window MaxDD live on the client.
+    # 4 curves × 3070 days × ~12 bytes JSON ≈ 150 KB additional payload.
+    # Cheap relative to the visualisation gain.
+    eq_daily = eq.dropna()
+    btc_daily = bm_btc.dropna()
+    ew_daily = bm_ew.dropna()
+    bm6040_daily = bm_6040.dropna()
 
-    # Drawdown stays daily — short to compute, important for visual.
-    dd = (eq / eq.cummax() - 1.0)
-    dd_weekly = downsample_to_weekly(dd)
+    # Drawdown also daily.
+    dd_daily = (eq / eq.cummax() - 1.0).dropna()
 
     payload = {
         "meta": {
@@ -903,15 +909,15 @@ def main() -> int:
         "is_oos": is_oos_data,
         "bootstrap": boot,
         "equity": {
-            "dates": _dates(eq_weekly.index),
-            "strategy": _series(eq_weekly),
-            "btc": _series(btc_weekly),
-            "ew": _series(ew_weekly),
-            "6040": _series(bm6040_weekly),
+            "dates": _dates(eq_daily.index),
+            "strategy": _series(eq_daily),
+            "btc": _series(btc_daily),
+            "ew": _series(ew_daily),
+            "6040": _series(bm6040_daily),
         },
         "drawdown": {
-            "dates": _dates(dd_weekly.index),
-            "strategy": _series(dd_weekly),
+            "dates": _dates(dd_daily.index),
+            "strategy": _series(dd_daily),
         },
         "rolling_sharpe": {
             "dates": _dates(rs_weekly.index),

@@ -437,6 +437,47 @@ table.holdings tbody tr:last-child td { border-bottom: none; }
   background: var(--accent);
 }
 
+/* ===== in-window stat strip (Performance section) ===== */
+.window-strip {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0 0 14px;
+}
+@media (max-width: 900px) { .window-strip { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 540px) { .window-strip { grid-template-columns: repeat(2, 1fr); } }
+.window-strip .cell {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px 14px;
+}
+.window-strip .cell .v {
+  font-size: 22px;
+  font-weight: 700;
+  font-family: "JetBrains Mono", "Inter", monospace;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  line-height: 1.1;
+}
+.window-strip .cell .v.good { color: var(--good); }
+.window-strip .cell .v.bad { color: var(--bad); }
+.window-strip .cell .l {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-soft);
+  font-weight: 600;
+  margin-top: 6px;
+}
+.window-strip .cell .sub {
+  font-size: 11px;
+  color: var(--ink-faint);
+  margin-top: 4px;
+  font-variant-numeric: tabular-nums;
+}
+
 /* ===== signal explorer ===== */
 .coin-buttons {
   display: flex; flex-wrap: wrap; gap: 6px;
@@ -1120,6 +1161,14 @@ footer.bottom a:hover { text-decoration: underline; }
 
 <section id="performance">
   <h2><span class="sec-no">4</span>Equity curve vs benchmarks</h2>
+  <p class="section-sub">Strategy versus passive benchmarks. The chart rebases to <strong>0 %</strong> at the start of the selected period, so when you change the time window via the buttons in the top-right, the lines re-anchor at zero — you see relative performance within that window, not absolute wealth multiples. The stats strip immediately above the chart re-computes from the same visible window: week-to-date, period return, annualised, in-window Sharpe, in-window MaxDD.</p>
+  <div class="window-strip" id="perf-strip">
+    <div class="cell"><div class="v" id="ps-wtd">—</div><div class="l">Week-to-date</div><div class="sub" id="ps-wtd-sub">—</div></div>
+    <div class="cell"><div class="v" id="ps-period">—</div><div class="l">Period return</div><div class="sub" id="ps-period-sub">—</div></div>
+    <div class="cell"><div class="v" id="ps-cagr">—</div><div class="l">Annualised</div><div class="sub">CAGR-equivalent over the window</div></div>
+    <div class="cell"><div class="v" id="ps-sharpe">—</div><div class="l">Sharpe (in window)</div><div class="sub">daily, rf = 0</div></div>
+    <div class="cell"><div class="v" id="ps-dd">—</div><div class="l">Max DD in window</div><div class="sub">peak-to-trough</div></div>
+  </div>
   <p class="section-sub">All series rebased to 1.0 on the strategy's first day. Log scale. The vertical line marks the IS / OOS split (2021-01-01). The amber shaded bands flag the two notable crypto bear regimes — these are where the strategy is structurally weakest.</p>
   <div class="chart chart-tall" id="chart-equity"></div>
 
@@ -1364,24 +1413,157 @@ function bearRegimeAnnotations() {
 
 function renderEquity(d) {
   const e = d.equity;
+  const dates = e.dates;
+  const series = {
+    strategy: e.strategy,
+    btc:      e.btc,
+    ew:       e.ew,
+    "6040":   e["6040"],
+  };
+  // Convert dates once for fast lookups
+  const dateMs = dates.map(s => new Date(s).getTime());
+
+  // Helper: rebase a series to 0% at the first index in [x0, x1] window
+  function rebase(arr, x0Ms, x1Ms) {
+    let firstIdx = -1, baseVal = null;
+    for (let i = 0; i < dateMs.length; i++) {
+      if (dateMs[i] >= x0Ms && dateMs[i] <= x1Ms) {
+        if (arr[i] != null) {
+          firstIdx = i;
+          baseVal = arr[i];
+          break;
+        }
+      }
+    }
+    if (firstIdx < 0 || !baseVal) return arr.map(_ => null);
+    return arr.map((v, i) => {
+      if (v == null) return null;
+      if (dateMs[i] < x0Ms || dateMs[i] > x1Ms) return null;
+      return v / baseVal - 1.0;
+    });
+  }
+
+  // Window stats for the strategy series (and 7-day "week-to-date" off the
+  // strategy too — these dollar amounts are unitless wealth multiples).
+  function windowStats(arr, x0Ms, x1Ms) {
+    const out = { period: null, cagr: null, sharpe: null, maxDD: null, wtd: null,
+                  startDate: null, endDate: null };
+    const idxs = [];
+    for (let i = 0; i < dateMs.length; i++) {
+      if (dateMs[i] >= x0Ms && dateMs[i] <= x1Ms && arr[i] != null) idxs.push(i);
+    }
+    if (idxs.length < 2) return out;
+    const i0 = idxs[0], i1 = idxs[idxs.length - 1];
+    out.startDate = dates[i0];
+    out.endDate = dates[i1];
+    const v0 = arr[i0], v1 = arr[i1];
+    out.period = v1 / v0 - 1.0;
+    const days = (dateMs[i1] - dateMs[i0]) / 86400000;
+    out.cagr = days > 0 ? Math.pow(v1 / v0, 365.25 / days) - 1.0 : null;
+    // daily returns within the window
+    const rets = [];
+    for (let k = 1; k < idxs.length; k++) {
+      const a = arr[idxs[k - 1]], b = arr[idxs[k]];
+      if (a != null && b != null && a > 0) rets.push(b / a - 1.0);
+    }
+    if (rets.length > 1) {
+      const mu = rets.reduce((s, x) => s + x, 0) / rets.length;
+      const variance = rets.reduce((s, x) => s + (x - mu) ** 2, 0) / (rets.length - 1);
+      const sig = Math.sqrt(variance);
+      out.sharpe = sig > 0 ? (mu * 365) / (sig * Math.sqrt(365)) : null;
+    }
+    // max drawdown within window
+    let peak = arr[i0], mdd = 0;
+    for (const i of idxs) {
+      if (arr[i] > peak) peak = arr[i];
+      const d = arr[i] / peak - 1.0;
+      if (d < mdd) mdd = d;
+    }
+    out.maxDD = mdd;
+    // Week-to-date: from the most recent point at least 7 days before i1
+    const lastMs = dateMs[i1];
+    const wtdTarget = lastMs - 7 * 86400000;
+    let wtdIdx = i1;
+    for (let k = idxs.length - 1; k >= 0; k--) {
+      if (dateMs[idxs[k]] <= wtdTarget) { wtdIdx = idxs[k]; break; }
+    }
+    if (wtdIdx !== i1 && arr[wtdIdx]) {
+      out.wtd = arr[i1] / arr[wtdIdx] - 1.0;
+    }
+    return out;
+  }
+
+  function paintStats(stats) {
+    const fmt = (v, signed) => v == null ? "—" :
+      (signed && v >= 0 ? "+" : "") + (v * 100).toFixed(2) + "%";
+    const cls = (v) => v == null ? "" : (v >= 0 ? "good" : "bad");
+
+    const setVal = (id, val, isPct, isSigned) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.textContent = isPct ? fmt(val, isSigned) : (val == null ? "—" : val.toFixed(2));
+      el.classList.remove("good", "bad");
+      const c = cls(val);
+      if (c) el.classList.add(c);
+    };
+    setVal("ps-wtd", stats.wtd, true, true);
+    setVal("ps-period", stats.period, true, true);
+    setVal("ps-cagr", stats.cagr, true, false);
+    setVal("ps-sharpe", stats.sharpe, false, false);
+    setVal("ps-dd", stats.maxDD, true, false);
+
+    const subWtd = document.getElementById("ps-wtd-sub");
+    if (subWtd) subWtd.textContent =
+      stats.wtd != null ? "last 7 days" : "needs >= 7 days of window";
+    const subPer = document.getElementById("ps-period-sub");
+    if (subPer) subPer.textContent =
+      stats.startDate && stats.endDate
+        ? `${stats.startDate} → ${stats.endDate}`
+        : "—";
+  }
+
+  function rebaseAllAndPaint(x0Ms, x1Ms) {
+    return {
+      strategy: rebase(series.strategy, x0Ms, x1Ms),
+      btc:      rebase(series.btc, x0Ms, x1Ms),
+      ew:       rebase(series.ew, x0Ms, x1Ms),
+      "6040":   rebase(series["6040"], x0Ms, x1Ms),
+    };
+  }
+
+  // Initial range: 1 year back from last data point (rangeselector "1Y").
+  // The user can switch via the buttons at top-right; rangeselector emits
+  // a relayout event that we hook below.
+  const lastIdx = dates.length - 1;
+  const last = new Date(dates[lastIdx]);
+  const oneYearAgo = new Date(last); oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+  const x0Ms0 = Math.max(dateMs[0], oneYearAgo.getTime());
+  const x1Ms0 = dateMs[lastIdx];
+  const rebased0 = rebaseAllAndPaint(x0Ms0, x1Ms0);
+  paintStats(windowStats(series.strategy, x0Ms0, x1Ms0));
+
   const traces = [
-    { x: e.dates, y: e.strategy, name: "Strategy v3.1", type: "scatter", mode: "lines",
-      line: { color: "#111418", width: 2 },
-      hovertemplate: "Strategy: %{y:.2f}x<extra></extra>" },
-    { x: e.dates, y: e.btc, name: "BTC HODL", type: "scatter", mode: "lines",
+    { x: dates, y: rebased0.strategy, name: "Strategy v3.1", type: "scatter", mode: "lines",
+      line: { color: "#111418", width: 2.4 },
+      hovertemplate: "Strategy: %{y:+.2%}<extra></extra>" },
+    { x: dates, y: rebased0.btc, name: "BTC HODL", type: "scatter", mode: "lines",
       line: { color: "#f7931a", width: 1.2 },
-      hovertemplate: "BTC: %{y:.2f}x<extra></extra>" },
-    { x: e.dates, y: e.ew, name: "Equal-weight investable", type: "scatter", mode: "lines",
+      hovertemplate: "BTC: %{y:+.2%}<extra></extra>" },
+    { x: dates, y: rebased0.ew, name: "Equal-weight investable", type: "scatter", mode: "lines",
       line: { color: "#1d7a3a", width: 1.2 },
-      hovertemplate: "EW: %{y:.2f}x<extra></extra>" },
-    { x: e.dates, y: e["6040"], name: "60/40 BTC/ETH", type: "scatter", mode: "lines",
+      hovertemplate: "EW: %{y:+.2%}<extra></extra>" },
+    { x: dates, y: rebased0["6040"], name: "60/40 BTC/ETH", type: "scatter", mode: "lines",
       line: { color: "#1351b4", width: 1.2 },
-      hovertemplate: "60/40: %{y:.2f}x<extra></extra>" },
+      hovertemplate: "60/40: %{y:+.2%}<extra></extra>" },
   ];
   const shapes = bearRegimeShapes("paper").concat([{
     type: "line", xref: "x", x0: d.meta.oos_start, x1: d.meta.oos_start,
     yref: "paper", y0: 0, y1: 1,
     line: { color: "#6b727a", width: 1, dash: "dash" }
+  }, {
+    type: "line", xref: "paper", x0: 0, x1: 1,
+    yref: "y", y0: 0, y1: 0,
+    line: { color: "#9ca3af", width: 1 }
   }]);
   const annotations = bearRegimeAnnotations().concat([{
     x: d.meta.oos_start, y: 1, yref: "paper", xref: "x",
@@ -1390,10 +1572,15 @@ function renderEquity(d) {
     font: { size: 10, color: "#6b727a" }
   }]);
   const layout = Object.assign({}, LAYOUT_BASE, {
-    yaxis: Object.assign({}, LAYOUT_BASE.yaxis, { type: "log", title: { text: "wealth multiple (log)", font: { size: 11 } } }),
+    yaxis: Object.assign({}, LAYOUT_BASE.yaxis, {
+      tickformat: ".0%",
+      title: { text: "Cumulative return (0% at period start)", font: { size: 11 } }
+    }),
     shapes: shapes, annotations: annotations,
     legend: { orientation: "h", x: 0, y: 1.10, font: { size: 11 } },
     xaxis: Object.assign({}, LAYOUT_BASE.xaxis, {
+      range: [new Date(x0Ms0).toISOString().slice(0, 10),
+              new Date(x1Ms0).toISOString().slice(0, 10)],
       rangeselector: {
         buttons: [
           { count: 1, label: "1M", step: "month", stepmode: "backward" },
@@ -1413,7 +1600,33 @@ function renderEquity(d) {
       }
     })
   });
-  Plotly.newPlot("chart-equity", traces, layout, PLOTLY_CFG);
+  const plotEl = document.getElementById("chart-equity");
+  Plotly.newPlot(plotEl, traces, layout, PLOTLY_CFG);
+
+  // Relayout hook: when the user picks a new range (rangeselector button,
+  // drag-zoom, or double-click reset), recompute the four rebased series
+  // and the stat strip for the visible window.
+  plotEl.on("plotly_relayout", (ev) => {
+    let x0, x1;
+    if (ev["xaxis.range[0]"] != null && ev["xaxis.range[1]"] != null) {
+      x0 = ev["xaxis.range[0]"];
+      x1 = ev["xaxis.range[1]"];
+    } else if (ev["xaxis.range"] && ev["xaxis.range"].length === 2) {
+      x0 = ev["xaxis.range"][0];
+      x1 = ev["xaxis.range"][1];
+    } else if (ev["xaxis.autorange"] === true) {
+      x0 = dates[0]; x1 = dates[lastIdx];
+    } else {
+      return;
+    }
+    const x0Ms = new Date(x0).getTime();
+    const x1Ms = new Date(x1).getTime();
+    const r = rebaseAllAndPaint(x0Ms, x1Ms);
+    Plotly.restyle(plotEl, {
+      y: [r.strategy, r.btc, r.ew, r["6040"]]
+    });
+    paintStats(windowStats(series.strategy, x0Ms, x1Ms));
+  });
 }
 
 // Stable palette so the same coin gets the same colour across runs.
