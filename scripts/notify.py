@@ -219,7 +219,7 @@ def format_email(event: dict, dash: dict) -> tuple[str, str, str]:
   <div style="font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: #6b727a; font-weight: 700; margin-top: 14px;">Why this triggered</div>
   <p style="margin: 6px 0 16px; line-height: 1.55; font-size: 14px;">{why_html}</p>
 
-  <!-- {CHART_PLACEHOLDER} -->
+  <!-- {{CHART_PLACEHOLDER}} -->
 
   <div style="font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: #6b727a; font-weight: 700; margin-top: 14px;">Signal context at trade</div>
   <table style="width: 100%; border-collapse: collapse; margin: 6px 0 16px; font-size: 13px; font-variant-numeric: tabular-nums;">
