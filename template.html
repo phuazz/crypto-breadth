@@ -209,8 +209,8 @@ section .section-sub {
   color: var(--ink-faint);
   font-size: 14px;
   margin: 0 0 20px 0;
-  max-width: 820px;
   line-height: 1.55;
+  /* No max-width — section subtitles use the full container width. */
 }
 
 /* ===== spec cards (How it works) ===== */
@@ -1840,10 +1840,37 @@ function renderExplorerButtons(d) {
   });
 }
 
-function statusLine(latest, coin) {
+function statusLine(latest, coin, c) {
+  // "Last action" sub-line — c.events is sorted newest-first by pipeline.py.
+  // Show the most recent trade event if it happened within the last 30 days
+  // so the user can connect the current state to the action that produced it
+  // (e.g. "trend-eligible right now, but we exited 3 days ago").
+  let lastActionLine = "";
+  if (c && c.events && c.events.length > 0 && c.dates && c.dates.length) {
+    const ev = c.events[0];
+    const evDate = new Date(ev.date);
+    const lastData = new Date(c.dates[c.dates.length - 1]);
+    const daysAgo = Math.round((lastData - evDate) / (1000 * 60 * 60 * 24));
+    if (daysAgo >= 0 && daysAgo <= 30) {
+      const verb = ev.action === "entry" ? "ENTRY" :
+                   ev.action === "exit"  ? "EXIT"  : "RESIZE";
+      const verbCls = ev.action === "entry" ? "good" :
+                      ev.action === "exit"  ? "bad"  : "";
+      const whenStr = daysAgo === 0 ? "today" :
+                      daysAgo === 1 ? "yesterday" :
+                      `${daysAgo}d ago`;
+      const sizeStr = `${pct(ev.old_w, 1)} → ${pct(ev.new_w, 1)}`;
+      lastActionLine =
+        `<br><span class="stat-line">Last action: ` +
+        `<strong class="${verbCls}">${verb}</strong> on <strong>${ev.date}</strong> ` +
+        `<span class="muted">(${sizeStr}, ${whenStr})</span></span>`;
+    }
+  }
+
   if (!latest.investable) {
     return `<strong>${coin}</strong> <span class="badge not-inv">Not investable</span><br>` +
-           `<span class="stat-line muted">Below the rolling liquidity gate today. Excluded from ranking.</span>`;
+           `<span class="stat-line muted">Below the rolling liquidity gate today. Excluded from ranking.</span>` +
+           lastActionLine;
   }
   let badge;
   if (latest.weight > 0.005) {
@@ -1871,7 +1898,8 @@ function statusLine(latest, coin) {
          `MA <strong>${latest.ma ? latest.ma.toLocaleString(undefined, {maximumFractionDigits: 4}) : "—"}</strong> · ` +
          `Distance <strong class="${distCls}">${distSign}${pct(dist, 1)}</strong> · ` +
          `<strong class="${risingCls}">${rising}</strong> · ` +
-         `Momentum score <strong>${num(latest.momentum)}</strong>${nearSwitch}</span>`;
+         `Momentum score <strong>${num(latest.momentum)}</strong>${nearSwitch}</span>` +
+         lastActionLine;
 }
 
 async function renderExplorerChart(coin) {
@@ -1891,7 +1919,7 @@ async function renderExplorerChart(coin) {
   }
 
   // Status block
-  document.getElementById("coin-status").innerHTML = statusLine(c.latest, coin);
+  document.getElementById("coin-status").innerHTML = statusLine(c.latest, coin, c);
 
   // Build held-period shading
   const heldShapes = [];
