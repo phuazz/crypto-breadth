@@ -291,12 +291,15 @@ def main() -> int:
         save_state(state)
         return 0
 
+    # NB: in GitHub Actions, secrets that do not exist are injected as empty
+    # strings (not "unset"), so dict.get(..., default) does NOT pick up the
+    # default. Use `or` to coalesce both unset and empty-string cases.
     cfg = {
-        "from": os.environ.get("EMAIL_FROM"),
-        "to": os.environ.get("EMAIL_TO"),
-        "password": os.environ.get("EMAIL_PASSWORD"),
-        "host": os.environ.get("EMAIL_SMTP_HOST", "smtp.gmail.com"),
-        "port": int(os.environ.get("EMAIL_SMTP_PORT", "587")),
+        "from": os.environ.get("EMAIL_FROM") or "",
+        "to": os.environ.get("EMAIL_TO") or "",
+        "password": os.environ.get("EMAIL_PASSWORD") or "",
+        "host": os.environ.get("EMAIL_SMTP_HOST") or "smtp.gmail.com",
+        "port": int(os.environ.get("EMAIL_SMTP_PORT") or "587"),
     }
     missing = [k for k in ("from", "to", "password") if not cfg[k]]
     if missing:
