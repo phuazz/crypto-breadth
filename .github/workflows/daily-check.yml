@@ -30,10 +30,15 @@ jobs:
       - name: Install dependencies
         run: pip install -r scripts/requirements.txt
 
-      - name: Fetch latest Binance OHLCV
+      # NOTE: scripts/fetch_data.py talks to Binance directly, which returns
+      # HTTP 451 from US-based GitHub runners. We use the incremental
+      # CryptoCompare updater here instead — it only fetches the missing
+      # tail of data and appends to the existing parquet (which retains the
+      # full Binance history that was bootstrapped locally).
+      - name: Fetch incremental daily update (CryptoCompare)
         env:
           PYTHONIOENCODING: utf-8
-        run: python scripts/fetch_data.py
+        run: python scripts/fetch_daily_update.py
 
       - name: Rebuild dashboard data
         env:

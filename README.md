@@ -186,6 +186,15 @@ rebalance or daily exit fires. Each email explains the trade in plain
 text + HTML and links back to the live dashboard's Signal Explorer with
 the relevant coin pre-selected.
 
+**Data source for the cron is CryptoCompare, not Binance.** Binance
+geo-blocks GitHub Actions' US-based runners (HTTP 451). The cron uses
+`scripts/fetch_daily_update.py`, which loads the existing parquet,
+fetches only the missing tail from CryptoCompare's free histoday
+endpoint (USDT-quoted), and appends. The full 8-year Binance history
+in the parquet is untouched. For local development from a non-blocked
+location, `scripts/fetch_data.py` is still the canonical full-history
+bootstrap path.
+
 To enable alerts, add five repository secrets in GitHub
 (Settings → Secrets and variables → Actions → New repository secret):
 

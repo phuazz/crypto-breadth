@@ -1,0 +1,171 @@
+"""
+fetch_daily_update.py
+---------------------
+Incremental daily update for the prices parquet. Designed for GitHub
+Actions, where Binance returns HTTP 451 "restricted location" from US
+runners.
+
+Strategy:
+  1. Load the existing data/prices.parquet (which has the full Binance
+     history from the original scripts/fetch_data.py run).
+  2. For each coin in the universe, find the most-recent observed date.
+  3. Fetch only the gap from CryptoCompare's free histoday endpoint
+     (USDT-quoted to mirror our Binance pair convention).
+  4. Append the new rows, drop duplicates, save.
+
+CryptoCompare is used because:
+  - Free, no auth required, no rate-limit headaches at our 25-coin × 1-day
+    cadence
+  - USDT quoting available (closest match to the historical Binance pairs)
+  - Works from US IPs (the actual reason we're not using Binance here)
+
+The volume column is NOT identical to Binance's (CryptoCompare aggregates
+across exchanges). For the rolling-30-day ADV liquidity gate, this is
+acceptable noise — the threshold is $25M which is well above any borderline
+exchange-specific variation for our majors universe.
+
+If a coin is missing on CryptoCompare or the API fails, it is skipped
+silently; the parquet just stays one day older for that coin. Pipeline
+will still run.
+"""
+
+from __future__ import annotations
+
+import json
+import sys
+import time
+from pathlib import Path
+from datetime import datetime, timezone
+
+import pandas as pd
+import requests
+
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+PARQUET_PATH = PROJECT_ROOT / "data" / "prices.parquet"
+
+# Map our universe symbols to CryptoCompare's tickers.
+# Most match 1:1. LUNA was renamed to LUNC after the May 2022 crash;
+# CryptoCompare uses LUNC. FTT was delisted from most venues but CC
+# still has the historical series.
+CC_TICKERS = {
+    "BTC": "BTC", "ETH": "ETH", "BNB": "BNB", "SOL": "SOL",
+    "XRP": "XRP", "ADA": "ADA", "DOGE": "DOGE", "AVAX": "AVAX",
+    "DOT": "DOT", "LINK": "LINK",
+    "LTC": "LTC", "BCH": "BCH", "TRX": "TRX", "EOS": "EOS",
+    "ETC": "ETC", "XLM": "XLM", "ATOM": "ATOM", "MATIC": "MATIC",
+    "UNI": "UNI", "AAVE": "AAVE", "NEAR": "NEAR", "ALGO": "ALGO",
+    "FIL": "FIL", "LUNA": "LUNC", "FTT": "FTT",
+}
+
+CC_ENDPOINT = "https://min-api.cryptocompare.com/data/v2/histoday"
+RATE_LIMIT_SLEEP_S = 0.4
+MAX_GAP_DAYS = 60  # ask for at most 60 days back per call (CC limit varies)
+
+
+def fetch_cc_daily(symbol: str, n_days: int) -> pd.DataFrame:
+    """Fetch last `n_days` daily OHLCV rows from CryptoCompare.
+
+    Quoted in USDT to match our Binance pair convention. CryptoCompare's
+    `volumefrom` field is the base-asset volume (e.g. BTC), so it lines
+    up with what CCXT returns for Binance.
+    """
+    params = {
+        "fsym": symbol,
+        "tsym": "USDT",
+        "limit": max(1, min(n_days - 1, 2000)),
+        "aggregate": 1,
+    }
+    r = requests.get(CC_ENDPOINT, params=params, timeout=30)
+    r.raise_for_status()
+    j = r.json()
+    if j.get("Response") != "Success":
+        msg = j.get("Message", "unknown")
+        print(f"    CC error for {symbol}: {msg}")
+        return pd.DataFrame()
+    rows = j.get("Data", {}).get("Data", [])
+    if not rows:
+        return pd.DataFrame()
+    df = pd.DataFrame(rows)
+    # CC returns 0/0/0/0/0 for days a pair did not exist — drop those
+    df = df[df["close"] > 0].copy()
+    if df.empty:
+        return pd.DataFrame()
+    df["date"] = pd.to_datetime(df["time"], unit="s").dt.tz_localize(None).dt.normalize()
+    out = df[["date", "open", "high", "low", "close", "volumefrom"]].rename(
+        columns={"volumefrom": "volume"}
+    )
+    return out
+
+
+def main() -> int:
+    if not PARQUET_PATH.exists():
+        print(f"  ERROR: parquet not found at {PARQUET_PATH}")
+        print("  Run scripts/fetch_data.py once locally to bootstrap, then commit.")
+        return 1
+
+    existing = pd.read_parquet(PARQUET_PATH)
+    existing["date"] = pd.to_datetime(existing["date"])
+    last_dates = existing.groupby("symbol")["date"].max()
+    today = pd.Timestamp(datetime.now(timezone.utc).date())
+
+    print(f"Loaded {len(existing):,} existing rows, "
+          f"latest data point at {existing['date'].max().date()}")
+    print(f"Target end date: {today.date()}")
+    print()
+
+    new_rows: list[pd.DataFrame] = []
+    skipped: list[str] = []
+    for our_sym, cc_sym in CC_TICKERS.items():
+        last = last_dates.get(our_sym)
+        if last is None:
+            skipped.append(f"{our_sym} (not in existing parquet)")
+            continue
+        gap = (today - last).days
+        if gap <= 0:
+            continue  # already current
+        n_fetch = min(gap + 2, MAX_GAP_DAYS)
+        print(f"  {our_sym} ({cc_sym}): last {last.date()}, gap {gap}d, "
+              f"fetching {n_fetch}d ...", flush=True)
+        try:
+            df = fetch_cc_daily(cc_sym, n_days=n_fetch)
+        except Exception as e:
+            print(f"    error: {e!r}")
+            skipped.append(f"{our_sym} ({type(e).__name__})")
+            continue
+        if df.empty:
+            print(f"    no rows returned")
+            skipped.append(f"{our_sym} (no data)")
+            continue
+        # Keep only strictly-new dates so we never overwrite Binance history
+        df = df[df["date"] > last]
+        if df.empty:
+            continue
+        df = df.assign(symbol=our_sym)
+        new_rows.append(df)
+        print(f"    +{len(df)} new rows up to {df['date'].max().date()}")
+        time.sleep(RATE_LIMIT_SLEEP_S)
+
+    if skipped:
+        print(f"\nSkipped: {', '.join(skipped)}")
+
+    if not new_rows:
+        print("\nNo new data to append. Parquet unchanged.")
+        return 0
+
+    new_data = pd.concat(new_rows, ignore_index=True)
+    combined = pd.concat([existing, new_data], ignore_index=True)
+    combined = (
+        combined.drop_duplicates(subset=["symbol", "date"], keep="first")
+                .sort_values(["symbol", "date"])
+                .reset_index(drop=True)
+    )
+    combined.to_parquet(PARQUET_PATH, index=False)
+    print(f"\nAppended {len(new_data)} rows -> {PARQUET_PATH}")
+    print(f"Parquet now: {len(combined):,} rows total, "
+          f"latest {combined['date'].max().date()}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
