@@ -207,6 +207,207 @@ def extract_trade_history(
     return events
 
 
+def signal_walkthrough(
+    close: pd.DataFrame, volume: pd.DataFrame,
+    breadth: pd.Series, target_exposure: pd.Series,
+    mask: pd.DataFrame, p: Params,
+) -> dict:
+    """Reconstruct the full signal chain for the most recent close.
+
+    Five filters, in order:
+      1. Liquidity gate         (25 candidates -> investable subset)
+      2. Trend entry filter     (close > MA AND MA rising)
+      3. Composite momentum     (rank surviving names)
+      4. Top-N selection        (pick the N best)
+      5. Breadth gate -> tier   (overall gross exposure)
+
+    Returns enough information for the dashboard to show each step with
+    pass/fail chips and the actual signal values that drove the call.
+    """
+    last_date = close.index[-1]
+
+    # ---- Step 1: liquidity / investability ----
+    has_data = close.notna()
+    cum_age = has_data.astype(int).cumsum()
+    last_cum_age = cum_age.loc[last_date]
+    dollar_volume = close * volume
+    adv = dollar_volume.rolling(
+        p.liquidity_lookback_d, min_periods=max(5, p.liquidity_lookback_d // 2)
+    ).mean()
+    last_adv = adv.loc[last_date]
+    last_mask = mask.loc[last_date]
+
+    step1_rows = []
+    for coin in sorted(close.columns):
+        age = int(last_cum_age.get(coin, 0))
+        coin_adv = _f(last_adv.get(coin, np.nan)) or 0.0
+        investable = bool(last_mask.get(coin, False))
+        if investable:
+            reason = f"ADV ${coin_adv/1e6:.0f}M, {age}d history"
+        elif not bool(has_data.loc[last_date].get(coin, False)):
+            reason = "not trading"
+        elif age < p.liquidity_min_history_days:
+            reason = f"only {age}d history (need {p.liquidity_min_history_days})"
+        elif coin_adv < p.liquidity_min_adv_usd:
+            reason = f"ADV ${coin_adv/1e6:.0f}M (below ${p.liquidity_min_adv_usd/1e6:.0f}M)"
+        else:
+            reason = "—"
+        step1_rows.append({
+            "coin": coin, "pass": investable,
+            "adv_usd": coin_adv, "age_days": age,
+            "reason": reason,
+        })
+    investable_coins = [r["coin"] for r in step1_rows if r["pass"]]
+
+    # ---- Step 2: trend entry filter ----
+    window = p.per_coin_trend_window
+    ma = close.rolling(window, min_periods=window).mean()
+    above_ma = close > ma
+    ma_diff = ma.diff()
+    ma_rising = ma_diff > 0
+    last_above = above_ma.loc[last_date]
+    last_rising = ma_rising.loc[last_date]
+    last_close = close.loc[last_date]
+    last_ma = ma.loc[last_date]
+    last_ma_diff = ma_diff.loc[last_date]
+
+    step2_rows = []
+    for coin in investable_coins:
+        c = _f(last_close.get(coin, np.nan))
+        m = _f(last_ma.get(coin, np.nan))
+        above = bool(last_above.get(coin, False))
+        rising = bool(last_rising.get(coin, False))
+        ma_d = _f(last_ma_diff.get(coin, np.nan))
+        passes = above and rising
+        if passes:
+            reason = "above MA, MA rising"
+        elif not above and not rising:
+            reason = "below MA, MA falling"
+        elif not above:
+            reason = "below MA"
+        else:
+            reason = "MA not rising"
+        step2_rows.append({
+            "coin": coin, "pass": passes,
+            "close": c, "ma": m,
+            "above_ma": above, "ma_rising": rising,
+            "ma_slope_d": ma_d,
+            "reason": reason,
+        })
+    passed_step2 = [r["coin"] for r in step2_rows if r["pass"]]
+
+    # ---- Step 3: composite momentum ranking ----
+    lookbacks = list(p.momentum_lookbacks_d)
+    daily_ret = close.pct_change()
+    score_parts = []
+    component_returns = {}
+    component_vols = {}
+    for L in lookbacks:
+        ret_L = close.pct_change(L)
+        vol_L = daily_ret.rolling(L, min_periods=max(10, L // 2)).std() * np.sqrt(L)
+        score_L = (ret_L / vol_L).where(vol_L > 0)
+        score_parts.append(score_L)
+        component_returns[L] = ret_L.loc[last_date]
+        component_vols[L] = vol_L.loc[last_date]
+    composite = sum(score_parts) / len(score_parts)
+    last_composite = composite.loc[last_date]
+
+    step3_rows = []
+    for coin in passed_step2:
+        score = _f(last_composite.get(coin, np.nan))
+        comps = []
+        for L in lookbacks:
+            comps.append({
+                "lookback_d": L,
+                "return": _f(component_returns[L].get(coin, np.nan)),
+                "ann_vol": _f(component_vols[L].get(coin, np.nan)),
+            })
+        step3_rows.append({"coin": coin, "score": score, "components": comps})
+    # Sort by score descending (NaN to bottom)
+    step3_rows.sort(key=lambda r: -(r["score"] if r["score"] is not None else -1e9))
+    for i, r in enumerate(step3_rows):
+        r["rank"] = i + 1
+
+    # ---- Step 4: top-N pick ----
+    top_n = p.rank_top_n
+    selected = [r["coin"] for r in step3_rows[:top_n]]
+    cut_coins = [r["coin"] for r in step3_rows[top_n:]]
+
+    # ---- Step 5: breadth gate ----
+    cur_breadth = _f(breadth.loc[last_date])
+    cur_exposure = _f(target_exposure.loc[last_date])
+    # Build tier ladder
+    tiers = []
+    thr = list(p.tier_thresholds)
+    exp = list(p.tier_exposures)
+    # Ranges: [0, thr[0]) -> exp[0]; [thr[0], thr[1]) -> exp[1]; etc.
+    ranges = []
+    lows = [0.0] + thr
+    highs = thr + [1.0]
+    for i in range(len(exp)):
+        ranges.append({
+            "low": lows[i], "high": highs[i],
+            "exposure": exp[i],
+            "active": (cur_breadth is not None and lows[i] <= cur_breadth < highs[i]),
+        })
+    if cur_breadth is not None and cur_breadth >= 1.0:
+        ranges[-1]["active"] = True
+
+    # ---- Final intended allocation ----
+    final_weight_per_coin = (cur_exposure or 0.0) / max(top_n, 1) if selected else 0.0
+    final_holdings = [{"coin": c, "weight": final_weight_per_coin} for c in selected]
+    final_cash = max(0.0, 1.0 - final_weight_per_coin * len(selected))
+
+    return {
+        "as_of": str(last_date.date()),
+        "step1": {
+            "title": "1. Liquidity gate",
+            "rule": (f"Trailing {p.liquidity_lookback_d}d ADV ≥ "
+                     f"${p.liquidity_min_adv_usd/1e6:.0f}M AND ≥ "
+                     f"{p.liquidity_min_history_days}d history"),
+            "input_count": len(close.columns),
+            "output_count": len(investable_coins),
+            "candidates": step1_rows,
+        },
+        "step2": {
+            "title": "2. Trend entry filter",
+            "rule": f"close > {window}d MA AND {window}d MA rising",
+            "input_count": len(investable_coins),
+            "output_count": len(passed_step2),
+            "candidates": step2_rows,
+        },
+        "step3": {
+            "title": "3. Composite momentum ranking",
+            "rule": f"average of risk-adjusted returns over " +
+                    ", ".join(f"{L}d" for L in lookbacks),
+            "input_count": len(passed_step2),
+            "output_count": len(step3_rows),
+            "rows": step3_rows,
+        },
+        "step4": {
+            "title": f"4. Top-{top_n} selection",
+            "rule": f"highest {top_n} composite scores",
+            "input_count": len(step3_rows),
+            "output_count": len(selected),
+            "selected": selected,
+            "cut": cut_coins,
+        },
+        "step5": {
+            "title": "5. Breadth gate → exposure tier",
+            "rule": "tier from % of investable universe above own 50d MA",
+            "current_breadth": cur_breadth,
+            "current_exposure": cur_exposure,
+            "ladder": ranges,
+        },
+        "final": {
+            "title": "Target allocation if rebalanced now",
+            "holdings": final_holdings,
+            "cash": final_cash,
+            "per_coin_weight": final_weight_per_coin,
+        },
+    }
+
+
 def weights_history_for_chart(result: dict, freq: str = "W-MON") -> dict:
     """Resample the daily weights to a tractable frequency for the stacked
     area chart. Only includes coins that have been held at least once.
@@ -492,6 +693,14 @@ def main() -> int:
     print("Weights-history for stacked area chart ...")
     exposure_history = weights_history_for_chart(res)
 
+    print("Signal walkthrough (latest bar) ...")
+    walkthrough = signal_walkthrough(close, volume, breadth, target_exposure, mask, p)
+    print(f"  funnel: {walkthrough['step1']['input_count']} -> "
+          f"{walkthrough['step2']['input_count']} -> "
+          f"{walkthrough['step3']['input_count']} -> "
+          f"{walkthrough['step4']['output_count']} picked, "
+          f"target gross {walkthrough['step5']['current_exposure']:.0%}")
+
     print("Parameter sensitivity sweep ...")
     sensitivity = sensitivity_sweep(close, volume, p)
 
@@ -556,6 +765,7 @@ def main() -> int:
         "trades": trades,
         "recent_trades": recent_trades,
         "exposure_history": exposure_history,
+        "walkthrough": walkthrough,
     }
 
     # ----- merge walk-forward results if present ----------------

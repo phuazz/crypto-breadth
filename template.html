@@ -166,13 +166,13 @@ nav.tabs {
   z-index: 10;
   margin-top: 8px;
 }
-nav.tabs .container { display: flex; gap: 2px; overflow-x: auto; }
+nav.tabs .container { display: flex; gap: 2px; flex-wrap: wrap; }
 nav.tabs a {
   background: none;
   border: none;
   font: inherit;
-  font-size: 14px;
-  padding: 12px 16px;
+  font-size: 13px;
+  padding: 10px 12px;
   color: var(--ink-soft);
   border-bottom: 2px solid transparent;
   margin-bottom: -1px;
@@ -437,6 +437,211 @@ table.holdings tbody tr:last-child td { border-bottom: none; }
   background: var(--accent);
 }
 
+/* ===== signal walkthrough ===== */
+.signal-step {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  margin: 12px 0;
+  padding: 18px 22px;
+  position: relative;
+}
+.signal-step + .signal-step::before {
+  content: "↓";
+  position: absolute;
+  top: -18px;
+  left: 30px;
+  color: var(--ink-faint);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+  background: var(--bg);
+  padding: 0 4px;
+}
+.signal-step .step-head {
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 4px;
+  flex-wrap: wrap;
+}
+.signal-step .step-num {
+  background: var(--accent); color: white;
+  border-radius: 50%;
+  width: 26px; height: 26px;
+  display: inline-flex;
+  align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700;
+  flex-shrink: 0;
+}
+.signal-step .step-title {
+  font-size: 16px; font-weight: 600; color: var(--ink);
+}
+.signal-step .step-funnel {
+  margin-left: auto;
+  font-size: 13px; color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+.signal-step .step-funnel .arrow { color: var(--ink-faint); margin: 0 6px; }
+.signal-step .step-rule {
+  font-size: 12px; color: var(--ink-faint);
+  margin-bottom: 14px;
+  font-family: "JetBrains Mono", monospace;
+  background: var(--bg-soft);
+  padding: 6px 10px;
+  border-radius: 4px;
+  border-left: 3px solid var(--accent-soft);
+}
+.signal-step .step-body { margin-top: 12px; }
+.signal-step h4 {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-faint);
+  font-weight: 700;
+  margin: 12px 0 6px;
+}
+
+/* coin chips */
+.coin-chip {
+  display: inline-flex;
+  align-items: center; gap: 4px;
+  padding: 4px 10px;
+  margin: 3px 4px 3px 0;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  font-variant-numeric: tabular-nums;
+  cursor: help;
+}
+.coin-chip.pass {
+  background: var(--good-soft);
+  color: var(--good);
+  border: 1px solid rgba(29,122,58,0.3);
+}
+.coin-chip.fail {
+  background: var(--bg-soft);
+  color: var(--ink-faint);
+  border: 1px solid var(--border);
+}
+.coin-chip.fail .strike { text-decoration: line-through; }
+.coin-chip.winner {
+  background: var(--accent);
+  color: white;
+  border: 1px solid var(--accent);
+  font-weight: 700;
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+.coin-chip.runner-up {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border: 1px solid rgba(19,81,180,0.3);
+}
+.chip-cluster { line-height: 2.0; }
+.coin-chip .small { font-size: 10.5px; opacity: 0.75; font-weight: 500; }
+
+/* rank table for momentum */
+table.rank {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 13px;
+  margin: 8px 0;
+  font-variant-numeric: tabular-nums;
+}
+table.rank th, table.rank td {
+  text-align: right;
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--border);
+}
+table.rank thead th {
+  background: var(--bg-soft);
+  font-weight: 600; color: var(--ink-soft);
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em;
+  border-top: 1px solid var(--border);
+}
+table.rank td:first-child, table.rank th:first-child { text-align: left; }
+table.rank tbody tr.winner { background: var(--accent-soft); }
+table.rank tbody tr.winner td:first-child strong { color: var(--accent); }
+table.rank .rank-badge {
+  display: inline-block;
+  background: var(--ink-faint);
+  color: white;
+  border-radius: 50%;
+  width: 20px; height: 20px;
+  line-height: 20px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 700;
+  margin-right: 6px;
+}
+table.rank tbody tr.winner .rank-badge { background: var(--accent); }
+
+/* tier ladder */
+.tier-ladder {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin: 8px 0 12px;
+}
+@media (max-width: 720px) { .tier-ladder { grid-template-columns: repeat(2, 1fr); } }
+.tier-rung {
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 10px 12px;
+  background: var(--bg-card);
+  text-align: center;
+}
+.tier-rung.active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  border-width: 2px;
+}
+.tier-rung .range {
+  font-size: 11px;
+  color: var(--ink-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+}
+.tier-rung .exposure {
+  font-size: 22px;
+  font-weight: 700;
+  font-family: "JetBrains Mono", monospace;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  margin-top: 4px;
+  color: var(--ink);
+}
+.tier-rung.active .exposure { color: var(--accent); }
+
+.final-alloc {
+  background: var(--bg-soft);
+  border: 2px solid var(--accent);
+  border-radius: 6px;
+  padding: 14px 18px;
+  margin: 16px 0 8px;
+}
+.final-alloc .head {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.final-alloc .alloc-row {
+  display: flex; align-items: baseline; justify-content: space-between;
+  padding: 6px 0; border-bottom: 1px solid var(--border);
+  font-size: 14px;
+}
+.final-alloc .alloc-row:last-child { border-bottom: none; }
+.final-alloc .alloc-row .coin { font-weight: 600; }
+.final-alloc .alloc-row .w {
+  font-family: "JetBrains Mono", monospace;
+  font-variant-numeric: tabular-nums;
+}
+.final-alloc .alloc-row.cash { color: var(--ink-soft); }
+
 /* ===== section number prefix ===== */
 section h2 .sec-no {
   display: inline-block;
@@ -693,6 +898,7 @@ footer.bottom a:hover { text-decoration: underline; }
 <nav class="tabs">
   <div class="container">
     <a href="#monitor" class="nav-link" data-target="monitor">Monitor</a>
+    <a href="#signal" class="nav-link" data-target="signal">Why this allocation</a>
     <a href="#how" class="nav-link" data-target="how">How it works</a>
     <a href="#performance" class="nav-link" data-target="performance">Performance</a>
     <a href="#exposure" class="nav-link" data-target="exposure">Exposure</a>
@@ -755,6 +961,18 @@ footer.bottom a:hover { text-decoration: underline; }
   </div>
 </section>
 
+<section id="signal">
+  <h2><span class="sec-no">2</span>Why this allocation? — signal walkthrough</h2>
+  <p class="section-sub">The complete decision chain as of the most recent close, in order. Five filters reduce the 25-coin candidate pool to today's target allocation. Each step shows which coins passed, which were cut, and why. If the final target differs from the current holdings shown above, it is because the gate has moved since the last weekly rebalance — the trades would land at next Monday's close.</p>
+
+  <div id="signal-step1" class="signal-step"></div>
+  <div id="signal-step2" class="signal-step"></div>
+  <div id="signal-step3" class="signal-step"></div>
+  <div id="signal-step4" class="signal-step"></div>
+  <div id="signal-step5" class="signal-step"></div>
+  <div id="signal-final"></div>
+</section>
+
 <section id="how">
   <h2>How the strategy works</h2>
   <p class="section-sub">Six rules stacked in order. Each was tested in isolation; the gate ablation and the daily exit are the two single biggest contributors to the v3 numbers.</p>
@@ -769,7 +987,7 @@ footer.bottom a:hover { text-decoration: underline; }
 </section>
 
 <section id="performance">
-  <h2><span class="sec-no">2</span>Equity curve vs benchmarks</h2>
+  <h2><span class="sec-no">3</span>Equity curve vs benchmarks</h2>
   <p class="section-sub">All series rebased to 1.0 on the strategy's first day. Log scale. The vertical line marks the IS / OOS split (2021-01-01). The amber shaded bands flag the two notable crypto bear regimes — these are where the strategy is structurally weakest.</p>
   <div class="chart chart-tall" id="chart-equity"></div>
 
@@ -777,20 +995,20 @@ footer.bottom a:hover { text-decoration: underline; }
   <p class="section-sub">Strategy only. Benchmark drawdowns are deeper (BTC −81%, 60/40 −86%, EW −83%) and are visible by inference in the equity chart above.</p>
   <div class="chart chart-med" id="chart-drawdown"></div>
 
-  <h2><span class="sec-no">3</span>In-sample vs out-of-sample</h2>
+  <h2><span class="sec-no">4</span>In-sample vs out-of-sample</h2>
   <p class="section-sub">IS = 2018-01-01 to 2020-12-31. OOS = 2021-01-01 onwards. The strategy's Sharpe is higher OOS than IS — unusual, and a consequence of the IS sample being mostly the small-universe 2018 bear where the strategy whipsaws.</p>
   <div class="two-col" id="window-cards"></div>
   <table class="simple" id="isoos-table"></table>
 </section>
 
 <section id="exposure">
-  <h2><span class="sec-no">4</span>Exposure history</h2>
+  <h2><span class="sec-no">5</span>Exposure history</h2>
   <p class="section-sub">Weekly stacked-to-100% snapshots of every coin the strategy has ever held, since 2018. The strategy compounds when there is enough breadth and concentrates into the top-4 momentum names. When breadth drops below the 30% tier, allocation collapses to <strong>Cash (USDT)</strong> — visible as the pale grey band rising to fill the chart. This is the strategy's regime behaviour as a single picture.</p>
   <div class="chart chart-tall" id="chart-exposure"></div>
 </section>
 
 <section id="returns">
-  <h2><span class="sec-no">5</span>Calendar-year returns</h2>
+  <h2><span class="sec-no">6</span>Calendar-year returns</h2>
   <p class="section-sub">The strategy wins in 2018, 2022 (bears) and 2021 (breakout). It lags BTC in pure BTC-led bull years (2020, 2023, 2024). It is currently in a weak patch (2024–2025–2026 YTD).</p>
   <div class="chart chart-med" id="chart-yearly"></div>
 
@@ -800,7 +1018,7 @@ footer.bottom a:hover { text-decoration: underline; }
 </section>
 
 <section id="robustness">
-  <h2><span class="sec-no">6</span>Bootstrap Sharpe confidence interval</h2>
+  <h2><span class="sec-no">7</span>Bootstrap Sharpe confidence interval</h2>
   <p class="section-sub">Block-bootstrap (21-day blocks, 2000 resamples) — the most honest single statement we can make about the strategy's true Sharpe given the sample. Anything inside the median band [p25, p75] is the realistic operating range.</p>
   <div class="chart chart-med" id="chart-bootstrap"></div>
 
@@ -810,7 +1028,7 @@ footer.bottom a:hover { text-decoration: underline; }
 </section>
 
 <section id="walkforward">
-  <h2><span class="sec-no">7</span>Walk-forward with annual re-fitting</h2>
+  <h2><span class="sec-no">8</span>Walk-forward with annual re-fitting</h2>
   <p class="section-sub">For each anchor year Y from 2020 onwards: fit on 2018-01-01 → end-of-(Y−1), then apply that IS-best config to year Y. Compare three deployment styles: default (no tuning), IS-tuned-once (best on 2018–2020, frozen), and proper annual refit. If the walk-forward refit does not beat IS-tuned-once on OOS Sharpe, the answer is "do not tune" — defaults stay.</p>
 
   <h3>Aggregate OOS comparison (2020+)</h3>
@@ -829,19 +1047,19 @@ footer.bottom a:hover { text-decoration: underline; }
 </section>
 
 <section id="regimes">
-  <h2><span class="sec-no">8</span>Regime breakdown</h2>
+  <h2><span class="sec-no">9</span>Regime breakdown</h2>
   <p class="section-sub">Each row is a calendar-defined regime window. CAGR sign-colored. Verdict compares strategy CAGR to the best of (BTC HODL, 60/40 BTC/ETH).</p>
   <table class="simple" id="regime-table"></table>
 </section>
 
 <section id="attribution">
-  <h2><span class="sec-no">9</span>Per-coin contribution to gross PnL</h2>
+  <h2><span class="sec-no">10</span>Per-coin contribution to gross PnL</h2>
   <p class="section-sub">Dollar contribution per coin = sum of (yesterday's weight × today's return × yesterday's equity) over the sample. Faded bars are OOS-only contributions. No single coin contributes more than 25% of positive OOS gross PnL — the alpha is genuinely cross-sectional.</p>
   <div class="chart chart-med" id="chart-attribution"></div>
 </section>
 
 <section id="trades">
-  <h2><span class="sec-no">10</span>Trade ledger</h2>
+  <h2><span class="sec-no">11</span>Trade ledger</h2>
   <p class="section-sub">Every per-coin trade event executed during the backtest, decomposed from the daily weights series. A trade event is either a weekly rebalance (signal generated at the previous close, traded at the next close on a 1-bar lag) or a daily trend-exit override. Drift between events is not counted as a trade.</p>
 
   <div class="ledger-controls">
@@ -1433,6 +1651,158 @@ function renderWalkForward(d) {
   document.getElementById("wf-stability").innerHTML = h3;
 }
 
+function renderWalkthrough(d) {
+  const w = d.walkthrough;
+  if (!w) return;
+  const NOTIONAL = 100_000;
+
+  function stepHeader(num, title, rule, inputN, outputN) {
+    return `
+      <div class="step-head">
+        <span class="step-num">${num}</span>
+        <span class="step-title">${title}</span>
+        <span class="step-funnel">${inputN}<span class="arrow">→</span>${outputN}</span>
+      </div>
+      <div class="step-rule">${rule}</div>`;
+  }
+
+  // ----- step 1: liquidity gate -----
+  let s1 = stepHeader("1", w.step1.title.replace(/^\d+\.\s*/, ""), w.step1.rule,
+                       w.step1.input_count, w.step1.output_count);
+  const passed1 = w.step1.candidates.filter(c => c.pass);
+  const failed1 = w.step1.candidates.filter(c => !c.pass);
+  s1 += `<div class="step-body">`;
+  s1 += `<h4>Investable (${passed1.length})</h4><div class="chip-cluster">`;
+  passed1.forEach(c => {
+    s1 += `<span class="coin-chip pass" title="${c.reason}">${c.coin} <span class="small">$${(c.adv_usd/1e6).toFixed(0)}M</span></span>`;
+  });
+  s1 += `</div>`;
+  if (failed1.length > 0) {
+    s1 += `<h4>Excluded (${failed1.length})</h4><div class="chip-cluster">`;
+    failed1.forEach(c => {
+      s1 += `<span class="coin-chip fail" title="${c.reason}"><span class="strike">${c.coin}</span> <span class="small">${c.reason}</span></span>`;
+    });
+    s1 += `</div>`;
+  }
+  s1 += `</div>`;
+  document.getElementById("signal-step1").innerHTML = s1;
+
+  // ----- step 2: trend entry filter -----
+  let s2 = stepHeader("2", w.step2.title.replace(/^\d+\.\s*/, ""), w.step2.rule,
+                       w.step2.input_count, w.step2.output_count);
+  const passed2 = w.step2.candidates.filter(c => c.pass);
+  const failed2 = w.step2.candidates.filter(c => !c.pass);
+  s2 += `<div class="step-body">`;
+  s2 += `<h4>Trend-eligible (${passed2.length})</h4><div class="chip-cluster">`;
+  passed2.forEach(c => {
+    const diff = c.close && c.ma ? ((c.close / c.ma - 1) * 100).toFixed(1) : "—";
+    s2 += `<span class="coin-chip pass" title="${c.reason}">${c.coin} <span class="small">+${diff}% vs MA</span></span>`;
+  });
+  s2 += `</div>`;
+  if (failed2.length > 0) {
+    s2 += `<h4>Trend-broken (${failed2.length})</h4><div class="chip-cluster">`;
+    failed2.forEach(c => {
+      s2 += `<span class="coin-chip fail" title="${c.reason}"><span class="strike">${c.coin}</span> <span class="small">${c.reason}</span></span>`;
+    });
+    s2 += `</div>`;
+  }
+  s2 += `</div>`;
+  document.getElementById("signal-step2").innerHTML = s2;
+
+  // ----- step 3: momentum ranking -----
+  let s3 = stepHeader("3", w.step3.title.replace(/^\d+\.\s*/, ""), w.step3.rule,
+                       w.step3.input_count, w.step3.output_count);
+  const topN = w.step4.output_count;
+  s3 += `<div class="step-body">`;
+  if (w.step3.rows.length === 0) {
+    s3 += `<p class="muted" style="text-align:center;padding:14px">No coins survived the trend filter — nothing to rank.</p>`;
+  } else {
+    s3 += `<table class="rank"><thead><tr>
+      <th>rank</th><th>coin</th><th>score</th>`;
+    // Component columns based on first row's lookbacks
+    const lookbacks = w.step3.rows[0].components.map(c => c.lookback_d);
+    lookbacks.forEach(L => { s3 += `<th>${L}d return</th>`; });
+    s3 += `</tr></thead><tbody>`;
+    w.step3.rows.forEach(r => {
+      const isWinner = r.rank <= topN;
+      s3 += `<tr class="${isWinner ? "winner" : ""}">
+        <td><span class="rank-badge">${r.rank}</span></td>
+        <td><strong>${r.coin}</strong></td>
+        <td>${num(r.score)}</td>`;
+      r.components.forEach(c => {
+        s3 += `<td class="${c.return >= 0 ? "good" : "bad"}">${pct(c.return)}</td>`;
+      });
+      s3 += `</tr>`;
+    });
+    s3 += `</tbody></table>`;
+  }
+  s3 += `</div>`;
+  document.getElementById("signal-step3").innerHTML = s3;
+
+  // ----- step 4: top-N selection -----
+  let s4 = stepHeader("4", w.step4.title.replace(/^\d+\.\s*/, ""), w.step4.rule,
+                       w.step4.input_count, w.step4.output_count);
+  s4 += `<div class="step-body">`;
+  if (w.step4.selected.length === 0) {
+    s4 += `<p class="muted" style="text-align:center;padding:14px">No qualifying picks today.</p>`;
+  } else {
+    s4 += `<h4>Picked (${w.step4.selected.length})</h4><div class="chip-cluster">`;
+    w.step4.selected.forEach(c => {
+      s4 += `<span class="coin-chip winner">${c}</span>`;
+    });
+    s4 += `</div>`;
+    if (w.step4.cut.length > 0) {
+      s4 += `<h4>Cut (${w.step4.cut.length} — below top-${topN})</h4><div class="chip-cluster">`;
+      w.step4.cut.forEach(c => {
+        s4 += `<span class="coin-chip runner-up">${c}</span>`;
+      });
+      s4 += `</div>`;
+    }
+  }
+  s4 += `</div>`;
+  document.getElementById("signal-step4").innerHTML = s4;
+
+  // ----- step 5: breadth gate -----
+  let s5 = stepHeader("5", w.step5.title.replace(/^\d+\.\s*/, ""), w.step5.rule,
+                       "breadth " + pct(w.step5.current_breadth, 0),
+                       "gross " + pct(w.step5.current_exposure, 0));
+  s5 += `<div class="step-body">`;
+  s5 += `<div class="tier-ladder">`;
+  w.step5.ladder.forEach(t => {
+    const lowPct = (t.low * 100).toFixed(0);
+    const highPct = (t.high * 100).toFixed(0);
+    const range = (t.high >= 0.99) ? `≥ ${lowPct}%` : `${lowPct}–${highPct}%`;
+    s5 += `<div class="tier-rung ${t.active ? "active" : ""}">
+      <div class="range">${range} breadth</div>
+      <div class="exposure">${(t.exposure * 100).toFixed(0)}%</div>
+    </div>`;
+  });
+  s5 += `</div>`;
+  s5 += `<p class="muted" style="font-size:13px;margin-top:8px">Current breadth <strong style="color:var(--ink)">${pct(w.step5.current_breadth, 0)}</strong> sits in the highlighted tier above, giving target gross exposure of <strong style="color:var(--accent)">${pct(w.step5.current_exposure, 0)}</strong>.</p>`;
+  s5 += `</div>`;
+  document.getElementById("signal-step5").innerHTML = s5;
+
+  // ----- final target allocation -----
+  const f = w.final;
+  let sf = `<div class="final-alloc">
+    <div class="head">Target allocation if rebalanced now</div>`;
+  if (f.holdings.length === 0 || f.per_coin_weight < 0.005) {
+    sf += `<div class="alloc-row cash"><span class="coin">All cash (USDT)</span><span class="w mono">100.0% · $${NOTIONAL.toLocaleString()}</span></div>`;
+    sf += `<p class="muted" style="font-size:12px;margin-top:8px;margin-bottom:0">The breadth gate is currently risk-off, so the strategy would hold zero crypto exposure regardless of which names pass the momentum filter. The top-${topN} above are recorded for when the gate flips back on.</p>`;
+  } else {
+    f.holdings.forEach(h => {
+      const dollars = (h.weight * NOTIONAL).toLocaleString("en-US", { maximumFractionDigits: 0 });
+      sf += `<div class="alloc-row"><span class="coin">${h.coin}</span><span class="w mono">${pct(h.weight, 1)} · $${dollars}</span></div>`;
+    });
+    if (f.cash > 0.005) {
+      const dollars = (f.cash * NOTIONAL).toLocaleString("en-US", { maximumFractionDigits: 0 });
+      sf += `<div class="alloc-row cash"><span class="coin">Cash (USDT)</span><span class="w mono">${pct(f.cash, 1)} · $${dollars}</span></div>`;
+    }
+  }
+  sf += `</div>`;
+  document.getElementById("signal-final").innerHTML = sf;
+}
+
 function renderMonitor(d) {
   const m = d.monitor;
   const NOTIONAL = 100_000;  // $ on $100K for "$ ON $100K" column
@@ -1641,6 +2011,7 @@ loadData()
     renderRegimes(d);
     renderAttribution(d);
     renderMonitor(d);
+    renderWalkthrough(d);
     renderLedger(d);
     renderWalkForward(d);
     setupActiveNav();
