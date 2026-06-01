@@ -44,8 +44,9 @@ DATA_JSON = PROJECT_ROOT / "data" / "dashboard_data.json"
 COIN_SIGNALS_JSON = PROJECT_ROOT / "data" / "coin_signals.json"
 STATE_FILE = PROJECT_ROOT / "data" / "last_alert_state.json"
 
-# 1-year chart window for the inline email chart
-CHART_WINDOW_DAYS = 365
+# 3-month chart window for the inline email chart — matches the
+# Signal Explorer's default zoom on the dashboard.
+CHART_WINDOW_DAYS = 90
 
 DASHBOARD_URL = "https://phuazz.github.io/crypto-breadth/"
 REPO_URL = "https://github.com/phuazz/crypto-breadth"
@@ -344,7 +345,7 @@ def render_coin_chart(coin_data: dict, event: dict) -> bytes | None:
         )
 
     ax.set_yscale("log")
-    ax.set_title(f"{event['coin']} — last 12 months",
+    ax.set_title(f"{event['coin']} — last 3 months",
                  fontsize=13, fontweight="bold", color="#111418", loc="left")
     ax.set_ylabel("Price (USDT, log)", fontsize=9, color="#4a5159")
     ax.grid(True, alpha=0.35, color="#eef0f3", linewidth=0.6)
@@ -483,7 +484,7 @@ def main() -> int:
                 f'style="display:block; width:100%; max-width:640px; height:auto; '
                 f'border: 1px solid #e3e6ea; border-radius: 6px;" />'
                 f'<div style="font-size: 11px; color: #6b727a; margin-top: 6px; '
-                f'text-align: center;">1Y window. Blue band = held periods. '
+                f'text-align: center;">3M window. Blue band = held periods. '
                 f'Arrows = trade events. The annotated marker is the trade this '
                 f'email is about.</div></div>'
             )

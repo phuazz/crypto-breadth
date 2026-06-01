@@ -2050,15 +2050,15 @@ async function renderExplorerChart(coin) {
     yref: "y2", y0: 0, y1: 0, line: { color: "#9ca3af", width: 1 }
   });
 
-  // Default the x-range to the last 12 months so the chart opens zoomed-in
-  // on recent activity. Users can click MAX (or any other range button) to
-  // expand. If the coin has less than ~1y of history (e.g. NEAR listed 2020),
-  // fall back to its full available range.
+  // Default the x-range to the last 3 months so the chart opens zoomed-in
+  // on recent activity (intra-week dips, recent rebals). Users can click any
+  // other rangeselector button to expand. If the coin has less than ~3m of
+  // history, fall back to its full available range.
   const lastDate = new Date(c.dates[c.dates.length - 1]);
   const firstDate = new Date(c.dates[0]);
-  const oneYearAgo = new Date(lastDate);
-  oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-  const defaultStart = oneYearAgo > firstDate ? oneYearAgo : firstDate;
+  const threeMonthsAgo = new Date(lastDate);
+  threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+  const defaultStart = threeMonthsAgo > firstDate ? threeMonthsAgo : firstDate;
   const defaultRange = [
     defaultStart.toISOString().slice(0, 10),
     lastDate.toISOString().slice(0, 10)
