@@ -514,11 +514,15 @@ table.holdings tbody tr:last-child td { border-bottom: none; }
 }
 
 .explorer-legend {
-  display: flex; flex-wrap: wrap; gap: 18px;
-  margin: 4px 0 8px;
+  display: flex; flex-direction: column; gap: 6px;
+  margin: 4px 0 10px;
   font-size: 12px;
   color: var(--ink-soft);
 }
+.explorer-legend .row {
+  display: flex; flex-wrap: wrap; gap: 18px;
+}
+.explorer-legend .row.muted { color: var(--ink-faint); }
 .explorer-legend .item {
   display: inline-flex; align-items: center; gap: 6px;
 }
@@ -529,8 +533,8 @@ table.holdings tbody tr:last-child td { border-bottom: none; }
   vertical-align: middle;
 }
 .explorer-legend .swatch.held {
-  background: rgba(19, 81, 180, 0.10);
-  border: 1px solid rgba(19, 81, 180, 0.25);
+  background: rgba(19, 81, 180, 0.15);
+  border: 1px solid rgba(19, 81, 180, 0.30);
 }
 .explorer-legend .swatch.bear {
   background: rgba(183, 110, 0, 0.10);
@@ -1088,11 +1092,15 @@ footer.bottom a:hover { text-decoration: underline; }
   <div class="coin-buttons" id="coin-buttons"></div>
   <div class="coin-status" id="coin-status"></div>
   <div class="explorer-legend">
-    <span class="item"><span class="swatch held"></span> Strategy held this coin (blue band)</span>
-    <span class="item"><span class="swatch bear"></span> Crypto bear-regime overlay (amber band: 2018, 2022)</span>
-    <span class="item"><span class="marker entry">▲</span> Entry (buy)</span>
-    <span class="item"><span class="marker exit">▼</span> Exit (sell)</span>
-    <span class="item"><span class="marker resize">◆</span> Resize (weight change)</span>
+    <div class="row">
+      <span class="item"><span class="swatch held"></span> Strategy held this coin (blue band)</span>
+      <span class="item"><span class="swatch bear"></span> Crypto bear-regime overlay (amber band: 2018, 2022)</span>
+    </div>
+    <div class="row muted">
+      <span class="item"><span class="marker entry">▲</span> Entry (buy)</span>
+      <span class="item"><span class="marker exit">▼</span> Exit (sell)</span>
+      <span class="item"><span class="marker resize">◆</span> Resize (weight change)</span>
+    </div>
   </div>
   <div class="chart chart-tall" id="chart-explorer"></div>
 </section>
@@ -1893,7 +1901,7 @@ async function renderExplorerChart(coin) {
       heldShapes.push({
         type: "rect", xref: "x", yref: "paper",
         x0: start, x1: c.dates[i], y0: 0, y1: 1,
-        fillcolor: "rgba(19, 81, 180, 0.10)", line: { width: 0 }, layer: "below"
+        fillcolor: "rgba(19, 81, 180, 0.15)", line: { width: 0 }, layer: "below"
       });
       start = null;
     }
@@ -1902,7 +1910,7 @@ async function renderExplorerChart(coin) {
     heldShapes.push({
       type: "rect", xref: "x", yref: "paper",
       x0: start, x1: c.dates[c.dates.length - 1], y0: 0, y1: 1,
-      fillcolor: "rgba(19, 81, 180, 0.10)", line: { width: 0 }, layer: "below"
+      fillcolor: "rgba(19, 81, 180, 0.15)", line: { width: 0 }, layer: "below"
     });
   }
 
@@ -1965,6 +1973,20 @@ async function renderExplorerChart(coin) {
     yref: "y2", y0: 0, y1: 0, line: { color: "#9ca3af", width: 1 }
   });
 
+  // Default the x-range to the last 12 months so the chart opens zoomed-in
+  // on recent activity. Users can click MAX (or any other range button) to
+  // expand. If the coin has less than ~1y of history (e.g. NEAR listed 2020),
+  // fall back to its full available range.
+  const lastDate = new Date(c.dates[c.dates.length - 1]);
+  const firstDate = new Date(c.dates[0]);
+  const oneYearAgo = new Date(lastDate);
+  oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+  const defaultStart = oneYearAgo > firstDate ? oneYearAgo : firstDate;
+  const defaultRange = [
+    defaultStart.toISOString().slice(0, 10),
+    lastDate.toISOString().slice(0, 10)
+  ];
+
   const layout = {
     font: { family: FONT_STACK, size: 11, color: "#4a5159" },
     margin: { l: 60, r: 20, t: 50, b: 40 },
@@ -1980,6 +2002,7 @@ async function renderExplorerChart(coin) {
     legend: { orientation: "h", x: 0, y: 1.14, font: { size: 11 } },
     grid: { rows: 2, columns: 1, pattern: "independent", roworder: "top to bottom" },
     xaxis:  { domain: [0, 1], anchor: "y", gridcolor: "#eef0f3", zeroline: false, tickfont: { size: 10 },
+              range: defaultRange,
               rangeselector: {
                 buttons: [
                   { count: 1, label: "1M", step: "month", stepmode: "backward" },
