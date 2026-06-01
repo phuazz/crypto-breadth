@@ -1824,22 +1824,26 @@ function renderIsOos(d) {
 
 function renderYearly(d) {
   const y = d.yearly_returns;
+  // X axis is CATEGORICAL — years rendered as discrete string labels so
+  // Plotly does not auto-extend the axis to year 0 or year 2030. Passing
+  // years as strings explicitly also avoids any "is this a number or a
+  // date" guessing on Plotly's part.
+  const yearLabels = y.years.map(String);
   const traces = [
-    { x: y.years, y: y.strategy, name: "Strategy v3.1", type: "bar",
+    { x: yearLabels, y: y.strategy, name: "Strategy v3.1", type: "bar",
       marker: { color: "#111418" }, hovertemplate: "%{y:+.1%}<extra>Strategy</extra>" },
-    { x: y.years, y: y.btc, name: "BTC HODL", type: "bar",
+    { x: yearLabels, y: y.btc, name: "BTC HODL", type: "bar",
       marker: { color: "#f7931a" }, hovertemplate: "%{y:+.1%}<extra>BTC</extra>" },
-    { x: y.years, y: y["6040"], name: "60/40 BTC/ETH", type: "bar",
+    { x: yearLabels, y: y["6040"], name: "60/40 BTC/ETH", type: "bar",
       marker: { color: "#1351b4" }, hovertemplate: "%{y:+.1%}<extra>60/40</extra>" },
   ];
-  // Cap the visible y-range at +500% so the 2021 monster bar (+1873%
-  // strategy / +704% EW) does not squash all the other years to
-  // invisible. The full numbers still show in the hover tooltip. The
-  // bars that exceed the cap get a callout annotation with their
-  // actual value so the truncation is honest.
+  // Cap the visible y-range at +500% so the 2021 monster bar
+  // (+1873% strategy / +704% EW) does not squash everything else
+  // to invisible. Truncated bars get an annotation with the actual
+  // value so the chop is honest.
   const CAP = 5.0;
   const annotations = [];
-  for (let i = 0; i < y.years.length; i++) {
+  for (let i = 0; i < yearLabels.length; i++) {
     const candidates = [
       { v: y.strategy[i], label: "Strategy" },
       { v: y.btc[i], label: "BTC" },
@@ -1848,7 +1852,7 @@ function renderYearly(d) {
     for (const c of candidates) {
       if (c.v != null && c.v > CAP) {
         annotations.push({
-          x: y.years[i], y: CAP, xref: "x", yref: "y",
+          x: yearLabels[i], y: CAP, xref: "x", yref: "y",
           text: `${c.label} ${(c.v * 100).toFixed(0)}%`,
           showarrow: true, arrowhead: 0, ax: 0, ay: -22,
           font: { size: 10, color: "#b3261e" },
@@ -1860,6 +1864,11 @@ function renderYearly(d) {
   }
   const layout = Object.assign({}, LAYOUT_BASE, {
     barmode: "group",
+    xaxis: Object.assign({}, LAYOUT_BASE.xaxis, {
+      type: "category",
+      categoryorder: "array",
+      categoryarray: yearLabels,
+    }),
     yaxis: Object.assign({}, LAYOUT_BASE.yaxis, {
       tickformat: ".0%",
       range: [-1.0, CAP + 0.1],
