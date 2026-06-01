@@ -1,7 +1,11 @@
-# crypto-breadth
+# Crypto Breadth & Momentum
 
-A breadth-gate + ranked-momentum strategy for crypto majors on Binance USDT
-spot. Research-grade — not deployed.
+Cross-sectional momentum strategy on crypto majors, gated by breadth and
+per-coin trend filters. Binance USDT spot, 25-coin rolling-liquidity
+universe, daily exit overlay. Research-grade — not deployed, no live
+track record.
+
+Repo slug remains `crypto-breadth` for URL continuity.
 
 **Live dashboard:** [phuazz.github.io/crypto-breadth](https://phuazz.github.io/crypto-breadth/)
 — interactive Plotly equity curve, drawdown, regime breakdown, bootstrap
