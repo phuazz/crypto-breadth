@@ -1245,6 +1245,7 @@ footer.bottom a:hover { text-decoration: underline; }
   <h2><span class="sec-no">7</span>Calendar-year returns</h2>
   <p class="section-sub">The strategy wins in 2018, 2022 (bears) and 2021 (breakout). It lags BTC in pure BTC-led bull years (2020, 2023, 2024). It is currently in a weak patch (2024–2025–2026 YTD).</p>
   <div class="chart chart-med" id="chart-yearly"></div>
+  <p id="chart-yearly-cap" style="font-size: 12px; color: var(--ink-faint); margin: -8px 0 24px; line-height: 1.5;"></p>
 
   <h2>Rolling 252d Sharpe</h2>
   <p class="section-sub">Reference lines at 0 (break-even) and 1 (institutional minimum). The dashed red line is the full-sample Sharpe. The strategy is positive 252d-rolling Sharpe ~70% of the time.</p>
@@ -1831,52 +1832,55 @@ function renderYearly(d) {
   const yearLabels = y.years.map(String);
   const traces = [
     { x: yearLabels, y: y.strategy, name: "Strategy v3.1", type: "bar",
-      marker: { color: "#111418" }, hovertemplate: "%{y:+.1%}<extra>Strategy</extra>" },
+      marker: { color: "#111418" }, hovertemplate: "%{x}<br>Strategy %{y:+.1%}<extra></extra>" },
     { x: yearLabels, y: y.btc, name: "BTC HODL", type: "bar",
-      marker: { color: "#f7931a" }, hovertemplate: "%{y:+.1%}<extra>BTC</extra>" },
+      marker: { color: "#f7931a" }, hovertemplate: "%{x}<br>BTC %{y:+.1%}<extra></extra>" },
     { x: yearLabels, y: y["6040"], name: "60/40 BTC/ETH", type: "bar",
-      marker: { color: "#1351b4" }, hovertemplate: "%{y:+.1%}<extra>60/40</extra>" },
+      marker: { color: "#1351b4" }, hovertemplate: "%{x}<br>60/40 %{y:+.1%}<extra></extra>" },
   ];
-  // Cap the visible y-range at +500% so the 2021 monster bar
-  // (+1873% strategy / +704% EW) does not squash everything else
-  // to invisible. Truncated bars get an annotation with the actual
-  // value so the chop is honest.
+  // Cap the visible y-range at +500% so the 2021 monster bars do not
+  // squash the other years to invisible. Outliers surfaced as a caption
+  // BELOW the chart (in #chart-yearly-cap), not as in-chart annotations
+  // — Plotly mis-interpreted the annotation's category-string x as a
+  // numeric (year 2021 -> position 2021), expanding the axis range and
+  // squashing all bars to the leftmost few pixels.
   const CAP = 5.0;
-  const annotations = [];
-  for (let i = 0; i < yearLabels.length; i++) {
-    const candidates = [
-      { v: y.strategy[i], label: "Strategy" },
-      { v: y.btc[i], label: "BTC" },
-      { v: y["6040"][i], label: "60/40" },
-    ];
-    for (const c of candidates) {
-      if (c.v != null && c.v > CAP) {
-        annotations.push({
-          x: yearLabels[i], y: CAP, xref: "x", yref: "y",
-          text: `${c.label} ${(c.v * 100).toFixed(0)}%`,
-          showarrow: true, arrowhead: 0, ax: 0, ay: -22,
-          font: { size: 10, color: "#b3261e" },
-          bgcolor: "rgba(255,255,255,0.95)",
-          bordercolor: "#b3261e", borderwidth: 1, borderpad: 3
-        });
-      }
-    }
-  }
   const layout = Object.assign({}, LAYOUT_BASE, {
     barmode: "group",
+    bargap: 0.2,
+    bargroupgap: 0.05,
     xaxis: Object.assign({}, LAYOUT_BASE.xaxis, {
       type: "category",
-      categoryorder: "array",
-      categoryarray: yearLabels,
+      tickangle: 0,
     }),
     yaxis: Object.assign({}, LAYOUT_BASE.yaxis, {
       tickformat: ".0%",
       range: [-1.0, CAP + 0.1],
       title: { text: "calendar-year return (capped at +500%)", font: { size: 11 } }
     }),
-    annotations: annotations,
   });
   Plotly.newPlot("chart-yearly", traces, layout, PLOTLY_CFG);
+
+  // Honest-truncation caption: surface the actual values for any bars
+  // chopped at the y-cap. Lives in #chart-yearly-cap below the chart.
+  const truncations = [];
+  for (let i = 0; i < yearLabels.length; i++) {
+    const over = [
+      { v: y.strategy[i], label: "Strategy" },
+      { v: y.btc[i], label: "BTC" },
+      { v: y["6040"][i], label: "60/40" },
+    ].filter(it => it.v != null && it.v > CAP);
+    if (over.length) {
+      const parts = over.map(it => `${it.label} +${(it.v * 100).toFixed(0)}%`);
+      truncations.push(`<strong style="color:var(--ink)">${yearLabels[i]}:</strong> ${parts.join(", ")}`);
+    }
+  }
+  const capEl = document.getElementById("chart-yearly-cap");
+  if (capEl) {
+    capEl.innerHTML = truncations.length
+      ? `<strong>Bars truncated for readability.</strong> Actual values exceeding the cap: ${truncations.join(" · ")}`
+      : "";
+  }
 }
 
 function renderRolling(d) {
