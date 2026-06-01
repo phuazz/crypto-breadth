@@ -1865,14 +1865,34 @@ function statusLine(latest, coin, c) {
       // Plain-English "why" — driven by (action × trigger).
       let why = "";
       const trig = ev.trigger || "";
+
+      // Signal-day numerical evidence: the day BEFORE the trade (1-bar lag).
+      // For BNB's May 29 daily exit, sig_date = May 28, sig_close = 634.54,
+      // sig_ma = 637.56 — close below MA by ~0.5%. The chart at weekly
+      // resolution may not show this dip clearly; the numbers do.
+      let sigEvidence = "";
+      if (ev.sig_close != null && ev.sig_ma != null) {
+        const fmtNum = (v) => v >= 100 ? v.toLocaleString(undefined, {maximumFractionDigits: 2}) : v.toFixed(4);
+        const sigClose = fmtNum(ev.sig_close);
+        const sigMa = fmtNum(ev.sig_ma);
+        const diffPct = ((ev.sig_close / ev.sig_ma) - 1) * 100;
+        const diffSign = diffPct >= 0 ? "+" : "";
+        const diffCls = diffPct >= 0 ? "good" : "bad";
+        sigEvidence =
+          ` <span class="muted">— on <strong style="color:var(--ink)">${ev.sig_date}</strong> ` +
+          `(signal day), close was <strong style="color:var(--ink)">${sigClose}</strong> ` +
+          `vs MA <strong style="color:var(--ink)">${sigMa}</strong> ` +
+          `(<strong class="${diffCls}">${diffSign}${diffPct.toFixed(2)}%</strong>).</span>`;
+      }
+
       if (ev.action === "entry") {
         why = "passed the trend filter (close above own 50d MA, MA rising) " +
               "and entered the top-N momentum rank at the weekly rebalance.";
       } else if (ev.action === "exit") {
         if (trig === "daily exit") {
-          why = "close dropped below own 50d MA mid-week, triggering the " +
-                "daily trend-exit override (asymmetric — designed to cut " +
-                "losers before the next Monday rebal).";
+          why = "close dropped below own 50d MA, triggering the daily " +
+                "trend-exit override (asymmetric — designed to cut losers " +
+                "before the next Monday rebal).";
         } else if (trig === "rebal + exit") {
           why = "two things happened the same day: close dropped below 50d MA " +
                 "(daily exit fired) AND the coin also fell out of top-N at the " +
@@ -1890,7 +1910,7 @@ function statusLine(latest, coin, c) {
         `<br><span class="stat-line">Last action: ` +
         `<strong class="${verbCls}">${verb}</strong> on <strong>${ev.date}</strong> ` +
         `<span class="muted">(${sizeStr}, ${whenStr}, trigger: ${trig})</span></span>` +
-        `<br><span class="stat-line" style="color: var(--ink-soft); font-size: 13px"><strong>Why:</strong> ${why}</span>`;
+        `<br><span class="stat-line" style="color: var(--ink-soft); font-size: 13px"><strong>Why:</strong> ${why}${sigEvidence}</span>`;
     }
   }
 

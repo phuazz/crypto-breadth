@@ -127,6 +127,7 @@ def per_coin_attribution(close: pd.DataFrame, result: dict) -> pd.DataFrame:
 def extract_trade_history(
     close: pd.DataFrame, result: dict,
     breadth: pd.Series, target_exposure: pd.Series,
+    p: Params = None,
 ) -> list[dict]:
     """Decompose every trade day into per-coin events.
 
@@ -152,6 +153,13 @@ def extract_trade_history(
     # exits as "rebal + exit". This is the accurate signal.
     rebal_executed = result.get("rebal_executed")
     daily_ret = close.pct_change().fillna(0.0)
+
+    # 50d MA per coin — used to attach the close-vs-MA snapshot at the
+    # signal day (the day BEFORE the trade, due to the 1-bar lag) to each
+    # event. This is the numerical evidence behind the "Why" text on the
+    # dashboard: e.g. "on May 28 close was $634.54 vs MA $637.56".
+    ma_window = (p.per_coin_trend_window if p is not None else 50)
+    ma_for_trades = close.rolling(ma_window, min_periods=ma_window).mean()
 
     trade_days = turnover[turnover > 1e-4].index
     events = []
@@ -193,6 +201,13 @@ def extract_trade_history(
         except KeyError:
             sig_exposure = None
 
+        # The signal day is the bar BEFORE the trade (the 1-bar lag) — that
+        # is when "close < MA" was evaluated for the daily exit, and when
+        # the Monday-close signal was generated for weekly rebals. Grab the
+        # per-coin close and MA at that bar so the dashboard can show the
+        # numerical evidence behind the trade.
+        sig_date = weights.index[idx - 1]
+
         for coin in w_curr.index:
             actual = float(w_curr[coin])
             drifted = float(w_drift[coin])
@@ -205,6 +220,8 @@ def extract_trade_history(
                 action = "exit"
             else:
                 action = "resize"
+            sig_close = _f(close.loc[sig_date, coin]) if coin in close.columns else None
+            sig_ma = _f(ma_for_trades.loc[sig_date, coin]) if coin in ma_for_trades.columns else None
             events.append({
                 "date": str(dt.date()),
                 "trigger": trigger,
@@ -215,6 +232,9 @@ def extract_trade_history(
                 "delta": delta,
                 "sig_breadth": _f(sig_breadth) if sig_breadth is not None else None,
                 "sig_exposure": _f(sig_exposure) if sig_exposure is not None else None,
+                "sig_date": str(sig_date.date()),
+                "sig_close": sig_close,
+                "sig_ma": sig_ma,
             })
 
     events.sort(key=lambda e: e["date"], reverse=True)
@@ -281,7 +301,21 @@ def coin_signal_history(
         if first_inv_idx is None:
             continue
         df = df.loc[first_inv_idx:]
-        weekly = df.resample("W-MON").last().dropna(how="all")
+        # Hybrid resolution: daily for the last 365 days (so intra-week
+        # exit triggers are visible — e.g. a Thursday dip below the 50d
+        # MA that triggered Friday's sell), weekly for older history
+        # (keeps payload bounded). Concatenate the two pieces and drop
+        # the boundary duplicate.
+        last_date = df.index[-1]
+        cutoff = last_date - pd.Timedelta(days=365)
+        df_recent = df.loc[df.index >= cutoff]
+        df_older = df.loc[df.index < cutoff]
+        if len(df_older) > 0:
+            df_older_w = df_older.resample("W-MON").last().dropna(how="all")
+        else:
+            df_older_w = df_older
+        weekly = pd.concat([df_older_w, df_recent]).sort_index()
+        weekly = weekly[~weekly.index.duplicated(keep="last")]
 
         # Current-state snapshot
         last_close = _f(close.loc[last_date, coin])
@@ -799,7 +833,7 @@ def main() -> int:
           f"cash {monitor['cash_weight']:.0%}, breadth {monitor['breadth']:.0%}")
 
     print("Extracting trade history ...")
-    trades = extract_trade_history(close, res, breadth, target_exposure)
+    trades = extract_trade_history(close, res, breadth, target_exposure, p)
     print(f"  {len(trades)} trade events")
 
     # "This week's changes" — trades within the last 14 days of the sample.
