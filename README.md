@@ -178,6 +178,35 @@ to avoid `cp1252` console errors.
 
 ---
 
+## Automation — daily check + email alerts
+
+`scripts/notify.py` + `.github/workflows/daily-check.yml` run on a daily
+cron (00:45 UTC) and email a stylised trade alert whenever a new
+rebalance or daily exit fires. Each email explains the trade in plain
+text + HTML and links back to the live dashboard's Signal Explorer with
+the relevant coin pre-selected.
+
+To enable alerts, add five repository secrets in GitHub
+(Settings → Secrets and variables → Actions → New repository secret):
+
+| Secret | Value |
+|---|---|
+| `EMAIL_FROM` | the sending address, e.g. `phuazz@gmail.com` |
+| `EMAIL_TO` | recipient (typically the same as `EMAIL_FROM`) |
+| `EMAIL_PASSWORD` | **Gmail App Password** — generate at <https://myaccount.google.com/apppasswords> (2FA must be on). NOT your account password. |
+| `EMAIL_SMTP_HOST` | `smtp.gmail.com` for Gmail (defaults to this if unset) |
+| `EMAIL_SMTP_PORT` | `587` (defaults to this if unset) |
+
+If any of the first three are missing, the workflow still runs cleanly —
+it marks events as "seen" so the alert backlog does not pile up, and you
+can flip on the secrets later without getting bombarded.
+
+The state file `data/last_alert_state.json` tracks which events have
+already been alerted on, so the cron is fully idempotent.
+
+To trigger a run manually: GitHub repo → Actions tab → Daily signal
+check → Run workflow.
+
 ## Known open work (priority order)
 
 1. **2018 bear whipsaw fix.** Strict entry filter buys false bounces in a

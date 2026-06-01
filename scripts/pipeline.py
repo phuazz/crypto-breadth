@@ -47,6 +47,11 @@ TEMPLATE_PATH = PROJECT_ROOT / "template.html"
 DOCS_DIR = PROJECT_ROOT / "docs"
 DATA_JSON_PATH = PROJECT_ROOT / "data" / "dashboard_data.json"
 WALK_FORWARD_JSON = PROJECT_ROOT / "data" / "walk_forward.json"
+# Per-coin signals are lazy-loaded by the dashboard (too big to inline).
+# We write to both data/ (for dev when template.html is opened directly)
+# and docs/data/ (for production when GitHub Pages serves docs/).
+COIN_SIGNALS_DATA_JSON = PROJECT_ROOT / "data" / "coin_signals.json"
+COIN_SIGNALS_DOCS_JSON = PROJECT_ROOT / "docs" / "data" / "coin_signals.json"
 
 
 # ----- production pipeline --------------------------------------------------
@@ -205,6 +210,114 @@ def extract_trade_history(
 
     events.sort(key=lambda e: e["date"], reverse=True)
     return events
+
+
+def coin_signal_history(
+    close: pd.DataFrame, mask: pd.DataFrame,
+    result: dict, trades: list, p: Params,
+) -> dict:
+    """Per-coin time-series payload for the dashboard's Signal Explorer.
+
+    For every coin in the universe, returns weekly snapshots of:
+      - close
+      - 50d MA + boolean ma_rising
+      - composite momentum score
+      - held weight (was this coin in the book?)
+      - investability (passed the rolling liquidity gate?)
+    Plus a `latest` block describing the current state precisely:
+      "how far above/below MA", "is trend rising", "momentum score", etc.
+    Plus a `events` array of trade events for this coin only (for chart markers).
+
+    Weekly resample keeps the payload tractable while still showing every
+    rebalance decision clearly. Output is fetched lazily by the dashboard.
+    """
+    weights = result["weights"]
+    window = p.per_coin_trend_window
+    ma_full = close.rolling(window, min_periods=window).mean()
+    ma_diff_full = ma_full.diff()
+    daily_ret = close.pct_change()
+
+    score_parts = []
+    for L in p.momentum_lookbacks_d:
+        ret_L = close.pct_change(L)
+        vol_L = daily_ret.rolling(L, min_periods=max(10, L // 2)).std() * np.sqrt(L)
+        score_parts.append((ret_L / vol_L).where(vol_L > 0))
+    momentum_full = sum(score_parts) / len(score_parts)
+
+    last_date = close.index[-1]
+
+    # Group trades by coin for fast attachment
+    trades_by_coin: dict[str, list] = {}
+    for t in trades:
+        trades_by_coin.setdefault(t["coin"], []).append({
+            "date": t["date"], "action": t["action"],
+            "old_w": t["old_w"], "new_w": t["new_w"],
+        })
+
+    coins_out: dict[str, dict] = {}
+    for coin in close.columns:
+        if not mask[coin].any():
+            continue  # never investable, skip
+
+        df = pd.DataFrame({
+            "close": close[coin],
+            "ma": ma_full[coin],
+            "ma_diff": ma_diff_full[coin],
+            "momentum": momentum_full[coin],
+            "weight": weights[coin] if coin in weights.columns else 0.0,
+            "investable": mask[coin],
+        })
+        # Trim to first investable date so chart starts when relevant
+        first_inv_idx = mask[coin].idxmax() if mask[coin].any() else None
+        if first_inv_idx is None:
+            continue
+        df = df.loc[first_inv_idx:]
+        weekly = df.resample("W-MON").last().dropna(how="all")
+
+        # Current-state snapshot
+        last_close = _f(close.loc[last_date, coin])
+        last_ma = _f(ma_full.loc[last_date, coin])
+        last_diff = _f(ma_diff_full.loc[last_date, coin])
+        last_mom = _f(momentum_full.loc[last_date, coin])
+        last_inv = bool(mask.loc[last_date, coin])
+        last_w = (
+            _f(weights.loc[last_date, coin])
+            if coin in weights.columns and not pd.isna(weights.loc[last_date, coin])
+            else 0.0
+        ) or 0.0
+        ma_dist = ((last_close / last_ma) - 1.0) if (last_close and last_ma) else None
+        ma_rising = (last_diff > 0) if last_diff is not None else False
+        trend_eligible = (
+            last_inv
+            and last_close is not None and last_ma is not None
+            and last_close > last_ma
+            and ma_rising
+        )
+
+        coins_out[coin] = {
+            "dates": weekly.index.strftime("%Y-%m-%d").tolist(),
+            "close":     [_f(v) for v in weekly["close"].values],
+            "ma":        [_f(v) for v in weekly["ma"].values],
+            "ma_rising": [bool((v or 0) > 0) for v in weekly["ma_diff"].values],
+            "momentum":  [_f(v) for v in weekly["momentum"].values],
+            "weight":    [_f(v) for v in weekly["weight"].values],
+            "investable":[bool(v) for v in weekly["investable"].values],
+            "first_date": str(weekly.index.min().date()),
+            "last_date":  str(weekly.index.max().date()),
+            "latest": {
+                "close": last_close,
+                "ma": last_ma,
+                "ma_dist_pct": _f(ma_dist),
+                "ma_rising": ma_rising,
+                "momentum": last_mom,
+                "investable": last_inv,
+                "weight": last_w,
+                "trend_eligible": trend_eligible,
+            },
+            "events": trades_by_coin.get(coin, []),
+        }
+
+    return coins_out
 
 
 def signal_walkthrough(
@@ -695,6 +808,10 @@ def main() -> int:
 
     print("Signal walkthrough (latest bar) ...")
     walkthrough = signal_walkthrough(close, volume, breadth, target_exposure, mask, p)
+
+    print("Per-coin signal history (lazy-loaded) ...")
+    coin_signals = coin_signal_history(close, mask, res, trades, p)
+    print(f"  {len(coin_signals)} coin time-series prepared")
     print(f"  funnel: {walkthrough['step1']['input_count']} -> "
           f"{walkthrough['step2']['input_count']} -> "
           f"{walkthrough['step3']['input_count']} -> "
@@ -782,6 +899,18 @@ def main() -> int:
     DATA_JSON_PATH.write_text(json.dumps(payload, separators=(",", ":")), encoding="utf-8")
     print(f"  wrote {DATA_JSON_PATH} "
           f"({DATA_JSON_PATH.stat().st_size / 1024:.1f} KB)")
+
+    # ----- write per-coin signals (lazy-loaded, NOT inlined) -----
+    coin_signals_json = json.dumps(
+        {"coins": coin_signals, "generated_at": payload["meta"]["generated_at"]},
+        separators=(",", ":"),
+    )
+    COIN_SIGNALS_DATA_JSON.parent.mkdir(parents=True, exist_ok=True)
+    COIN_SIGNALS_DATA_JSON.write_text(coin_signals_json, encoding="utf-8")
+    COIN_SIGNALS_DOCS_JSON.parent.mkdir(parents=True, exist_ok=True)
+    COIN_SIGNALS_DOCS_JSON.write_text(coin_signals_json, encoding="utf-8")
+    print(f"  wrote {COIN_SIGNALS_DATA_JSON} and {COIN_SIGNALS_DOCS_JSON} "
+          f"({COIN_SIGNALS_DATA_JSON.stat().st_size / 1024:.1f} KB each)")
 
     # ----- inject into template -----
     print("Injecting into template -> docs/index.html ...")

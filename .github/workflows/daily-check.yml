@@ -1,0 +1,63 @@
+name: Daily signal check
+
+on:
+  schedule:
+    # Daily at 00:45 UTC (after Binance's daily candle closes at 00:00 UTC).
+    - cron: "45 0 * * *"
+  workflow_dispatch:  # manual trigger button in the Actions tab
+
+permissions:
+  contents: write  # so the workflow can commit updated data files back
+
+concurrency:
+  group: daily-check
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -r scripts/requirements.txt
+
+      - name: Fetch latest Binance OHLCV
+        env:
+          PYTHONIOENCODING: utf-8
+        run: python scripts/fetch_data.py
+
+      - name: Rebuild dashboard data
+        env:
+          PYTHONIOENCODING: utf-8
+        run: python scripts/pipeline.py
+
+      - name: Send email alerts for new trade events
+        env:
+          PYTHONIOENCODING: utf-8
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+          EMAIL_SMTP_HOST: ${{ secrets.EMAIL_SMTP_HOST }}
+          EMAIL_SMTP_PORT: ${{ secrets.EMAIL_SMTP_PORT }}
+        run: python scripts/notify.py
+
+      - name: Commit refreshed artefacts
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/ docs/
+          if git diff --staged --quiet; then
+            echo "no changes to commit"
+          else
+            git commit -m "ci: daily refresh $(date -u +%Y-%m-%d) [skip ci]"
+            git push
+          fi
