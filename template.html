@@ -1405,8 +1405,10 @@ function renderEquity(d) {
           { step: "all", label: "MAX" }
         ],
         bgcolor: "#f7f8fa",
-        activecolor: "#1351b4",
-        font: { size: 11, color: "#4a5159" },
+        activecolor: "#cfe0f5",
+        bordercolor: "#cbd5e1",
+        borderwidth: 1,
+        font: { size: 11, color: "#1351b4" },
         x: 1, xanchor: "right", y: 1.08
       }
     })
@@ -1987,6 +1989,41 @@ async function renderExplorerChart(coin) {
     lastDate.toISOString().slice(0, 10)
   ];
 
+  // Plotly's y-autorange uses ALL plotted data, ignoring any explicit
+  // x-range. For a log-scale price chart with 8 years of history that
+  // means a 1Y view spans a y-range of 3 -> 100k, dwarfing the actual
+  // price action. Compute initial y-ranges for the visible window here,
+  // then re-do it on every plotly_relayout event below.
+  function computeYRanges(xStartStr, xEndStr) {
+    const t0 = new Date(xStartStr).getTime();
+    const t1 = new Date(xEndStr).getTime();
+    const prices = [], moms = [];
+    for (let i = 0; i < c.dates.length; i++) {
+      const ti = new Date(c.dates[i]).getTime();
+      if (ti < t0 || ti > t1) continue;
+      if (c.close[i] != null) prices.push(c.close[i]);
+      if (c.ma[i] != null) prices.push(c.ma[i]);
+      if (c.momentum[i] != null) moms.push(c.momentum[i]);
+    }
+    let priceRange = null, momRange = null;
+    if (prices.length) {
+      const pmin = Math.min.apply(null, prices);
+      const pmax = Math.max.apply(null, prices);
+      // Log axis takes range in log10 space. Pad 8% above/below.
+      const lo = Math.log10(pmin) - Math.log10(pmax / pmin) * 0.08;
+      const hi = Math.log10(pmax) + Math.log10(pmax / pmin) * 0.08;
+      priceRange = [lo, hi];
+    }
+    if (moms.length) {
+      const mmin = Math.min.apply(null, moms);
+      const mmax = Math.max.apply(null, moms);
+      const span = mmax - mmin || 1.0;
+      momRange = [mmin - span * 0.10, mmax + span * 0.10];
+    }
+    return { priceRange, momRange };
+  }
+  const initialYRanges = computeYRanges(defaultRange[0], defaultRange[1]);
+
   const layout = {
     font: { family: FONT_STACK, size: 11, color: "#4a5159" },
     margin: { l: 60, r: 20, t: 50, b: 40 },
@@ -2014,18 +2051,57 @@ async function renderExplorerChart(coin) {
                   { step: "all", label: "MAX" }
                 ],
                 bgcolor: "#f7f8fa",
-                activecolor: "#1351b4",
-                font: { size: 11, color: "#4a5159" },
+                activecolor: "#cfe0f5",
+                bordercolor: "#cbd5e1",
+                borderwidth: 1,
+                font: { size: 11, color: "#1351b4" },
                 x: 1, xanchor: "right", y: 1.14
               } },
     yaxis:  { domain: [0.35, 1], anchor: "x", gridcolor: "#eef0f3", type: "log",
-              title: { text: "price (USDT, log)", font: { size: 11 } }, tickfont: { size: 10 } },
+              title: { text: "price (USDT, log)", font: { size: 11 } }, tickfont: { size: 10 },
+              range: initialYRanges.priceRange, autorange: false },
     xaxis2: { domain: [0, 1], anchor: "y2", gridcolor: "#eef0f3", zeroline: false, tickfont: { size: 10 }, matches: "x" },
     yaxis2: { domain: [0, 0.28], anchor: "x2", gridcolor: "#eef0f3", zeroline: false,
-              title: { text: "momentum score", font: { size: 11 } }, tickfont: { size: 10 } },
+              title: { text: "momentum score", font: { size: 11 } }, tickfont: { size: 10 },
+              range: initialYRanges.momRange, autorange: false },
     shapes: allShapes,
   };
-  Plotly.newPlot("chart-explorer", traces, layout, PLOTLY_CFG);
+  const plotEl = document.getElementById("chart-explorer");
+  Plotly.newPlot(plotEl, traces, layout, PLOTLY_CFG);
+
+  // Plotly does NOT re-fit yaxis when xaxis range changes via the
+  // rangeselector or drag-zoom. We hook plotly_relayout, parse the
+  // new x-range, compute the price and momentum y-ranges from the
+  // visible window, and push them back via relayout.
+  plotEl.on("plotly_relayout", (ev) => {
+    let x0, x1;
+    if (ev["xaxis.range[0]"] != null && ev["xaxis.range[1]"] != null) {
+      x0 = ev["xaxis.range[0]"];
+      x1 = ev["xaxis.range[1]"];
+    } else if (ev["xaxis.range"] && ev["xaxis.range"].length === 2) {
+      x0 = ev["xaxis.range"][0];
+      x1 = ev["xaxis.range"][1];
+    } else if (ev["xaxis.autorange"] === true) {
+      // user clicked "Reset axes" / double-clicked; fit to all data
+      x0 = c.dates[0];
+      x1 = c.dates[c.dates.length - 1];
+    } else {
+      return;  // not an x-range change
+    }
+    const ranges = computeYRanges(x0, x1);
+    const update = {};
+    if (ranges.priceRange) {
+      update["yaxis.range"] = ranges.priceRange;
+      update["yaxis.autorange"] = false;
+    }
+    if (ranges.momRange) {
+      update["yaxis2.range"] = ranges.momRange;
+      update["yaxis2.autorange"] = false;
+    }
+    if (Object.keys(update).length) {
+      Plotly.relayout(plotEl, update);
+    }
+  });
 }
 
 function renderWalkthrough(d) {
