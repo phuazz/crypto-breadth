@@ -96,6 +96,32 @@ header.top .title-right .meta-built {
   margin-top: 4px;
 }
 header.top .title-right .meta-built .mono { color: var(--ink-soft); }
+header.top .title-right .stale-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 7px;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  border-radius: 9px;
+  background: rgba(179, 38, 30, 0.10);
+  color: var(--bad);
+  border: 1px solid rgba(179, 38, 30, 0.25);
+}
+header.top .title-right .fresh-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 7px;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  border-radius: 9px;
+  background: rgba(20, 132, 71, 0.10);
+  color: var(--good);
+  border: 1px solid rgba(20, 132, 71, 0.25);
+}
 header.top h1 {
   margin: 0 0 4px 0;
   font-size: 22px;
@@ -1053,6 +1079,7 @@ footer.bottom a:hover { text-decoration: underline; }
         <a class="meta-link" href="https://github.com/phuazz/crypto-breadth/blob/main/README.md">↗ README &amp; methodology</a>
         <div class="meta-built">Built <span class="mono" id="meta-generated">—</span></div>
         <div class="meta-built">Sample <span class="mono" id="meta-range">—</span></div>
+        <div class="meta-built" id="meta-provenance" title="Data provenance — commit hash, parquet vintage, and per-coin freshness check">Provenance <span class="mono" id="meta-provenance-text">—</span></div>
       </div>
     </div>
 
@@ -1169,7 +1196,7 @@ footer.bottom a:hover { text-decoration: underline; }
 
 <section id="signal">
   <h2><span class="sec-no">2</span>Why this allocation? — signal walkthrough</h2>
-  <p class="section-sub">The complete decision chain as of the most recent close, in order. Five filters reduce the 25-coin candidate pool to today's target allocation. Each step shows which coins passed, which were cut, and why. If the final target differs from the current holdings shown above, it is because the gate has moved since the last weekly rebalance — the trades would land at next Monday's close.</p>
+  <p class="section-sub">The complete decision chain as of the most recent close, in order. Five filters reduce the 25-coin candidate pool to today's target allocation. Each step shows which coins passed, which were cut, and why. If the final target differs from the current holdings shown above, it is because the gate has moved since the last weekly rebalance — the next scheduled rebalance signal is computed at Monday's close and trades at Tuesday's close (1-bar lag).</p>
 
   <div id="signal-step1" class="signal-step"></div>
   <div id="signal-step2" class="signal-step"></div>
@@ -1350,6 +1377,11 @@ footer.bottom a:hover { text-decoration: underline; }
     <p><strong>−43% CAGR in 2018</strong> because the rolling liquidity universe had only 3 coins investable that year (BTC, BNB, ETH) and the strict trend filter whipsawed on false bounces. Known structural wound — candidate v4 change.</p>
   </div>
 
+  <div class="caveat">
+    <h3>Out-of-sample is not pristine</h3>
+    <p>The v3.1 parameter choice (top-4, momentum lookbacks 30 / 90 / 180) was selected via an <strong>expand-window walk-forward</strong> spanning 2020 → 2026 (see <code>scripts/walk_forward_refit.py</code>). The IS-best config matched the production default in <strong>all seven annual re-fits</strong>, which is unusually clean — but the post-2021 dataset has been <em>looked at</em> as part of the validation. The headline OOS Sharpe and the 90 % bootstrap CI <strong>[0.82, 1.92]</strong> are therefore post-selection and assume regime stationarity. Truly untouched out-of-sample begins <strong>2027-01-01</strong>. Treat the post-2021 numbers as walk-forward-validated, not as a pristine held-out test.</p>
+  </div>
+
   <h2 style="margin-top:32px">What was rejected during research</h2>
   <p class="section-sub"><strong>Volatility-target overlay (re-tested under v3.1, 2026-06-01).</strong> IS Sharpe improved (1.32 vs 1.19 baseline) on the IS-best config (vol_target=40 %, lookback=15d). OOS Sharpe <em>degraded</em> (1.23 vs 1.45 baseline) — −0.22 OOS, the relationship between IS and OOS was <em>inverted</em> across the parameter grid. Honest IS-only protocol rejected the overlay. See <code>scripts/research/vol_target_search.py</code>.</p>
 </section>
@@ -1423,6 +1455,37 @@ function renderHero(d) {
   document.getElementById("meta-range").textContent =
     d.meta.sample_start + " → " + d.meta.sample_end;
   document.getElementById("meta-generated").textContent = d.meta.generated_at;
+
+  // Provenance line: git commit short SHA + n_symbols + freshness badge.
+  // If any coin's last close is older than the stale threshold, the badge
+  // turns red and lists the count + worst-case gap. Otherwise it shows a
+  // green "fresh" pill. Reader can hover for the per-symbol detail.
+  const prov = d.provenance;
+  const provEl = document.getElementById("meta-provenance-text");
+  const provWrap = document.getElementById("meta-provenance");
+  if (prov && provEl && provWrap) {
+    const shortSha = prov.git_sha || "no-git";
+    const nSym = prov.n_symbols != null ? prov.n_symbols : "?";
+    const nStale = prov.n_stale || 0;
+    let badge;
+    if (nStale > 0) {
+      const worst = (prov.stale_symbols || [])
+        .map(s => s.gap_days || 0)
+        .reduce((a, b) => Math.max(a, b), 0);
+      const exemplars = (prov.stale_symbols || [])
+        .slice(0, 5)
+        .map(s => `${s.symbol} (${s.last_date}, ${s.gap_days}d)`)
+        .join(", ");
+      badge = `<span class="stale-badge" title="Stale symbols: ${exemplars}">⚠ ${nStale} stale (worst ${worst}d)</span>`;
+    } else {
+      badge = `<span class="fresh-badge" title="All ${nSym} symbols current as of ${prov.today_utc}">✓ fresh</span>`;
+    }
+    provEl.innerHTML =
+      `commit ${shortSha} · ${nSym} symbols · data ${prov.sample_end}${badge}`;
+  } else if (provWrap) {
+    // Older payload without provenance — hide the row rather than show "—".
+    provWrap.style.display = "none";
+  }
 
   document.getElementById("hero-sharpe").textContent = num(s.full.sharpe);
   document.getElementById("hero-sharpe-sub").textContent =
@@ -2227,7 +2290,7 @@ function statusLine(latest, coin, c) {
         if (trig === "daily exit") {
           why = "close dropped below own 50d MA, triggering the daily " +
                 "trend-exit override (asymmetric — designed to cut losers " +
-                "before the next Monday rebal).";
+                "before the next weekly rebal).";
         } else if (trig === "rebal + exit") {
           why = "two things happened the same day: close dropped below 50d MA " +
                 "(daily exit fired) AND the coin also fell out of top-N at the " +

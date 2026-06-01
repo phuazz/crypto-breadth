@@ -24,9 +24,12 @@ across exchanges). For the rolling-30-day ADV liquidity gate, this is
 acceptable noise — the threshold is $25M which is well above any borderline
 exchange-specific variation for our majors universe.
 
-If a coin is missing on CryptoCompare or the API fails, it is skipped
-silently; the parquet just stays one day older for that coin. Pipeline
-will still run.
+If a coin is missing on CryptoCompare or the API fails, the script
+exits non-zero. The dashboard cannot silently publish on partial data —
+either every coin updates, or CI fails loud and we investigate. A
+sidecar `data/fetch_status.json` is always written first (whether or
+not the script then exits 1) so pipeline.py can still show which coins
+were updated and which lagged.
 """
 
 from __future__ import annotations
@@ -43,6 +46,7 @@ import requests
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 PARQUET_PATH = PROJECT_ROOT / "data" / "prices.parquet"
+STATUS_PATH = PROJECT_ROOT / "data" / "fetch_status.json"
 
 # Map our universe symbols to CryptoCompare's tickers.
 # Most match 1:1. LUNA was renamed to LUNC after the May 2022 crash;
@@ -115,15 +119,16 @@ def main() -> int:
     print()
 
     new_rows: list[pd.DataFrame] = []
-    skipped: list[str] = []
+    updated: list[dict] = []
+    skipped: list[dict] = []
     for our_sym, cc_sym in CC_TICKERS.items():
         last = last_dates.get(our_sym)
         if last is None:
-            skipped.append(f"{our_sym} (not in existing parquet)")
+            skipped.append({"symbol": our_sym, "reason": "not_in_parquet"})
             continue
         gap = (today - last).days
         if gap <= 0:
-            continue  # already current
+            continue  # already current — not counted as skip
         n_fetch = min(gap + 2, MAX_GAP_DAYS)
         print(f"  {our_sym} ({cc_sym}): last {last.date()}, gap {gap}d, "
               f"fetching {n_fetch}d ...", flush=True)
@@ -131,39 +136,76 @@ def main() -> int:
             df = fetch_cc_daily(cc_sym, n_days=n_fetch)
         except Exception as e:
             print(f"    error: {e!r}")
-            skipped.append(f"{our_sym} ({type(e).__name__})")
+            skipped.append({
+                "symbol": our_sym,
+                "reason": "fetch_error",
+                "detail": f"{type(e).__name__}: {e!s}"[:200],
+            })
             continue
         if df.empty:
             print(f"    no rows returned")
-            skipped.append(f"{our_sym} (no data)")
+            skipped.append({"symbol": our_sym, "reason": "no_data"})
             continue
         # Keep only strictly-new dates so we never overwrite Binance history
         df = df[df["date"] > last]
         if df.empty:
+            # CC had rows but none were strictly newer — treat as current.
             continue
         df = df.assign(symbol=our_sym)
         new_rows.append(df)
+        updated.append({
+            "symbol": our_sym,
+            "n_appended": int(len(df)),
+            "new_last_date": str(df["date"].max().date()),
+        })
         print(f"    +{len(df)} new rows up to {df['date'].max().date()}")
         time.sleep(RATE_LIMIT_SLEEP_S)
 
     if skipped:
-        print(f"\nSkipped: {', '.join(skipped)}")
+        print(f"\nSkipped: {[s['symbol'] + ':' + s['reason'] for s in skipped]}")
 
-    if not new_rows:
+    if new_rows:
+        new_data = pd.concat(new_rows, ignore_index=True)
+        combined = pd.concat([existing, new_data], ignore_index=True)
+        combined = (
+            combined.drop_duplicates(subset=["symbol", "date"], keep="first")
+                    .sort_values(["symbol", "date"])
+                    .reset_index(drop=True)
+        )
+        combined.to_parquet(PARQUET_PATH, index=False)
+        print(f"\nAppended {len(new_data)} rows -> {PARQUET_PATH}")
+        print(f"Parquet now: {len(combined):,} rows total, "
+              f"latest {combined['date'].max().date()}")
+    else:
         print("\nNo new data to append. Parquet unchanged.")
-        return 0
 
-    new_data = pd.concat(new_rows, ignore_index=True)
-    combined = pd.concat([existing, new_data], ignore_index=True)
-    combined = (
-        combined.drop_duplicates(subset=["symbol", "date"], keep="first")
-                .sort_values(["symbol", "date"])
-                .reset_index(drop=True)
-    )
-    combined.to_parquet(PARQUET_PATH, index=False)
-    print(f"\nAppended {len(new_data)} rows -> {PARQUET_PATH}")
-    print(f"Parquet now: {len(combined):,} rows total, "
-          f"latest {combined['date'].max().date()}")
+    # Always emit a status sidecar so pipeline.py / the dashboard can render
+    # exactly which coins succeeded and which lagged on the last run. Written
+    # BEFORE we decide to exit non-zero on partial failure, so a follow-up
+    # manual pipeline rebuild can still surface the breakage in the UI.
+    status = {
+        "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "today_utc": str(today.date()),
+        "updated": updated,
+        "skipped": skipped,
+        "n_total": len(CC_TICKERS),
+        "n_updated": len(updated),
+        "n_skipped": len(skipped),
+    }
+    STATUS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    STATUS_PATH.write_text(json.dumps(status, indent=2), encoding="utf-8")
+    print(f"Wrote status sidecar -> {STATUS_PATH}")
+
+    if skipped:
+        # Fail loud rather than silently publish a partial refresh. The audit
+        # finding was that the previous behaviour (skip + continue + publish)
+        # let stale data ride for days without any alert. Exit non-zero so
+        # the CI workflow halts before pipeline.py runs and the dashboard
+        # stays on yesterday's good build until we investigate.
+        print(f"\nFAILED: {len(skipped)} coin(s) could not be updated. "
+              f"See data/fetch_status.json. Refusing to publish a partial "
+              f"refresh — fix the upstream fetch or update CC_TICKERS.")
+        return 1
     return 0
 
 

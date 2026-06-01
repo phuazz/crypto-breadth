@@ -40,6 +40,16 @@ jobs:
           PYTHONIOENCODING: utf-8
         run: python scripts/fetch_daily_update.py
 
+      # Regression smoke test on the refreshed parquet. Asserts OOS Sharpe /
+      # CAGR / bar count fall in a wide sane band. A failure here blocks the
+      # rebuild + commit so the dashboard cannot silently publish numbers
+      # produced by a broken backtest (dep bump, code regression, or
+      # corrupted data).
+      - name: Backtest regression smoke test
+        env:
+          PYTHONIOENCODING: utf-8
+        run: python scripts/test_backtest.py
+
       - name: Rebuild dashboard data
         env:
           PYTHONIOENCODING: utf-8

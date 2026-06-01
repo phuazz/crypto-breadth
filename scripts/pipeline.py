@@ -21,6 +21,7 @@ Run order:
 from __future__ import annotations
 
 import json
+import subprocess
 import sys
 from dataclasses import replace
 from datetime import datetime, timezone
@@ -47,6 +48,80 @@ TEMPLATE_PATH = PROJECT_ROOT / "template.html"
 DOCS_DIR = PROJECT_ROOT / "docs"
 DATA_JSON_PATH = PROJECT_ROOT / "data" / "dashboard_data.json"
 WALK_FORWARD_JSON = PROJECT_ROOT / "data" / "walk_forward.json"
+FETCH_STATUS_JSON = PROJECT_ROOT / "data" / "fetch_status.json"
+
+# A coin's last-observed date older than (today - STALE_DAYS) earns a red
+# badge in the dashboard meta-strip. Crypto trades 24/7 so any gap > 1 day
+# is genuine staleness, not a weekend artefact.
+STALE_DAYS = 1
+
+
+def _build_provenance(close: pd.DataFrame) -> dict:
+    """Capture git SHA, build timestamp, and per-coin data vintage.
+
+    Surfaces enough metadata that a reader of the dashboard can answer
+    "what code on what data produced these numbers" without checking the
+    repo. The stale_symbols field is what drives the red freshness badge
+    in the meta-strip.
+    """
+    def _git(args: list[str]) -> str | None:
+        try:
+            out = subprocess.check_output(
+                ["git"] + args,
+                cwd=str(PROJECT_ROOT),
+                stderr=subprocess.DEVNULL,
+                timeout=5,
+            )
+            return out.decode("utf-8", errors="replace").strip()
+        except Exception:
+            return None
+
+    sha = _git(["rev-parse", "--short", "HEAD"])
+    describe = _git(["describe", "--always", "--dirty", "--tags"])
+
+    # Per-symbol last-observed close. close is the wide panel: index=date,
+    # columns=symbol. last_valid_index() respects NaN, so a coin that hasn't
+    # printed a close yet returns the correct most-recent date.
+    last_dates: dict[str, str] = {}
+    for sym in close.columns:
+        last_idx = close[sym].last_valid_index()
+        if last_idx is not None:
+            last_dates[sym] = str(pd.Timestamp(last_idx).date())
+
+    today = pd.Timestamp(datetime.now(timezone.utc).date())
+    stale_symbols: list[dict] = []
+    for sym, last_iso in last_dates.items():
+        gap = (today - pd.Timestamp(last_iso)).days
+        if gap > STALE_DAYS:
+            stale_symbols.append({"symbol": sym, "last_date": last_iso, "gap_days": int(gap)})
+
+    # If fetch_daily_update.py left a sidecar, fold its skip reasons in so
+    # the UI can show e.g. "XRP failed: fetch_error" rather than just gap.
+    last_fetch: dict | None = None
+    if FETCH_STATUS_JSON.exists():
+        try:
+            last_fetch = json.loads(FETCH_STATUS_JSON.read_text(encoding="utf-8"))
+        except Exception as e:
+            print(f"  warn: could not parse {FETCH_STATUS_JSON.name}: {e!r}")
+
+    prov: dict = {
+        "git_sha": sha,
+        "git_describe": describe,
+        "built_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "today_utc": str(today.date()),
+        "sample_start": str(close.index.min().date()),
+        "sample_end": str(close.index.max().date()),
+        "n_symbols": int(close.shape[1]),
+        "last_data_dates": last_dates,
+        "stale_symbols": stale_symbols,
+        "n_stale": len(stale_symbols),
+        "stale_threshold_days": STALE_DAYS,
+        "last_fetch": last_fetch,
+    }
+    print(f"  provenance: commit {sha or '?'}, data through "
+          f"{prov['sample_end']}, {prov['n_symbols']} symbols, "
+          f"{prov['n_stale']} stale (>{STALE_DAYS}d)")
+    return prov
 # Per-coin signals are lazy-loaded by the dashboard (too big to inline).
 # We write to both data/ (for dev when template.html is opened directly)
 # and docs/data/ (for production when GitHub Pages serves docs/).
@@ -881,6 +956,8 @@ def main() -> int:
     # Drawdown also daily.
     dd_daily = (eq / eq.cummax() - 1.0).dropna()
 
+    provenance = _build_provenance(close)
+
     payload = {
         "meta": {
             "version": "v3.1",
@@ -890,6 +967,7 @@ def main() -> int:
             "is_end": IN_SAMPLE_END,
             "oos_start": OUT_OF_SAMPLE_START,
         },
+        "provenance": provenance,
         "summary": {
             "full": {"cagr": _f(s_full["cagr"]), "sharpe": _f(s_full["sharpe"]),
                      "max_dd": _f(s_full["max_dd"]), "vol": _f(s_full["vol"])},

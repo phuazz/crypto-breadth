@@ -21,9 +21,13 @@ Pipeline (linear, no look-ahead):
        - Vs-benchmark summary table
 
 Hygiene:
-  - Signals lagged by 1 bar (computed Sun close, traded Mon open).
+  - Signals lagged by 1 bar. The weekly rebalance row is the Monday close
+    (rebalance_weekday=0) computed on data through Monday close; the
+    `shift(lag_days=1)` in run_backtest moves those target weights to
+    Tuesday's row, so the trade is realised at Tuesday's close. Daily
+    trend-exit overrides apply the same 1-bar lag: a close-below-MA at
+    end of day T forces a sale at the close of T+1. No same-bar execution.
   - Fees: 10 bps per side (Binance VIP 0 spot).
-  - No same-day execution.
   - Investability respected: a coin is excluded from breadth and ranking
     until its first observed Binance date.
 """

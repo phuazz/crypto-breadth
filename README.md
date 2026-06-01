@@ -69,7 +69,7 @@ implicit IS-tuning.
 
 ## What this strategy is not
 
-Three things are important to say upfront, because the headline numbers
+Four things are important to say upfront, because the headline numbers
 above will mislead anyone who skips them:
 
 1. **It is not a strict BTC-improvement.** It underperforms BTC in pure
@@ -82,6 +82,14 @@ above will mislead anyone who skips them:
 3. **The 2018 bear is brutal.** −43 % CAGR in 2018 because the rolling
    liquidity universe had only 3 coins investable that year (BTC, BNB, ETH)
    and the trend filter whipsawed on false bounces. This is a known wound.
+4. **Out-of-sample is not pristine.** The v3.1 parameter choice (top-4,
+   lookbacks 30 / 90 / 180) was selected via an expand-window walk-forward
+   spanning 2020 → 2026 in `scripts/walk_forward_refit.py`. The IS-best
+   config matched the production default in all seven annual re-fits, which
+   is unusually clean — but the post-2021 dataset has been *looked at* as
+   part of the validation. The headline OOS Sharpe and the 90 % bootstrap
+   CI [0.82, 1.92] are therefore **post-selection** and assume regime
+   stationarity. Truly untouched out-of-sample begins **2027-01-01**.
 
 ---
 
