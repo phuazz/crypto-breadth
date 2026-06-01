@@ -27,19 +27,25 @@ Run cadence: daily, after pipeline.py. See .github/workflows/daily-check.yml.
 
 from __future__ import annotations
 
+import io
 import json
 import os
 import smtplib
 import ssl
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+from email.mime.image import MIMEImage
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DATA_JSON = PROJECT_ROOT / "data" / "dashboard_data.json"
+COIN_SIGNALS_JSON = PROJECT_ROOT / "data" / "coin_signals.json"
 STATE_FILE = PROJECT_ROOT / "data" / "last_alert_state.json"
+
+# 1-year chart window for the inline email chart
+CHART_WINDOW_DAYS = 365
 
 DASHBOARD_URL = "https://phuazz.github.io/crypto-breadth/"
 REPO_URL = "https://github.com/phuazz/crypto-breadth"
@@ -213,6 +219,8 @@ def format_email(event: dict, dash: dict) -> tuple[str, str, str]:
   <div style="font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: #6b727a; font-weight: 700; margin-top: 14px;">Why this triggered</div>
   <p style="margin: 6px 0 16px; line-height: 1.55; font-size: 14px;">{why_html}</p>
 
+  <!-- {CHART_PLACEHOLDER} -->
+
   <div style="font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: #6b727a; font-weight: 700; margin-top: 14px;">Signal context at trade</div>
   <table style="width: 100%; border-collapse: collapse; margin: 6px 0 16px; font-size: 13px; font-variant-numeric: tabular-nums;">
     <tr><td style="padding: 4px 0; color: #4a5159;">Breadth</td><td style="padding: 4px 0; text-align: right; font-weight: 600;">{f'{sig_breadth*100:.0f}% above 50d MA' if sig_breadth is not None else '—'}</td></tr>
@@ -238,13 +246,145 @@ def format_email(event: dict, dash: dict) -> tuple[str, str, str]:
     return subject, plain_body, html
 
 
-def send_email(subject: str, plain: str, html: str, cfg: dict) -> None:
-    msg = MIMEMultipart("alternative")
+def render_coin_chart(coin_data: dict, event: dict) -> bytes | None:
+    """Render a 1-year price + 50d MA chart with the triggering event flagged.
+
+    Returns PNG bytes or None if the coin has no usable history.
+    """
+    try:
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+        import matplotlib.dates as mdates
+    except Exception as e:
+        print(f"  matplotlib import failed, sending email without chart: {e!r}")
+        return None
+
+    dates = [datetime.strptime(d, "%Y-%m-%d") for d in coin_data.get("dates", [])]
+    closes = coin_data.get("close", [])
+    mas = coin_data.get("ma", [])
+    weights = coin_data.get("weight", [])
+    coin_events = coin_data.get("events", [])
+    if not dates:
+        return None
+
+    event_dt = datetime.strptime(event["date"], "%Y-%m-%d")
+    start_dt = event_dt - timedelta(days=CHART_WINDOW_DAYS)
+    end_dt = event_dt + timedelta(days=21)
+
+    idxs = [i for i, d in enumerate(dates) if start_dt <= d <= end_dt]
+    if not idxs:
+        return None
+    dates_w = [dates[i] for i in idxs]
+    closes_w = [closes[i] for i in idxs]
+    mas_w = [mas[i] for i in idxs]
+    weights_w = [weights[i] for i in idxs]
+
+    fig, ax = plt.subplots(figsize=(7.0, 3.6), dpi=120)
+
+    # Held-period shading (blue tint, matches dashboard)
+    start = None
+    for i, (d, w) in enumerate(zip(dates_w, weights_w)):
+        if w and w > 0.001 and start is None:
+            start = d
+        if (w is None or w <= 0.001) and start is not None:
+            ax.axvspan(start, dates_w[i], color="#1351b4", alpha=0.10, zorder=0)
+            start = None
+    if start is not None:
+        ax.axvspan(start, dates_w[-1], color="#1351b4", alpha=0.10, zorder=0)
+
+    # Lines
+    valid_closes = [(d, c) for d, c in zip(dates_w, closes_w) if c is not None]
+    if valid_closes:
+        cx, cy = zip(*valid_closes)
+        ax.plot(cx, cy, color="#111418", linewidth=1.6, label="Close")
+    valid_mas = [(d, m) for d, m in zip(dates_w, mas_w) if m is not None]
+    if valid_mas:
+        mx, my = zip(*valid_mas)
+        ax.plot(mx, my, color="#1351b4", linestyle="--", linewidth=1.2, label="50d MA")
+
+    # Trade markers within the window
+    for e in coin_events:
+        ed = datetime.strptime(e["date"], "%Y-%m-%d")
+        if ed < start_dt or ed > end_dt:
+            continue
+        # snap to nearest weekly point's close
+        ji = min(range(len(dates_w)), key=lambda j: abs((dates_w[j] - ed).total_seconds()))
+        price = closes_w[ji]
+        if price is None:
+            continue
+        if e["action"] == "entry":
+            ax.scatter([ed], [price], marker="^", color="#1d7a3a",
+                       s=85, zorder=5, edgecolor="white", linewidth=1.2)
+        elif e["action"] == "exit":
+            ax.scatter([ed], [price], marker="v", color="#b3261e",
+                       s=85, zorder=5, edgecolor="white", linewidth=1.2)
+        else:
+            ax.scatter([ed], [price], marker="D", color="#1351b4",
+                       s=65, zorder=5, edgecolor="white", linewidth=1.2)
+
+    # Annotated triggering event
+    ji = min(range(len(dates_w)), key=lambda j: abs((dates_w[j] - event_dt).total_seconds()))
+    trig_price = closes_w[ji]
+    if trig_price is not None:
+        action = event["action"]
+        arrow_color = {"exit": "#b3261e", "entry": "#1d7a3a"}.get(action, "#1351b4")
+        verb = {"exit": "EXIT", "entry": "ENTRY", "resize": "RESIZE"}[action]
+        # Annotation positioned above for entries, below for exits
+        offset_y = -40 if action == "entry" else 40
+        ax.annotate(
+            f"{verb} on {event_dt.strftime('%b %d')}",
+            xy=(event_dt, trig_price),
+            xytext=(15, offset_y),
+            textcoords="offset points",
+            fontsize=10, color=arrow_color, fontweight="bold",
+            arrowprops=dict(arrowstyle="->", color=arrow_color, lw=1.4),
+            bbox=dict(boxstyle="round,pad=0.35", facecolor="white",
+                      edgecolor=arrow_color, alpha=0.96, linewidth=1.2),
+        )
+
+    ax.set_yscale("log")
+    ax.set_title(f"{event['coin']} — last 12 months",
+                 fontsize=13, fontweight="bold", color="#111418", loc="left")
+    ax.set_ylabel("Price (USDT, log)", fontsize=9, color="#4a5159")
+    ax.grid(True, alpha=0.35, color="#eef0f3", linewidth=0.6)
+    ax.legend(loc="upper left", fontsize=9, frameon=False)
+    ax.xaxis.set_major_locator(mdates.MonthLocator(interval=2))
+    ax.xaxis.set_major_formatter(mdates.DateFormatter("%b %Y"))
+    ax.tick_params(axis="both", colors="#4a5159", labelsize=8)
+    for sp in ax.spines.values():
+        sp.set_color("#e3e6ea")
+    fig.patch.set_facecolor("white")
+    fig.tight_layout()
+
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png", dpi=120, bbox_inches="tight", facecolor="white")
+    plt.close(fig)
+    buf.seek(0)
+    return buf.getvalue()
+
+
+def send_email(
+    subject: str, plain: str, html: str, cfg: dict,
+    chart_png: bytes | None = None, chart_cid: str | None = None,
+) -> None:
+    # multipart/related so the inline image can be referenced from HTML via cid:
+    msg = MIMEMultipart("related")
     msg["Subject"] = subject
     msg["From"] = cfg["from"]
     msg["To"] = cfg["to"]
-    msg.attach(MIMEText(plain, "plain", "utf-8"))
-    msg.attach(MIMEText(html, "html", "utf-8"))
+
+    # Inside that, multipart/alternative wraps text + html.
+    alt = MIMEMultipart("alternative")
+    alt.attach(MIMEText(plain, "plain", "utf-8"))
+    alt.attach(MIMEText(html, "html", "utf-8"))
+    msg.attach(alt)
+
+    if chart_png and chart_cid:
+        img = MIMEImage(chart_png, "png")
+        img.add_header("Content-ID", f"<{chart_cid}>")
+        img.add_header("Content-Disposition", "inline", filename=f"{chart_cid}.png")
+        msg.attach(img)
 
     context = ssl.create_default_context()
     with smtplib.SMTP(cfg["host"], cfg["port"]) as server:
@@ -312,15 +452,51 @@ def main() -> int:
         save_state(state)
         return 0
 
+    # Load per-coin signals so we can render the 1Y chart for each alert.
+    coin_signals_doc = {}
+    if COIN_SIGNALS_JSON.exists():
+        try:
+            coin_signals_doc = json.loads(
+                COIN_SIGNALS_JSON.read_text(encoding="utf-8")
+            ).get("coins", {})
+        except Exception as e:
+            print(f"  warn: could not load coin_signals.json: {e!r}")
+
     sent = 0
     failed = 0
     for t in candidates:
         subject, plain, html = format_email(t, dash)
+        chart_png = None
+        chart_cid = None
+        coin_data = coin_signals_doc.get(t["coin"])
+        if coin_data:
+            try:
+                chart_png = render_coin_chart(coin_data, t)
+            except Exception as e:
+                print(f"  chart render failed for {t['coin']}: {e!r}")
+        if chart_png:
+            # Unique CID per event so multiple emails in one run do not collide.
+            chart_cid = f"chart-{t['coin']}-{t['date']}".replace(":", "-").replace(" ", "")
+            img_tag = (
+                f'<div style="margin: 10px 0 18px;">'
+                f'<img src="cid:{chart_cid}" alt="{t["coin"]} signal chart" '
+                f'style="display:block; width:100%; max-width:640px; height:auto; '
+                f'border: 1px solid #e3e6ea; border-radius: 6px;" />'
+                f'<div style="font-size: 11px; color: #6b727a; margin-top: 6px; '
+                f'text-align: center;">1Y window. Blue band = held periods. '
+                f'Arrows = trade events. The annotated marker is the trade this '
+                f'email is about.</div></div>'
+            )
+            html = html.replace("<!-- {CHART_PLACEHOLDER} -->", img_tag)
+        else:
+            html = html.replace("<!-- {CHART_PLACEHOLDER} -->", "")
         try:
-            send_email(subject, plain, html, cfg)
+            send_email(subject, plain, html, cfg,
+                       chart_png=chart_png, chart_cid=chart_cid)
             seen.add(event_key(t))
             sent += 1
-            print(f"  sent: {subject}", flush=True)
+            print(f"  sent: {subject}{' (with chart)' if chart_png else ''}",
+                  flush=True)
         except Exception as e:
             failed += 1
             print(f"  FAILED: {subject}: {e!r}", flush=True)
