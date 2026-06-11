@@ -35,6 +35,7 @@ were updated and which lagged.
 from __future__ import annotations
 
 import json
+import os
 import sys
 import time
 from pathlib import Path
@@ -65,9 +66,14 @@ CC_TICKERS = {
 CC_ENDPOINT = "https://min-api.cryptocompare.com/data/v2/histoday"
 RATE_LIMIT_SLEEP_S = 0.4
 MAX_GAP_DAYS = 60  # ask for at most 60 days back per call (CC limit varies)
+# CryptoCompare moved the free histoday endpoint behind required auth in
+# June 2026 (silent change — every request returned 401). The key is
+# passed via the Authorization header rather than a query parameter so
+# it never lands in URL error logs on HTTP failures.
+API_KEY_ENV = "CRYPTOCOMPARE_API_KEY"
 
 
-def fetch_cc_daily(symbol: str, n_days: int) -> pd.DataFrame:
+def fetch_cc_daily(symbol: str, n_days: int, api_key: str) -> pd.DataFrame:
     """Fetch last `n_days` daily OHLCV rows from CryptoCompare.
 
     Quoted in USDT to match our Binance pair convention. CryptoCompare's
@@ -80,7 +86,8 @@ def fetch_cc_daily(symbol: str, n_days: int) -> pd.DataFrame:
         "limit": max(1, min(n_days - 1, 2000)),
         "aggregate": 1,
     }
-    r = requests.get(CC_ENDPOINT, params=params, timeout=30)
+    headers = {"Authorization": f"Apikey {api_key}"}
+    r = requests.get(CC_ENDPOINT, params=params, headers=headers, timeout=30)
     r.raise_for_status()
     j = r.json()
     if j.get("Response") != "Success":
@@ -108,6 +115,15 @@ def main() -> int:
         print("  Run scripts/fetch_data.py once locally to bootstrap, then commit.")
         return 1
 
+    api_key = os.environ.get(API_KEY_ENV) or ""
+    if not api_key:
+        print(f"  ERROR: ${API_KEY_ENV} is not set.")
+        print(f"  CryptoCompare's histoday endpoint requires authentication.")
+        print(f"  Generate a free key at https://www.cryptocompare.com/cryptopian/api-keys")
+        print(f"  with the 'Poll Live and Historical Data' permission, then add it as a")
+        print(f"  GitHub repo secret named {API_KEY_ENV}. README has the full instructions.")
+        return 1
+
     existing = pd.read_parquet(PARQUET_PATH)
     existing["date"] = pd.to_datetime(existing["date"])
     last_dates = existing.groupby("symbol")["date"].max()
@@ -133,7 +149,7 @@ def main() -> int:
         print(f"  {our_sym} ({cc_sym}): last {last.date()}, gap {gap}d, "
               f"fetching {n_fetch}d ...", flush=True)
         try:
-            df = fetch_cc_daily(cc_sym, n_days=n_fetch)
+            df = fetch_cc_daily(cc_sym, n_days=n_fetch, api_key=api_key)
         except Exception as e:
             print(f"    error: {e!r}")
             skipped.append({

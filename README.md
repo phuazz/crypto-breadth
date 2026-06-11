@@ -201,14 +201,24 @@ the relevant coin pre-selected.
 **Data source for the cron is CryptoCompare, not Binance.** Binance
 geo-blocks GitHub Actions' US-based runners (HTTP 451). The cron uses
 `scripts/fetch_daily_update.py`, which loads the existing parquet,
-fetches only the missing tail from CryptoCompare's free histoday
-endpoint (USDT-quoted), and appends. The full 8-year Binance history
-in the parquet is untouched. For local development from a non-blocked
+fetches only the missing tail from CryptoCompare's histoday endpoint
+(USDT-quoted), and appends. The full 8-year Binance history in the
+parquet is untouched. For local development from a non-blocked
 location, `scripts/fetch_data.py` is still the canonical full-history
 bootstrap path.
 
-To enable alerts, add five repository secrets in GitHub
-(Settings → Secrets and variables → Actions → New repository secret):
+### Required and optional GitHub repository secrets
+
+Add at GitHub → Settings → Secrets and variables → Actions → New
+repository secret.
+
+**Required — the daily cron will hard-fail without it.**
+
+| Secret | Value |
+|---|---|
+| `CRYPTOCOMPARE_API_KEY` | Free key from <https://www.cryptocompare.com/cryptopian/api-keys>. Generate with the **Poll Live and Historical Data** permission only (no streaming, no user data, no full read/write). CryptoCompare moved the free histoday endpoint behind required auth in June 2026 — without this key, every fetch returns 401. |
+
+**Optional — controls the email alert path. If unset, trade events are still marked as seen so the backlog does not pile up.**
 
 | Secret | Value |
 |---|---|
@@ -218,9 +228,9 @@ To enable alerts, add five repository secrets in GitHub
 | `EMAIL_SMTP_HOST` | `smtp.gmail.com` for Gmail (defaults to this if unset) |
 | `EMAIL_SMTP_PORT` | `587` (defaults to this if unset) |
 
-If any of the first three are missing, the workflow still runs cleanly —
-it marks events as "seen" so the alert backlog does not pile up, and you
-can flip on the secrets later without getting bombarded.
+If any of the email secrets are missing, the workflow still runs cleanly —
+trade events get marked as "seen" so the alert backlog does not pile up,
+and you can flip on the secrets later without getting bombarded.
 
 The state file `data/last_alert_state.json` tracks which events have
 already been alerted on, so the cron is fully idempotent.

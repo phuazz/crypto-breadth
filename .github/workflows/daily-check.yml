@@ -38,6 +38,7 @@ jobs:
       - name: Fetch incremental daily update (CryptoCompare)
         env:
           PYTHONIOENCODING: utf-8
+          CRYPTOCOMPARE_API_KEY: ${{ secrets.CRYPTOCOMPARE_API_KEY }}
         run: python scripts/fetch_daily_update.py
 
       # Regression smoke test on the refreshed parquet. Asserts OOS Sharpe /
