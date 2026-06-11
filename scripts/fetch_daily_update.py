@@ -64,7 +64,12 @@ CC_TICKERS = {
 }
 
 CC_ENDPOINT = "https://min-api.cryptocompare.com/data/v2/histoday"
-RATE_LIMIT_SLEEP_S = 0.4
+# CryptoCompare's free Apikey tier has a per-minute (and arguably per-second)
+# throttle that the old no-auth path did not. Empirically, 0.4s between calls
+# was fine before; with auth, the first ~6 coins succeed then the rest hit
+# "You are over your rate limit please upgrade your account!". 2.0s spreads
+# 25 sequential calls over ~50s — comfortably under any per-minute cap.
+RATE_LIMIT_SLEEP_S = 2.0
 MAX_GAP_DAYS = 60  # ask for at most 60 days back per call (CC limit varies)
 # CryptoCompare moved the free histoday endpoint behind required auth in
 # June 2026 (silent change — every request returned 401). The key is
