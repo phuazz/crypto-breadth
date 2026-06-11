@@ -64,18 +64,24 @@ CC_TICKERS = {
 }
 
 CC_ENDPOINT = "https://min-api.cryptocompare.com/data/v2/histoday"
-# CryptoCompare's free Apikey tier has a per-minute (and arguably per-second)
-# throttle that the old no-auth path did not. Empirically, 0.4s between calls
-# was fine before; with auth, the first ~6 coins succeed then the rest hit
-# "You are over your rate limit please upgrade your account!". 2.0s spreads
-# 25 sequential calls over ~50s — comfortably under any per-minute cap.
-RATE_LIMIT_SLEEP_S = 2.0
-MAX_GAP_DAYS = 60  # ask for at most 60 days back per call (CC limit varies)
+# CryptoCompare's free Apikey tier has a hard per-minute cap (~10-15 calls
+# before the bucket exhausts). Empirically: first 11 calls go through, then
+# every subsequent call returns "You are over your rate limit please upgrade
+# your account!" until the bucket refills 60s later. Strategy: small spacer
+# between calls + long pause + one retry when the cap fires.
+RATE_LIMIT_SLEEP_S = 1.0           # baseline spacing between successful calls
+RATE_LIMIT_RECOVERY_SLEEP_S = 65   # wait at least one per-minute bucket
+MAX_RATE_LIMIT_RETRIES = 2         # retries per coin after the first miss
+MAX_GAP_DAYS = 60                  # ask for at most 60 days back per call
 # CryptoCompare moved the free histoday endpoint behind required auth in
 # June 2026 (silent change — every request returned 401). The key is
 # passed via the Authorization header rather than a query parameter so
 # it never lands in URL error logs on HTTP failures.
 API_KEY_ENV = "CRYPTOCOMPARE_API_KEY"
+
+
+class RateLimitError(Exception):
+    """Raised when CryptoCompare reports its per-minute cap is exhausted."""
 
 
 def fetch_cc_daily(symbol: str, n_days: int, api_key: str) -> pd.DataFrame:
@@ -84,6 +90,9 @@ def fetch_cc_daily(symbol: str, n_days: int, api_key: str) -> pd.DataFrame:
     Quoted in USDT to match our Binance pair convention. CryptoCompare's
     `volumefrom` field is the base-asset volume (e.g. BTC), so it lines
     up with what CCXT returns for Binance.
+
+    Raises RateLimitError when CC reports the per-minute cap is exhausted,
+    so the caller can sleep + retry rather than swallowing it as "no data".
     """
     params = {
         "fsym": symbol,
@@ -97,6 +106,8 @@ def fetch_cc_daily(symbol: str, n_days: int, api_key: str) -> pd.DataFrame:
     j = r.json()
     if j.get("Response") != "Success":
         msg = j.get("Message", "unknown")
+        if "rate limit" in msg.lower() or "over your" in msg.lower():
+            raise RateLimitError(msg)
         print(f"    CC error for {symbol}: {msg}")
         return pd.DataFrame()
     rows = j.get("Data", {}).get("Data", [])
@@ -153,15 +164,42 @@ def main() -> int:
         n_fetch = min(gap + 2, MAX_GAP_DAYS)
         print(f"  {our_sym} ({cc_sym}): last {last.date()}, gap {gap}d, "
               f"fetching {n_fetch}d ...", flush=True)
-        try:
-            df = fetch_cc_daily(cc_sym, n_days=n_fetch, api_key=api_key)
-        except Exception as e:
-            print(f"    error: {e!r}")
-            skipped.append({
-                "symbol": our_sym,
-                "reason": "fetch_error",
-                "detail": f"{type(e).__name__}: {e!s}"[:200],
-            })
+        # Try up to MAX_RATE_LIMIT_RETRIES extra attempts when CC reports the
+        # per-minute cap. Each retry waits a full bucket (~65s) so the next
+        # call lands in a fresh window. Non-rate-limit errors are still
+        # treated as terminal for the coin.
+        df = None
+        for attempt in range(MAX_RATE_LIMIT_RETRIES + 1):
+            try:
+                df = fetch_cc_daily(cc_sym, n_days=n_fetch, api_key=api_key)
+                break
+            except RateLimitError as e:
+                if attempt < MAX_RATE_LIMIT_RETRIES:
+                    print(f"    rate limited ({e!s}); sleeping "
+                          f"{RATE_LIMIT_RECOVERY_SLEEP_S}s then retrying "
+                          f"(attempt {attempt + 2}/{MAX_RATE_LIMIT_RETRIES + 1})",
+                          flush=True)
+                    time.sleep(RATE_LIMIT_RECOVERY_SLEEP_S)
+                else:
+                    print(f"    rate limited after {MAX_RATE_LIMIT_RETRIES + 1} "
+                          f"attempts — giving up on {our_sym}")
+                    skipped.append({
+                        "symbol": our_sym,
+                        "reason": "rate_limit_exhausted",
+                        "detail": str(e)[:200],
+                    })
+                    df = None
+                    break
+            except Exception as e:
+                print(f"    error: {e!r}")
+                skipped.append({
+                    "symbol": our_sym,
+                    "reason": "fetch_error",
+                    "detail": f"{type(e).__name__}: {e!s}"[:200],
+                })
+                df = None
+                break
+        if df is None:
             continue
         if df.empty:
             print(f"    no rows returned")
