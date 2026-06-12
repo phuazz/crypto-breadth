@@ -1,131 +1,131 @@
 {
-  "generated_at": "2026-06-11T20:51:46Z",
-  "today_utc": "2026-06-11",
+  "generated_at": "2026-06-12T05:23:05Z",
+  "today_utc": "2026-06-12",
   "updated": [
     {
       "symbol": "BTC",
-      "n_appended": 2,
-      "new_last_date": "2026-06-11"
+      "n_appended": 1,
+      "new_last_date": "2026-06-12"
     },
     {
       "symbol": "ETH",
-      "n_appended": 2,
-      "new_last_date": "2026-06-11"
+      "n_appended": 1,
+      "new_last_date": "2026-06-12"
     },
     {
       "symbol": "BNB",
-      "n_appended": 2,
-      "new_last_date": "2026-06-11"
+      "n_appended": 1,
+      "new_last_date": "2026-06-12"
     },
     {
       "symbol": "SOL",
-      "n_appended": 2,
-      "new_last_date": "2026-06-11"
+      "n_appended": 1,
+      "new_last_date": "2026-06-12"
     },
     {
       "symbol": "XRP",
-      "n_appended": 2,
-      "new_last_date": "2026-06-11"
+      "n_appended": 1,
+      "new_last_date": "2026-06-12"
     },
     {
       "symbol": "ADA",
-      "n_appended": 2,
-      "new_last_date": "2026-06-11"
+      "n_appended": 1,
+      "new_last_date": "2026-06-12"
     },
     {
       "symbol": "DOGE",
-      "n_appended": 2,
-      "new_last_date": "2026-06-11"
+      "n_appended": 1,
+      "new_last_date": "2026-06-12"
     },
     {
       "symbol": "AVAX",
-      "n_appended": 2,
-      "new_last_date": "2026-06-11"
+      "n_appended": 1,
+      "new_last_date": "2026-06-12"
     },
     {
       "symbol": "DOT",
-      "n_appended": 2,
-      "new_last_date": "2026-06-11"
+      "n_appended": 1,
+      "new_last_date": "2026-06-12"
     },
     {
       "symbol": "LINK",
-      "n_appended": 2,
-      "new_last_date": "2026-06-11"
+      "n_appended": 1,
+      "new_last_date": "2026-06-12"
     },
     {
       "symbol": "LTC",
-      "n_appended": 2,
-      "new_last_date": "2026-06-11"
+      "n_appended": 1,
+      "new_last_date": "2026-06-12"
     },
     {
       "symbol": "BCH",
-      "n_appended": 2,
-      "new_last_date": "2026-06-11"
+      "n_appended": 1,
+      "new_last_date": "2026-06-12"
     },
     {
       "symbol": "TRX",
-      "n_appended": 2,
-      "new_last_date": "2026-06-11"
+      "n_appended": 1,
+      "new_last_date": "2026-06-12"
     },
     {
       "symbol": "EOS",
-      "n_appended": 2,
-      "new_last_date": "2026-06-11"
+      "n_appended": 1,
+      "new_last_date": "2026-06-12"
     },
     {
       "symbol": "ETC",
-      "n_appended": 2,
-      "new_last_date": "2026-06-11"
+      "n_appended": 1,
+      "new_last_date": "2026-06-12"
     },
     {
       "symbol": "XLM",
-      "n_appended": 2,
-      "new_last_date": "2026-06-11"
+      "n_appended": 1,
+      "new_last_date": "2026-06-12"
     },
     {
       "symbol": "ATOM",
-      "n_appended": 2,
-      "new_last_date": "2026-06-11"
+      "n_appended": 1,
+      "new_last_date": "2026-06-12"
     },
     {
       "symbol": "MATIC",
-      "n_appended": 2,
-      "new_last_date": "2026-06-11"
+      "n_appended": 1,
+      "new_last_date": "2026-06-12"
     },
     {
       "symbol": "UNI",
-      "n_appended": 2,
-      "new_last_date": "2026-06-11"
+      "n_appended": 1,
+      "new_last_date": "2026-06-12"
     },
     {
       "symbol": "AAVE",
-      "n_appended": 2,
-      "new_last_date": "2026-06-11"
+      "n_appended": 1,
+      "new_last_date": "2026-06-12"
     },
     {
       "symbol": "NEAR",
-      "n_appended": 2,
-      "new_last_date": "2026-06-11"
+      "n_appended": 1,
+      "new_last_date": "2026-06-12"
     },
     {
       "symbol": "ALGO",
-      "n_appended": 2,
-      "new_last_date": "2026-06-11"
+      "n_appended": 1,
+      "new_last_date": "2026-06-12"
     },
     {
       "symbol": "FIL",
-      "n_appended": 2,
-      "new_last_date": "2026-06-11"
+      "n_appended": 1,
+      "new_last_date": "2026-06-12"
     },
     {
       "symbol": "LUNA",
-      "n_appended": 2,
-      "new_last_date": "2026-06-11"
+      "n_appended": 1,
+      "new_last_date": "2026-06-12"
     },
     {
       "symbol": "FTT",
-      "n_appended": 2,
-      "new_last_date": "2026-06-11"
+      "n_appended": 1,
+      "new_last_date": "2026-06-12"
     }
   ],
   "skipped": [],
