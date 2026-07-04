@@ -1101,7 +1101,7 @@ footer.bottom a:hover { text-decoration: underline; }
     </div>
 
     <div class="review-banner">
-      <b>Under review.</b> The v3.1 headline figures below are undergoing a full robustness review — trial-count deflation (deflated Sharpe), full-config walk-forward, cost / execution stress, and a weak-patch autopsy. Treat every number here as <strong>provisional</strong> pending that verdict. The keep / modify / retire rule was pre-registered in <a href="https://github.com/phuazz/crypto-breadth/blob/main/RESEARCH_MEMO.md">RESEARCH_MEMO.md</a> before the review's data work began. Review opened 2026-07-04.
+      <b>Review complete — research only, do NOT deploy.</b> The pre-registered 2026-07-04 robustness review found the edge <strong>statistically real</strong> (deflated Sharpe ≥ 0.999 over ~50 reconstructed trials; annual re-fitting loses only +0.08 Sharpe OOS; survives 50 bps/side costs) but <strong>not deployable</strong>: MaxDD −44.8% fails a −30% ceiling, and no concentration variant or vol-target overlay clears it (crypto's single-day gap tail defeats long-only spot). The 25-coin universe is also hindsight-selected, so the headline is an <strong>optimistic upper bound</strong>. Verdict: <strong>MODIFY / do-not-deploy</strong>. Full records in <a href="https://github.com/phuazz/crypto-breadth/tree/main/results">results/</a> and <a href="https://github.com/phuazz/crypto-breadth/blob/main/RESEARCH_MEMO.md">RESEARCH_MEMO.md</a>.
     </div>
 
     <div class="hero-strip">
@@ -1377,6 +1377,11 @@ footer.bottom a:hover { text-decoration: underline; }
 
 <section id="caveats">
   <h2>What this strategy is not</h2>
+
+  <div class="caveat">
+    <h3>2026-07-04 robustness review: real edge, but do NOT deploy</h3>
+    <p>A pre-registered review (deflated Sharpe, full-config walk-forward, cost stress, weak-patch autopsy, concentration and gate ablations) reached a <strong>MODIFY / do-not-deploy</strong> verdict. The edge is statistically real — deflated Sharpe ≥ 0.999 even over ~50 reconstructed trials, annual re-fitting loses only <strong>+0.08 Sharpe</strong> OOS, and it survives 50 bps/side costs. But three things block deployment: (1) <strong>MaxDD −44.8 %</strong> (peak Dec-2024 → trough Jun-2026) fails a −30 % ceiling, and <em>no</em> concentration variant or vol-target overlay clears it — crypto's single-day gap tail (e.g. COVID −50 % in a day) defeats long-only spot; (2) the 25-coin universe is <strong>hindsight-selected</strong> — 40 of 40 era-liquid names that later died are absent — so the headline is an optimistic upper bound; (3) the track is dominated by a single year (<strong>2021 +1882 %</strong>), the most survivorship-inflated. The breadth gate is <em>validated</em> (load-bearing; beats a BTC-200d filter). Closing the drawdown to a deployable level would need perp/short hedging (parked) or small-sleeve sizing. Full records: <code>results/phase_b_review.md</code>, <code>results/phase_c3_concentration.md</code>, <code>results/survivorship_audit.md</code>.</p>
+  </div>
 
   <div class="caveat">
     <h3>Not a strict BTC-improvement</h3>

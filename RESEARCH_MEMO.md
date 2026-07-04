@@ -195,3 +195,34 @@ for N=10→200. 69 trials logged in `results/trial_registry.jsonl` (arms B + C2)
   0.40 vs breadth 0.29; btc50_200 best OOS 1.533). Does NOT change deployability — every
   gate still fails −30%. NEXT: Phase 6 (cosmetic-A: dashboard conformance + CI, surface
   only surviving conclusions, banner → do-not-deploy).
+
+- **2026-07-04 — Phase 6 (cosmetic-A: dashboard + CI).** Dashboard banner switched from
+  "under review" to "Review complete — research only, do NOT deploy" with the verdict
+  and reasons; a lead caveat card added surfacing the full review conclusion
+  (real-but-undeployable, hindsight universe, 2021 concentration, gate validated).
+  Lean CI added (`.github/workflows/tests.yml` — pytest on scripts/tests changes;
+  daily-check untouched). Full design.md token migration DEFERRED (documented in
+  `CLAUDE.md`) — disproportionate for a do-not-deploy result. Docs regenerated via
+  pipeline.py.
+
+## REVIEW CLOSE — 2026-07-04
+
+**Overall verdict: v3.1's edge is statistically real but NOT deployable at a −30%
+drawdown ceiling; the pre-registered modification path (C.3) does not rescue it.**
+
+- Phase B: DSR ≥0.999 (not a multiple-testing fluke), full-config WF loses only +0.08
+  OOS (params not overfit), cost-robust to 50bps, weak-patch = regime-not-decay
+  (on notice). MaxDD −44.8% fails the −30% ceiling; C.2 overlay best −33.3%.
+- Phase 2: universe is hindsight-selected (40/40 era-majors absent) → optimistic
+  survivorship bias; headline = upper bound. Splice clean, deaths honest.
+- Phase 4: C.3a concentration hurts (dispersion loss); C.3b majors TS-momentum
+  lower-Sharpe and still −50%+ (COVID-style 1-day gaps). No deployable candidate.
+- Phase 5: breadth gate validated (load-bearing; beats BTC-200d), tiering redundant.
+- **Structural finding:** nothing in the study clears −30% — a long-only spot crypto
+  book cannot, given single-day −50% gaps. Deployability needs the parked C.5
+  (perp/short hedge) or a small-sleeve sizing that makes a −45% book tolerable at the
+  portfolio level.
+- **Recommendation:** keep as a research-grade diversifier study; do not deploy v3.1;
+  if crypto exposure is wanted, pursue C.5 (perp hedging) as a separate project or size
+  a tiny long-only sleeve accepting the −45% book DD. 99 trials logged in
+  `results/trial_registry.jsonl`.

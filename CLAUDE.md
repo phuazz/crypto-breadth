@@ -48,8 +48,11 @@ review" banner for the duration. Scope + pre-registration:
 - **NEVER open `docs/index.html` (862KB, >500KB rule).** Edit `template.html` (119KB)
   via grep anchors; regenerate with `python scripts/pipeline.py`. Never hand-edit the
   built output.
-- Style per `C:\dev\design.md`. Dashboard conformance + banner removal are Phase 6
-  (cosmetic-A), and only for numbers that survive Phase B.
+- Style per `C:\dev\design.md`. NOTE (2026-07-04): this dashboard predates design.md
+  and uses its own token system (`--ink`, `--accent`, `--warn`), not design.md's
+  (`--t1`, `--a`, `--serif`). A full token migration was **deliberately deferred** in
+  Phase 6 — disproportionate/risky for a strategy the review marked do-not-deploy. If
+  the strategy is ever revived for deployment, do the design.md conformance pass then.
 - Local preview: `python scripts/pipeline.py` then `npx serve docs`; or `npx serve .`
   and open `template.html` (fetch fallback).
 

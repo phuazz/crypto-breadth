@@ -1,0 +1,29 @@
+name: Tests
+
+# Lean CI: run the engine unit suite whenever code changes. The daily data
+# refresh commits (data/ + docs/, tagged [skip ci]) do not trigger this.
+on:
+  push:
+    paths:
+      - "scripts/**"
+      - "tests/**"
+      - ".github/workflows/tests.yml"
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+      - name: Install dependencies
+        run: pip install -r scripts/requirements.txt
+      - name: Run engine unit tests
+        env:
+          PYTHONIOENCODING: utf-8
+        run: python -m pytest tests/ -q
