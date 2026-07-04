@@ -5,13 +5,26 @@ work). Reproducible via `scripts/research/phase_b_review.py` →
 `results/phase_b_review.json`; trials logged in `results/trial_registry.jsonl`.
 Substrate carries the Phase-2 survivorship caveat (headline = upper bound).
 
-## Verdict: **MODIFY** — edge is real, but v3.1 is **not deployable as-is**.
+## Verdict (amended 2026-07-04): **KEEP — deployable as a small crypto sleeve.**
 
-The underlying edge clears all three KEEP criteria, but the strategy fails the −30%
-MaxDD deployment ceiling, the C.2 overlay cannot rescue it, and the return profile is
-dangerously alt-dispersion-dependent and 2021-concentrated. The pre-registered **C.3
-work is the modification path** — especially **C.3b (majors time-series momentum)**,
-which needs no alt-dispersion and would not cede BTC-led markets.
+> **Amendment note.** The −30% MaxDD ceiling was REMOVED post-hoc at owner instruction —
+> it imported an equity-style drawdown frame onto crypto (passive crypto draws −81/−85%).
+> Logged transparently for pre-registration integrity (RESEARCH_MEMO PR-1 amendment).
+> **Under the ORIGINAL frozen −30% rule the verdict was MODIFY / do-not-deploy; the
+> analysis below is unchanged — only the deploy/no-deploy gate moved.**
+
+**Amended verdict: KEEP.** The edge clears all three KEEP criteria (DSR, WF,
+regime-not-decay) AND beats passive crypto (v3.1 Sharpe 1.35 / MaxDD −44.8% vs BTC 0.61 /
+−81%; 60/40 0.66 / −85%) — deployable as a **small** crypto diversifier sleeve. The
+caveats now govern SIZING, not the gate: the headline is survivorship-optimistic (upper
+bound), 2021-concentrated (+1882% one year), and on-notice from the 2025-26 weak patch;
+expect −45%+ drawdowns (shallower than passive crypto, deep in absolute terms). The
+pre-registered C.3 modification path still failed (Phase 4), so v3.1 itself is the
+candidate; the C.2 vol-target overlay is optional tail-trimming (−44.8% → ~−33%).
+
+**Original verdict (under the frozen −30% rule, for the record): MODIFY / do-not-deploy.**
+The strategy failed the −30% ceiling, no overlay/concentration/majors-engine cleared it,
+and the return profile is alt-dispersion-dependent and 2021-concentrated.
 
 ## Pre-registered criteria (PR-1)
 

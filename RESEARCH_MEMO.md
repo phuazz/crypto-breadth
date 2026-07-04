@@ -53,6 +53,18 @@ is why C.2 is a registered arm, not optional.
 **Numbers frozen 2026-07-04** (owner adopted the proposed defaults at spec freeze;
 correction point was the freeze): −30% MaxDD ceiling; 0.30 OOS Sharpe-loss tolerance.
 
+**AMENDMENT (2026-07-04, POST-HOC — logged after Phase B/4 results, owner instruction.**
+Recorded transparently, NOT a silent rewrite, to preserve pre-registration integrity.)
+The **−30% MaxDD ceiling is REMOVED.** Rationale: −30% imported an equity-style drawdown
+frame onto a crypto book; the correct benchmark is passive crypto (BTC-HODL MaxDD −81%,
+60/40 BTC-ETH −85%), against which v3.1's −44.8% is far shallower. Deployability is now
+judged by KEEP criteria (1)–(3) PLUS "beats passive crypto (BTC-HODL, 60/40)
+risk-adjusted, net of costs." Effect on the verdict: under the ORIGINAL frozen rule →
+MODIFY / do-not-deploy; under the AMENDED rule → **KEEP / deployable as a small crypto
+sleeve.** The 0.30 OOS Sharpe-loss tolerance is unchanged. The survivorship (optimistic
+upper bound), 2021-concentration and weak-patch (on-notice) caveats are UNCHANGED and now
+govern SIZING and expectations rather than the deploy/no-deploy gate.
+
 ### PR-2. C.2 vol-target overlay transfer (registered arm inside Phase B)
 
 Transfer the `risk-overlay-lab` round-1 winner (EWMA-class estimator, band ≥ 0.10,
@@ -207,8 +219,14 @@ for N=10→200. 69 trials logged in `results/trial_registry.jsonl` (arms B + C2)
 
 ## REVIEW CLOSE — 2026-07-04
 
-**Overall verdict: v3.1's edge is statistically real but NOT deployable at a −30%
-drawdown ceiling; the pre-registered modification path (C.3) does not rescue it.**
+**Overall verdict (as amended 2026-07-04): v3.1's edge is statistically real AND
+deployable as a small crypto diversifier sleeve — it beats passive crypto (BTC-HODL /
+60-40) decisively on risk-adjusted return.** The −30% MaxDD ceiling was removed post-hoc
+(an equity frame mis-applied to crypto; see the PR-1 amendment). The pre-registered C.3
+modification path still failed (concentration hurts; the majors engine is weaker), so
+v3.1 itself — not a modification — is the deployable candidate, at small size and with
+the standing caveats. **For the record: under the ORIGINAL frozen −30% rule the verdict
+was MODIFY / do-not-deploy.**
 
 - Phase B: DSR ≥0.999 (not a multiple-testing fluke), full-config WF loses only +0.08
   OOS (params not overfit), cost-robust to 50bps, weak-patch = regime-not-decay
@@ -222,7 +240,12 @@ drawdown ceiling; the pre-registered modification path (C.3) does not rescue it.
   book cannot, given single-day −50% gaps. Deployability needs the parked C.5
   (perp/short hedge) or a small-sleeve sizing that makes a −45% book tolerable at the
   portfolio level.
-- **Recommendation:** keep as a research-grade diversifier study; do not deploy v3.1;
-  if crypto exposure is wanted, pursue C.5 (perp hedging) as a separate project or size
-  a tiny long-only sleeve accepting the −45% book DD. 99 trials logged in
-  `results/trial_registry.jsonl`.
+- **Recommendation (amended 2026-07-04):** deploy v3.1 as a SMALL crypto diversifier
+  sleeve (it beats passive crypto risk-adjusted — Sharpe 1.35 vs BTC 0.61 / 60-40 0.66),
+  sized so the −45%+ book drawdown is tolerable at the portfolio level, and eyes-open to
+  the survivorship-optimistic headline, the 2021 concentration, and the on-notice 2025-26
+  weak patch. Optionally add the C.2 vol-target overlay to trim the tail (−44.8% → ~−33%
+  at a Sharpe cost). C.5 (perp/short hedge) remains the path to a materially lower
+  drawdown if a larger allocation is wanted. 99 trials logged in
+  `results/trial_registry.jsonl`. (Original recommendation under the −30% rule:
+  do-not-deploy — retained in the PR-1 amendment record.)
