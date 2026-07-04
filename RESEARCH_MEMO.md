@@ -217,11 +217,32 @@ for N=10→200. 69 trials logged in `results/trial_registry.jsonl` (arms B + C2)
   `CLAUDE.md`) — disproportionate for a do-not-deploy result. Docs regenerated via
   pipeline.py.
 
+- **2026-07-04 — Review follow-ups (four-lens quant-PM / dev / CIO / CPM critique).
+  Verdict TEMPERED → MARGINAL.** Full record: `results/phase_d_followups.md`;
+  harness `scripts/research/phase_d_followups.py`. (1) The edge is 2020–21-levered:
+  2021 = 62% of log-growth; ex-2020-21 Sharpe 0.62 ≈ BTC 0.61; recent 2023–26 Sharpe
+  0.73. (2) Honest year-block bootstrap CI = [0.37, 2.14] (the dashboard's [0.82, 1.92]
+  is overconfident); P(Sharpe > BTC 0.61) = only 88%. (3) NOT a diversifier — beta 1.04
+  to SPY, correlation RISES in stress (0.21 → 0.34), −0.7% in equities' worst-quartile
+  months; only a modest diversifier vs the owner's gated blend (corr 0.26) because both
+  de-risk together, not orthogonality. Downgrade: from "deploy small crypto sleeve" to
+  "MARGINAL — a tiny return-seeking satellite at most, not a hedge; competes with adding
+  crypto beta to the existing thematic sleeve." Governance: recommend re-anchoring the
+  −30% ceiling to a principled −50% crypto hard-stop rather than removing it (v3.1's
+  −44.8% passes either; owner to confirm). Flagged but NOT yet fixed: research harnesses
+  (incl. the DSR code) are untested; no harness-vs-production parity assertion; docx
+  build scripts uncommitted.
+
 ## REVIEW CLOSE — 2026-07-04
 
 **Overall verdict (as amended 2026-07-04): v3.1's edge is statistically real AND
 deployable as a small crypto diversifier sleeve — it beats passive crypto (BTC-HODL /
-60-40) decisively on risk-adjusted return.** The −30% MaxDD ceiling was removed post-hoc
+60-40) decisively on risk-adjusted return.** **[TEMPERED same day by the four-lens
+follow-ups → MARGINAL:** the "beats passive crypto" edge is 2020–21-levered (net of
+those two years the Sharpe ≈ BTC's 0.61); the honest year-block CI is [0.37, 2.14] with
+only an 88% chance of beating BTC; and it is NOT a diversifier — beta ≈ 1 to equities,
+correlation rises in stress. A tiny return-seeking satellite at most, not a hedge. See
+`results/phase_d_followups.md`.** The −30% MaxDD ceiling was removed post-hoc
 (an equity frame mis-applied to crypto; see the PR-1 amendment). The pre-registered C.3
 modification path still failed (concentration hurts; the majors engine is weaker), so
 v3.1 itself — not a modification — is the deployable candidate, at small size and with

@@ -1,0 +1,35 @@
+{
+  "year_block_bootstrap": {
+    "method": "year-block bootstrap (resample whole calendar years, n=5000)",
+    "n_year_blocks": 9,
+    "sharpe_p05": 0.3699877563268659,
+    "sharpe_p50": 1.3066043957616986,
+    "sharpe_p95": 2.14010501540884,
+    "p_sharpe_gt_0": 0.991,
+    "p_sharpe_gt_btc_0p61": 0.8802,
+    "p_sharpe_gt_1": 0.699
+  },
+  "diversification": [
+    {
+      "label": "vs SPY (equities)",
+      "n_months": 102,
+      "corr_full": 0.21263560180492613,
+      "corr_2022": 0.268136952371494,
+      "corr_2025on": 0.33667665661344126,
+      "beta_to_other": 1.0361232248870136,
+      "cb_mean_in_others_worst_quartile": -0.006891993941250887,
+      "cb_mean_overall": 0.06605856286497006
+    },
+    {
+      "label": "vs deployed breadth-thrust blend",
+      "n_months": 91,
+      "corr_full": 0.25727540570534296,
+      "corr_2022": 0.012704746777535388,
+      "corr_2025on": 0.2584266085085886,
+      "beta_to_other": 1.637301461709109,
+      "cb_mean_in_others_worst_quartile": 0.00215158350659719,
+      "cb_mean_overall": 0.07715700703460437
+    }
+  ],
+  "note_dashboard_ci": "dashboard shows [0.82, 1.92] (short-block bootstrap)"
+}
