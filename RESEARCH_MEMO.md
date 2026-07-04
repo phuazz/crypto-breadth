@@ -120,9 +120,10 @@ Two SEPARATE deflation pools (do not cross-contaminate):
 - **v3.1 pool** — arm B + C.2 + C.3a + C.4 modifications — feeds v3.1's DSR.
 - **C.3b pool** — the new majors engine — feeds C.3b's own DSR.
 
-The true v3.1 trial count for the DSR haircut is reconstructed in Phase B from git
-history + the `scripts/research/` archive; that reconstruction is recorded here when
-done.
+The true v3.1 trial count for the DSR haircut was reconstructed in Phase B (2026-07-04)
+≈ **50** distinct configs (sensitivity OAT ~33 + vol-target grid 12 + walk-forward grid
+6 + structural ladder ~5, net of overlaps). The DSR is robust to this estimate — ≥0.999
+for N=10→200. 69 trials logged in `results/trial_registry.jsonl` (arms B + C2).
 
 ---
 
@@ -152,3 +153,19 @@ done.
   closes. (4) Interior NaN gaps (MATIC 569 = Sept-2024 POL rename, EOS 311, FTT 310,
   LUNA 17) are handled by the investability mask (NaN → excluded). README survivorship
   claims corrected in two places to match. NEXT: Phase 3 (B robustness review).
+
+- **2026-07-04 — Phase 3 (B robustness review). VERDICT: MODIFY** (edge real, not
+  deployable as-is). Full record: `results/phase_b_review.md`. PR-1 criteria: (1) DSR
+  PASS decisively (0.999 at N=50, ≥0.999 for N=10→200 — the edge is not a
+  multiple-testing artefact); (2) full-config walk-forward PASS (60-config annual re-fit
+  loses only +0.080 OOS vs frozen; (30,90,180)+top-4 IS-best in all 7 anchors —
+  params not overfit); (3) weak-patch = regime not decay, ON NOTICE (score has NOT
+  inverted — pick-vs-field spread +0.15% still positive; new ATH Dec-2024; gate
+  de-risking to 0.40 gross — but the edge collapsed ~85% in a BTC-dominated 2025–26).
+  Cost-robust (Sharpe 1.21 at 50bps). BUT the −30% MaxDD deploy ceiling FAILS (−44.8%,
+  peak Dec-2024 → trough Jun-2026), NO grid config and NO vol-target overlay clears it
+  (C.2 best −33.3% at Sharpe 1.04 — crypto tail too fat, kurt 20.5), and the track is
+  grotesquely 2021-concentrated (+1882% single year, the most survivorship-inflated).
+  → MODIFY. The named fixable flaw = structural alt-dispersion dependence; the
+  pre-registered C.3 work is the fix path, C.3b (majors TS-momentum) the lead. Do NOT
+  deploy v3.1 as-is. NEXT: Phase 4 (C.3 concentration).
