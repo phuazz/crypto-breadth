@@ -19,3 +19,6 @@ desktop.ini
 *.swp
 *.swo
 *~
+
+# Office lock/owner files
+~$*
