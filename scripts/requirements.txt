@@ -9,3 +9,7 @@ numpy==2.4.6
 pyarrow==24.0.0
 matplotlib==3.10.9
 requests==2.34.2
+
+# --- test suite (tests/, pytest) — dev/CI dependency, not used by the pipeline
+# or the parquet build. Wired into CI in the Phase-6 cosmetic-A uplift.
+pytest==9.0.3

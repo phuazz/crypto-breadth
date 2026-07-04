@@ -47,6 +47,23 @@ body {
 
 .container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
 
+/* ===== under-review banner (added in the Phase-1 uplift; removed in Phase 6
+   for numbers that survive the robustness review) ===== */
+.review-banner {
+  margin: 20px 0 2px;
+  padding: 13px 18px;
+  background: var(--warn-soft);
+  border: 1px solid rgba(183, 110, 0, 0.28);
+  border-left: 4px solid var(--warn);
+  border-radius: 9px;
+  font-size: 13px;
+  color: var(--ink-soft);
+  line-height: 1.55;
+}
+.review-banner b { color: var(--warn); text-transform: uppercase; letter-spacing: 0.04em; }
+.review-banner a { color: var(--accent); text-decoration: none; }
+.review-banner a:hover { text-decoration: underline; }
+
 /* ===== top header ===== */
 header.top {
   padding: 28px 0 20px 0;
@@ -1081,6 +1098,10 @@ footer.bottom a:hover { text-decoration: underline; }
         <div class="meta-built">Sample <span class="mono" id="meta-range">—</span></div>
         <div class="meta-built" id="meta-provenance" title="Data provenance — commit hash, parquet vintage, and per-coin freshness check">Provenance <span class="mono" id="meta-provenance-text">—</span></div>
       </div>
+    </div>
+
+    <div class="review-banner">
+      <b>Under review.</b> The v3.1 headline figures below are undergoing a full robustness review — trial-count deflation (deflated Sharpe), full-config walk-forward, cost / execution stress, and a weak-patch autopsy. Treat every number here as <strong>provisional</strong> pending that verdict. The keep / modify / retire rule was pre-registered in <a href="https://github.com/phuazz/crypto-breadth/blob/main/RESEARCH_MEMO.md">RESEARCH_MEMO.md</a> before the review's data work began. Review opened 2026-07-04.
     </div>
 
     <div class="hero-strip">
