@@ -169,3 +169,18 @@ for N=10→200. 69 trials logged in `results/trial_registry.jsonl` (arms B + C2)
   → MODIFY. The named fixable flaw = structural alt-dispersion dependence; the
   pre-registered C.3 work is the fix path, C.3b (majors TS-momentum) the lead. Do NOT
   deploy v3.1 as-is. NEXT: Phase 4 (C.3 concentration).
+
+- **2026-07-04 — Phase 4 (C.3 concentration). VERDICT: C.3 FAILS — no deployable
+  candidate; the MODIFY path does not rescue v3.1.** Full record:
+  `results/phase_c3_concentration.md`; 25 trials appended to the registry (arms
+  C3a/C3b). C.3a (universe-shrink) monotonically HURTS — Sharpe 1.351→0.841 as the pool
+  shrinks 25→4, MaxDD worsening (the Q5 dispersion warning confirmed: a cross-sectional
+  ranker needs a wide pool). C.3b (new majors TS-momentum engine, not buggy — 45% cash,
+  68% cash through the 2022 bear) is lower-Sharpe than v3.1 on every variant (best 0.87)
+  and NONE clears −30% (best −50.6%); deep DDs are genuine single-day gap risk (worst
+  −74% = COVID 2020-03-12, a 1-day −50% move a weekly filter cannot dodge). DEPLOYABLE
+  set EMPTY. STRUCTURAL FINDING: across the whole study nothing clears −30% (v3.1 −44.8%,
+  concentrated −45→−63%, majors trend −50→−74%, best overlay −33.3%) — a −30% ceiling is
+  incompatible with a long-only SPOT crypto book; closing it needs the parked C.5
+  (perp/short hedge) or a higher DD tolerance at small sleeve sizing. NEXT: Phase 5 (C.4
+  gate ablation).
