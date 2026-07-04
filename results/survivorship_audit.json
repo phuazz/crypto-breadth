@@ -1,0 +1,138 @@
+{
+  "panel": {
+    "date_start": "2018-01-01",
+    "date_end": "2026-07-03",
+    "n_symbols": 25,
+    "symbols": [
+      "AAVE",
+      "ADA",
+      "ALGO",
+      "ATOM",
+      "AVAX",
+      "BCH",
+      "BNB",
+      "BTC",
+      "DOGE",
+      "DOT",
+      "EOS",
+      "ETC",
+      "ETH",
+      "FIL",
+      "FTT",
+      "LINK",
+      "LTC",
+      "LUNA",
+      "MATIC",
+      "NEAR",
+      "SOL",
+      "TRX",
+      "UNI",
+      "XLM",
+      "XRP"
+    ]
+  },
+  "true_delistings_in_set": [],
+  "selection_gap": {
+    "known_era_majors_checked": 40,
+    "absent_from_set": [
+      "VET",
+      "THETA",
+      "XTZ",
+      "XMR",
+      "DASH",
+      "ZEC",
+      "NEO",
+      "IOTA",
+      "WAVES",
+      "ONT",
+      "ZIL",
+      "QTUM",
+      "OMG",
+      "ICX",
+      "BAT",
+      "ENJ",
+      "CHZ",
+      "SAND",
+      "MANA",
+      "AXS",
+      "GALA",
+      "SUSHI",
+      "YFI",
+      "CRV",
+      "COMP",
+      "SNX",
+      "1INCH",
+      "GRT",
+      "HBAR",
+      "EGLD",
+      "KSM",
+      "RUNE",
+      "CAKE",
+      "LUNC",
+      "UST",
+      "CEL",
+      "SRM",
+      "DENT",
+      "ANKR",
+      "IOST"
+    ],
+    "n_absent": 40
+  },
+  "death_capture": {
+    "LUNA": {
+      "worst_1d_return": -0.9997,
+      "pre_crash_peak_30d": 96.93,
+      "residual_close_latest": 6.224e-05,
+      "collapse_captured": true
+    },
+    "FTT": {
+      "worst_1d_return": -0.7509,
+      "pre_crash_peak_30d": 26.09,
+      "residual_close_latest": 0.2308,
+      "collapse_captured": true
+    }
+  },
+  "splice_scan": {
+    "multi_coin_jump_days": [
+      {
+        "date": "2021-05-19",
+        "n_coins": 24,
+        "known_event": "May-2021 crypto crash (China mining ban)"
+      },
+      {
+        "date": "2020-03-12",
+        "n_coins": 16,
+        "known_event": "COVID crash"
+      },
+      {
+        "date": "2021-05-24",
+        "n_coins": 14,
+        "known_event": "May-2021 aftershock"
+      },
+      {
+        "date": "2025-10-10",
+        "n_coins": 7,
+        "known_event": "Oct-2025 sell-off"
+      }
+    ],
+    "unexplained_clusters": []
+  },
+  "interior_nan_gaps": {
+    "MATIC": 569,
+    "EOS": 311,
+    "FTT": 310,
+    "LUNA": 17
+  },
+  "effective_universe_median_by_year": {
+    "2018": 10,
+    "2019": 14,
+    "2020": 17,
+    "2021": 25,
+    "2022": 25,
+    "2023": 24,
+    "2024": 25,
+    "2025": 23,
+    "2026": 24
+  },
+  "nonpositive_close_count": 0
+}

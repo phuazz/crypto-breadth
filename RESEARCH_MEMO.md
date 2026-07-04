@@ -132,5 +132,23 @@ done.
   KICKOFF). Added this memo, `DATA_INTEGRITY_POLICY.md`, project `CLAUDE.md`, the
   pytest engine test suite (`tests/`), the append-only trial register
   (`results/trial_registry.jsonl`), and the "under review" dashboard banner. No engine
-  semantics changed. Pre-registration PR-1…PR-4 frozen above. Build of Phases 2+ not
-  started — awaiting go-ahead per phase.
+  semantics changed. Pre-registration PR-1…PR-4 frozen above. Owner then authorised
+  all remaining phases (2→6) to run in one pass.
+
+- **2026-07-04 — Phase 2 (survivorship & data audit).** Substrate is USABLE →
+  proceeded (did not pause). Key findings (`results/survivorship_audit.md`,
+  reproducible via `scripts/research/survivorship_audit.py`): (1) the 25-coin
+  universe is a fixed, hindsight-selected set — no coin ever delists (`ends_early =
+  []`); 40 of 40 well-known 2019–2021 Binance USDT era-majors are ABSENT, so the pool
+  is < 40% of the true era-liquid set, gap concentrated in the alt-heavy years (2019,
+  2021). Survivorship-selection bias direction = OPTIMISTIC; magnitude un-point-
+  estimable without the full Binance listing (no-new-vendor) → recorded as a
+  direction + rough magnitude, carried into PR-1 as an upper-bound caveat on every
+  headline metric. (2) The two included deaths are honest, not fabricated (LUNA worst
+  1-day −100% → residual ~$0.00006; FTT −75% → residual ~$0.23; both captured), and
+  the $25M ADV gate keeps residual near-zero prices out of the book. (3) Splice CLEAN
+  — the only ≥6-coin >25% days are real events (COVID, May-2021 crash, Oct-2025); BTC
+  crosses the Binance→CryptoCompare handover with no level jump; no non-positive
+  closes. (4) Interior NaN gaps (MATIC 569 = Sept-2024 POL rename, EOS 311, FTT 310,
+  LUNA 17) are handled by the investability mask (NaN → excluded). README survivorship
+  claims corrected in two places to match. NEXT: Phase 3 (B robustness review).

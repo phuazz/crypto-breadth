@@ -24,8 +24,14 @@ re-fits — see `scripts/walk_forward_refit.py`.
 
 - **Universe:** 25 USDT pairs on Binance, with a **rolling liquidity gate** —
   a coin is investable on date T only if it has ≥ 90 days of history and its
-  trailing 30-day average daily $ volume is ≥ $25 M. This removes the
-  survivorship bias of any hand-picked fixed list.
+  trailing 30-day average daily $ volume is ≥ $25 M. **Caveat (2026-07-04
+  audit):** this gate removes survivorship bias *within* the 25 names, but the
+  25 are themselves a hindsight-selected set. A truly point-in-time Binance USDT
+  universe would include ~40+ coins that were liquid in 2019–2021 and later died
+  or faded (all 40 era-majors checked are absent; the pool is < 40% of the true
+  era-liquid set). The headline figures therefore carry an **optimistic
+  survivorship-selection bias**, concentrated in the alt-heavy years, and should
+  be read as an upper bound. See `results/survivorship_audit.md`.
 - **Breadth gate:** % of investable universe trading above its 50 d MA, mapped
   to tiered gross exposure (0 / 30 / 60 / 100 %). The tier graduation
   contributes almost nothing — a binary (0, 0, 0, 1) gate gives essentially
@@ -164,10 +170,13 @@ to avoid `cp1252` console errors.
 - **No look-ahead:** all signals are observed at close T and traded at
   close T + 1. The momentum, breadth, trend-entry and trend-exit signals
   all respect this lag.
-- **No survivorship in the universe:** rolling liquidity gate uses only
-  ex-ante information (history length, trailing ADV). Failed coins
-  (LUNA, FTT) are in the candidate pool and contribute to the backtest
-  through their decline.
+- **Survivorship — partial, and under caveat:** the rolling liquidity gate
+  uses only ex-ante information (history length, trailing ADV), so it is
+  survivorship-free *within* the 25-name set, and the two most violent deaths
+  (LUNA −100 %, FTT −75 % worst single day, honestly captured) are in the
+  candidate pool. But the 25 names are a hindsight-selected fixed list; the long
+  tail of era-liquid coins that later died is absent (2026-07-04 audit). Read the
+  headline as an upper bound — see `results/survivorship_audit.md`.
 - **No same-bar execution:** rebalance trades realised at the close of the
   rebalance day, on the previous bar's signal.
 - **Honest fees:** 10 bps/side on every weight change, including the daily
