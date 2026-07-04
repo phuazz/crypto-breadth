@@ -155,23 +155,44 @@ def run_v3(close: pd.DataFrame, volume: pd.DataFrame, p: Params) -> tuple[dict, 
 # ----- analysis helpers -----------------------------------------------------
 
 def bootstrap_sharpe(daily_ret: pd.Series, *, n_boot: int = 2000,
-                     block_size: int = 21, seed: int = 42) -> dict:
-    daily = daily_ret.dropna().values
-    n = len(daily)
-    n_blocks = n // block_size
+                     block: str = "year", block_size: int = 21, seed: int = 42) -> dict:
+    """Bootstrap CI on the annualised Sharpe.
+
+    block="year" (default) resamples whole CALENDAR YEARS with replacement. This
+    respects the one-year dominance (2021 is 62% of log-growth) and the within-year
+    serial structure, so the CI is HONEST. A fixed short block (block="fixed",
+    block_size days) understates uncertainty when one year drives the result — it
+    produced the overconfident [0.82, 1.92] — and is kept only for comparison. See
+    results/phase_d_followups.md.
+    """
+    r = daily_ret.dropna()
     rng = np.random.default_rng(seed=seed)
     sharpes = np.empty(n_boot)
-    for i in range(n_boot):
-        starts = rng.integers(0, n - block_size, size=n_blocks)
-        sample = np.concatenate([daily[s:s + block_size] for s in starts])
-        mu = sample.mean() * 365
-        sig = sample.std() * np.sqrt(365)
-        sharpes[i] = mu / sig if sig > 0 else 0.0
+    if block == "year":
+        by_year = [r[r.index.year == y].values for y in sorted(set(r.index.year))]
+        k = len(by_year)
+        for i in range(n_boot):
+            pick = rng.integers(0, k, size=k)
+            sample = np.concatenate([by_year[j] for j in pick])
+            mu = sample.mean() * 365
+            sig = sample.std() * np.sqrt(365)
+            sharpes[i] = mu / sig if sig > 0 else 0.0
+    else:
+        daily = r.values
+        n = len(daily)
+        n_blocks = n // block_size
+        for i in range(n_boot):
+            starts = rng.integers(0, n - block_size, size=n_blocks)
+            sample = np.concatenate([daily[s:s + block_size] for s in starts])
+            mu = sample.mean() * 365
+            sig = sample.std() * np.sqrt(365)
+            sharpes[i] = mu / sig if sig > 0 else 0.0
 
     # Histogram for plotting
     counts, edges = np.histogram(sharpes, bins=50)
     bins_mid = (edges[:-1] + edges[1:]) / 2.0
     return {
+        "method": f"{block}-block bootstrap",
         "p05": float(np.quantile(sharpes, 0.05)),
         "p25": float(np.quantile(sharpes, 0.25)),
         "p50": float(np.quantile(sharpes, 0.50)),
@@ -180,6 +201,7 @@ def bootstrap_sharpe(daily_ret: pd.Series, *, n_boot: int = 2000,
         "mean": float(sharpes.mean()),
         "p_positive": float((sharpes > 0).mean()),
         "p_gt_0p8": float((sharpes > 0.8).mean()),
+        "p_gt_btc": float((sharpes > 0.61).mean()),
         "counts": counts.tolist(),
         "bins_mid": bins_mid.tolist(),
     }

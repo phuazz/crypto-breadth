@@ -65,6 +65,16 @@ sleeve.** The 0.30 OOS Sharpe-loss tolerance is unchanged. The survivorship (opt
 upper bound), 2021-concentration and weak-patch (on-notice) caveats are UNCHANGED and now
 govern SIZING and expectations rather than the deploy/no-deploy gate.
 
+**AMENDMENT 2 (2026-07-04, following the four-lens critique — owner: "go ahead").** The
+outright *removal* above was outcome-motivated (the pre-registered rule had just
+produced do-not-deploy). It is SUPERSEDED by a PRINCIPLED re-anchor: the deployment
+ceiling is set to a **−50% crypto hard-stop** — shallower than passive crypto (BTC −81%,
+60/40 −85%), chosen on principle rather than to clear this strategy. v3.1's −44.8%
+passes, so the deploy decision is unchanged, but the governance is clean. Separately the
+verdict is downgraded to **MARGINAL** (Phase-D follow-up: bull-levered edge, honest
+year-block CI [0.37, 2.14], not a diversifier) — a tiny return-seeking satellite at
+most, not a hedge.
+
 ### PR-2. C.2 vol-target overlay transfer (registered arm inside Phase B)
 
 Transfer the `risk-overlay-lab` round-1 winner (EWMA-class estimator, band ≥ 0.10,

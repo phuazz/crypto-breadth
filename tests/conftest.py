@@ -16,6 +16,8 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-# scripts/ holds backtest.py — make it importable from tests/.
+# scripts/ holds backtest.py; scripts/research/ holds the review harnesses —
+# make both importable from tests/.
 SCRIPTS = Path(__file__).resolve().parent.parent / "scripts"
 sys.path.insert(0, str(SCRIPTS))
+sys.path.insert(0, str(SCRIPTS / "research"))
