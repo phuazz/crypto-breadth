@@ -184,3 +184,14 @@ for N=10→200. 69 trials logged in `results/trial_registry.jsonl` (arms B + C2)
   incompatible with a long-only SPOT crypto book; closing it needs the parked C.5
   (perp/short hedge) or a higher DD tolerance at small sleeve sizing. NEXT: Phase 5 (C.4
   gate ablation).
+
+- **2026-07-04 — Phase 5 (C.4 gate ablation). Breadth gate VALIDATED.** Full record:
+  `results/phase_c4_gate.md`; 5 trials appended (arm C4). The gate is load-bearing —
+  removing it collapses Sharpe −0.609 (1.351→0.742) and blows MaxDD +38.2pp
+  (−44.8%→−82.9%), the single most important component. The breadth gate beats a simple
+  BTC-200d filter full-sample (+0.173 Sharpe, shallower DD) → earns its complexity. Two
+  caveats: the tiering is redundant (binary 0,0,0,1 breadth ≈ tiered, README confirmed),
+  and in the post-2024 weak patch the BTC filters edged breadth (btc200 0.43 / btc50_200
+  0.40 vs breadth 0.29; btc50_200 best OOS 1.533). Does NOT change deployability — every
+  gate still fails −30%. NEXT: Phase 6 (cosmetic-A: dashboard conformance + CI, surface
+  only surviving conclusions, banner → do-not-deploy).
