@@ -1,135 +1,135 @@
 {
-  "generated_at": "2026-07-04T04:27:04Z",
-  "today_utc": "2026-07-04",
-  "updated": [
+  "generated_at": "2026-07-05T06:27:40Z",
+  "today_utc": "2026-07-05",
+  "updated": [],
+  "skipped": [
     {
       "symbol": "BTC",
-      "n_appended": 1,
-      "new_last_date": "2026-07-04"
+      "reason": "rate_limit_exhausted",
+      "detail": "You are over your rate limit please upgrade your account!"
     },
     {
       "symbol": "ETH",
-      "n_appended": 1,
-      "new_last_date": "2026-07-04"
+      "reason": "rate_limit_exhausted",
+      "detail": "You are over your rate limit please upgrade your account!"
     },
     {
       "symbol": "BNB",
-      "n_appended": 1,
-      "new_last_date": "2026-07-04"
+      "reason": "time_budget_rate_limited",
+      "detail": "You are over your rate limit please upgrade your account!"
     },
     {
       "symbol": "SOL",
-      "n_appended": 1,
-      "new_last_date": "2026-07-04"
+      "reason": "time_budget_rate_limited",
+      "detail": "You are over your rate limit please upgrade your account!"
     },
     {
       "symbol": "XRP",
-      "n_appended": 1,
-      "new_last_date": "2026-07-04"
+      "reason": "time_budget_rate_limited",
+      "detail": "You are over your rate limit please upgrade your account!"
     },
     {
       "symbol": "ADA",
-      "n_appended": 1,
-      "new_last_date": "2026-07-04"
+      "reason": "time_budget_rate_limited",
+      "detail": "You are over your rate limit please upgrade your account!"
     },
     {
       "symbol": "DOGE",
-      "n_appended": 1,
-      "new_last_date": "2026-07-04"
+      "reason": "time_budget_rate_limited",
+      "detail": "You are over your rate limit please upgrade your account!"
     },
     {
       "symbol": "AVAX",
-      "n_appended": 1,
-      "new_last_date": "2026-07-04"
+      "reason": "time_budget_rate_limited",
+      "detail": "You are over your rate limit please upgrade your account!"
     },
     {
       "symbol": "DOT",
-      "n_appended": 1,
-      "new_last_date": "2026-07-04"
+      "reason": "time_budget_rate_limited",
+      "detail": "You are over your rate limit please upgrade your account!"
     },
     {
       "symbol": "LINK",
-      "n_appended": 1,
-      "new_last_date": "2026-07-04"
+      "reason": "time_budget_rate_limited",
+      "detail": "You are over your rate limit please upgrade your account!"
     },
     {
       "symbol": "LTC",
-      "n_appended": 1,
-      "new_last_date": "2026-07-04"
+      "reason": "time_budget_rate_limited",
+      "detail": "You are over your rate limit please upgrade your account!"
     },
     {
       "symbol": "BCH",
-      "n_appended": 1,
-      "new_last_date": "2026-07-04"
+      "reason": "time_budget_rate_limited",
+      "detail": "You are over your rate limit please upgrade your account!"
     },
     {
       "symbol": "TRX",
-      "n_appended": 1,
-      "new_last_date": "2026-07-04"
+      "reason": "time_budget_rate_limited",
+      "detail": "You are over your rate limit please upgrade your account!"
     },
     {
       "symbol": "EOS",
-      "n_appended": 1,
-      "new_last_date": "2026-07-04"
+      "reason": "time_budget_rate_limited",
+      "detail": "You are over your rate limit please upgrade your account!"
     },
     {
       "symbol": "ETC",
-      "n_appended": 1,
-      "new_last_date": "2026-07-04"
+      "reason": "time_budget_rate_limited",
+      "detail": "You are over your rate limit please upgrade your account!"
     },
     {
       "symbol": "XLM",
-      "n_appended": 1,
-      "new_last_date": "2026-07-04"
+      "reason": "time_budget_rate_limited",
+      "detail": "You are over your rate limit please upgrade your account!"
     },
     {
       "symbol": "ATOM",
-      "n_appended": 1,
-      "new_last_date": "2026-07-04"
+      "reason": "time_budget_rate_limited",
+      "detail": "You are over your rate limit please upgrade your account!"
     },
     {
       "symbol": "MATIC",
-      "n_appended": 1,
-      "new_last_date": "2026-07-04"
+      "reason": "time_budget_rate_limited",
+      "detail": "You are over your rate limit please upgrade your account!"
     },
     {
       "symbol": "UNI",
-      "n_appended": 1,
-      "new_last_date": "2026-07-04"
+      "reason": "time_budget_rate_limited",
+      "detail": "You are over your rate limit please upgrade your account!"
     },
     {
       "symbol": "AAVE",
-      "n_appended": 1,
-      "new_last_date": "2026-07-04"
+      "reason": "time_budget_rate_limited",
+      "detail": "You are over your rate limit please upgrade your account!"
     },
     {
       "symbol": "NEAR",
-      "n_appended": 1,
-      "new_last_date": "2026-07-04"
+      "reason": "time_budget_rate_limited",
+      "detail": "You are over your rate limit please upgrade your account!"
     },
     {
       "symbol": "ALGO",
-      "n_appended": 1,
-      "new_last_date": "2026-07-04"
+      "reason": "time_budget_rate_limited",
+      "detail": "You are over your rate limit please upgrade your account!"
     },
     {
       "symbol": "FIL",
-      "n_appended": 1,
-      "new_last_date": "2026-07-04"
+      "reason": "time_budget_rate_limited",
+      "detail": "You are over your rate limit please upgrade your account!"
     },
     {
       "symbol": "LUNA",
-      "n_appended": 1,
-      "new_last_date": "2026-07-04"
+      "reason": "time_budget_rate_limited",
+      "detail": "You are over your rate limit please upgrade your account!"
     },
     {
       "symbol": "FTT",
-      "n_appended": 1,
-      "new_last_date": "2026-07-04"
+      "reason": "time_budget_rate_limited",
+      "detail": "You are over your rate limit please upgrade your account!"
     }
   ],
-  "skipped": [],
   "n_total": 25,
-  "n_updated": 25,
-  "n_skipped": 0
+  "n_updated": 0,
+  "n_skipped": 25
 }
