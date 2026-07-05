@@ -71,9 +71,12 @@ jobs:
           EMAIL_SMTP_PORT: ${{ secrets.EMAIL_SMTP_PORT }}
           # Regular status digest (always-sends heartbeat) on top of the instant
           # change-alerts. Change cadence here: weekly (default) | daily | monthly | off.
-          # DIGEST_WEEKDAY: 0=Mon … 6=Sun (weekly only).
+          # DIGEST_WEEKDAY: 0=Mon … 6=Sun (weekly only). Set to 1 (Tuesday) because the
+          # weekly rebalance uses the Monday close and executes on the Tuesday bar — the
+          # cron at 00:45 UTC (= 08:45 SGT) Tuesday is the earliest a fresh weekly signal
+          # exists. (Daily trend-exits fire any day and are covered by the instant alerts.)
           DIGEST_CADENCE: ${{ inputs.send_digest_now && 'daily' || 'weekly' }}
-          DIGEST_WEEKDAY: "0"
+          DIGEST_WEEKDAY: "1"
         run: python scripts/notify.py
 
       - name: Commit refreshed artefacts
