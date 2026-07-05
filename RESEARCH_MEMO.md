@@ -243,15 +243,33 @@ for N=10→200. 69 trials logged in `results/trial_registry.jsonl` (arms B + C2)
   (incl. the DSR code) are untested; no harness-vs-production parity assertion; docx
   build scripts uncommitted.
 
+- **2026-07-05 — CORRECTION to the follow-up above.** The "(1) ex-2020-21 Sharpe 0.62 ≈
+  BTC 0.61" claim was UNFAIR — it stripped the strategy's best years but compared to
+  full-sample BTC. Like-for-like (same years stripped from each), the strategy beats BTC
+  AND 60/40 in EVERY window: full 1.35 vs 0.61, ex-2021 0.77 vs 0.55, ex-2020-21 0.62 vs
+  **0.22**, ex-2018/20/21 0.80 vs 0.59 — the margin WIDEST with the bull years removed
+  (the breadth gate goes to cash in the 2018/2022 bears while BTC eats −73%/−65%). So the
+  edge over passive crypto is genuine active management, not a bull-market artefact.
+  Verdict revised MARGINAL → **a real but modest active-crypto edge; a small
+  return-seeking satellite, not a hedge or a core** — the binding cautions are the
+  uncertainty (year-block CI [0.37, 2.14], 88% > BTC) and that it does NOT diversify
+  equities (beta ≈ 1), NOT that it is "secretly BTC." The engineering items flagged above
+  (DSR / harness tests, parity, docx build scripts) were subsequently FIXED (commit
+  a70420a: 24 tests incl. an engine-parity assertion; docx specs → `reviews/build/`).
+  Ceiling re-anchored to −50% (PR-1 Amendment 2).
+
 ## REVIEW CLOSE — 2026-07-04
 
 **Overall verdict (as amended 2026-07-04): v3.1's edge is statistically real AND
 deployable as a small crypto diversifier sleeve — it beats passive crypto (BTC-HODL /
-60-40) decisively on risk-adjusted return.** **[TEMPERED same day by the four-lens
-follow-ups → MARGINAL:** the "beats passive crypto" edge is 2020–21-levered (net of
-those two years the Sharpe ≈ BTC's 0.61); the honest year-block CI is [0.37, 2.14] with
-only an 88% chance of beating BTC; and it is NOT a diversifier — beta ≈ 1 to equities,
-correlation rises in stress. A tiny return-seeking satellite at most, not a hedge. See
+60-40) decisively on risk-adjusted return.** **[REVISED by the four-lens follow-ups
+(2026-07-04), CORRECTED 2026-07-05 → a real but modest active-crypto edge; small
+satellite, not a hedge:** on a like-for-like basis (same years stripped from each) the
+strategy beats BTC and 60/40 in EVERY window (full 1.35 vs 0.61; ex-2020-21 0.62 vs
+0.22) — the edge is genuine active management, not a bull artefact, and the earlier
+"≈ BTC" line was an unfair comparison (handicapped strategy vs full-sample BTC). What
+caps it at *small* is the uncertainty (year-block CI [0.37, 2.14], 88% > BTC) and that
+it does NOT diversify equities (beta ≈ 1, correlation rises in stress). See
 `results/phase_d_followups.md`.** The −30% MaxDD ceiling was removed post-hoc
 (an equity frame mis-applied to crypto; see the PR-1 amendment). The pre-registered C.3
 modification path still failed (concentration hurts; the majors engine is weaker), so

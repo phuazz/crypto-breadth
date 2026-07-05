@@ -31,5 +31,35 @@
       "cb_mean_overall": 0.07715700703460437
     }
   ],
-  "note_dashboard_ci": "dashboard shows [0.82, 1.92] (short-block bootstrap)"
+  "like_for_like_sharpe": [
+    {
+      "window": "full",
+      "strategy": 1.351139311970801,
+      "btc": 0.6091284526654452,
+      "blend_6040": 0.6308791605585186,
+      "strategy_beats_btc": true
+    },
+    {
+      "window": "ex-2021",
+      "strategy": 0.7734476017766118,
+      "btc": 0.5476490476169054,
+      "blend_6040": 0.46676611298931914,
+      "strategy_beats_btc": true
+    },
+    {
+      "window": "ex-2020-21",
+      "strategy": 0.620734399845711,
+      "btc": 0.22011234539497834,
+      "blend_6040": 0.09801458321067356,
+      "strategy_beats_btc": true
+    },
+    {
+      "window": "ex-2018/20/21",
+      "strategy": 0.8024992008291787,
+      "btc": 0.5942800088334219,
+      "blend_6040": 0.41462128731393216,
+      "strategy_beats_btc": true
+    }
+  ],
+  "note": "like-for-like added 2026-07-05 after the '~= BTC' framing was found unfair; dashboard hero switched to year-block bootstrap."
 }

@@ -30,6 +30,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from backtest import (  # noqa: E402
     Params, PRICES_PATH, load_prices, investability_mask_liquidity,
+    benchmark_hodl, benchmark_60_40_btc_eth,
 )
 from phase_c3_concentration import run_v3_masked  # noqa: E402
 
@@ -121,8 +122,34 @@ def main() -> int:
     if blend_ret is not None:
         div.append(corr_block(blend_ret, "vs deployed breadth-thrust blend"))
 
+    # --- (c) like-for-like: strip the SAME years from strategy AND benchmarks --
+    # The "net of 2020-21 ~= BTC" framing was unfair — it handicapped the strategy
+    # (removed its best years) but compared to full-sample BTC. Stripping the same
+    # years from each is the honest test.
+    btc = benchmark_hodl(close, "BTC").reindex(eq.index).ffill()
+    s6040 = benchmark_60_40_btc_eth(close).reindex(eq.index).ffill()
+
+    def _sh(e, drop):
+        rr = e.pct_change().dropna()
+        rr = rr[~rr.index.year.isin(drop)]
+        return _f(rr.mean() / rr.std() * np.sqrt(365.0))
+
+    lfl = []
+    for lab, drop in [("full", ()), ("ex-2021", (2021,)),
+                      ("ex-2020-21", (2020, 2021)), ("ex-2018/20/21", (2018, 2020, 2021))]:
+        row = {"window": lab, "strategy": _sh(eq, drop), "btc": _sh(btc, drop),
+               "blend_6040": _sh(s6040, drop)}
+        row["strategy_beats_btc"] = bool(row["strategy"] > row["btc"])
+        lfl.append(row)
+    print("=== (c) like-for-like Sharpe (same years stripped from each) ===")
+    for x in lfl:
+        print(f"  {x['window']:<14} strat={x['strategy']:.2f}  btc={x['btc']:.2f}  "
+              f"60/40={x['blend_6040']:.2f}  strat_beats_btc={x['strategy_beats_btc']}")
+
     result = {"year_block_bootstrap": boot_res, "diversification": div,
-              "note_dashboard_ci": "dashboard shows [0.82, 1.92] (short-block bootstrap)"}
+              "like_for_like_sharpe": lfl,
+              "note": "like-for-like added 2026-07-05 after the '~= BTC' framing was "
+                      "found unfair; dashboard hero switched to year-block bootstrap."}
     OUT.parent.mkdir(exist_ok=True)
     OUT.write_text(json.dumps(result, indent=2))
 

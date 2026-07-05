@@ -1,37 +1,42 @@
-# Review follow-ups — honest CI + diversification (2026-07-04)
+# Review follow-ups — like-for-like, honest CI, diversification
 
-Prompted by a four-lens (quant PM / developer / CIO / CPM) critique of the Phase-B
-review. Reproducible: `scripts/research/phase_d_followups.py` →
-`results/phase_d_followups.json`. These findings **temper the KEEP verdict**.
+Started 2026-07-04 (four-lens quant / developer / CIO / CPM critique); **§1 corrected
+2026-07-05** after the "net of 2020–21 ≈ BTC" framing was challenged and found unfair.
+Reproducible: `scripts/research/phase_d_followups.py` → `results/phase_d_followups.json`.
 
-## 1. The edge leans on two bull years
+## 1. The edge over passive crypto is real — like-for-like (correction)
 
-| Window | CAGR | Sharpe | MaxDD |
-|---|---|---|---|
-| Full sample | 75.5% | 1.35 | −44.8% |
-| Ex-2021 | 23.6% | 0.77 | −44.8% |
-| Ex-2020 **and** 2021 | 13.7% | **0.62** | −49.4% |
-| Recent regime 2023–26 | 24.3% | 0.73 | −44.8% |
+An earlier draft said "net of 2020–21 the Sharpe (0.62) ≈ BTC (0.61)." That was a
+**rigged comparison** — it stripped the strategy's best years but left BTC at full
+sample. Stripping the **same years from each** is the honest test:
 
-2021 is **62% of total log-growth**; leave-one-year-out Sharpe moves only for 2021
-(0.77) — every other year leaves it at 1.26–1.54. **Net of the two bull years the
-Sharpe (0.62) equals BTC's (0.61).** The full-sample edge over passive crypto is a
-2020–21 phenomenon.
+| Window | Strategy | BTC | 60/40 | Winner |
+|---|---|---|---|---|
+| Full | 1.35 | 0.61 | 0.63 | strategy |
+| Ex-2021 | 0.77 | 0.55 | 0.47 | strategy |
+| Ex-2020–21 | 0.62 | **0.22** | **0.10** | strategy |
+| Ex-2018/20/21 | 0.80 | 0.59 | 0.41 | strategy |
 
-## 2. Honest confidence interval — year-block bootstrap
+The strategy **beats Bitcoin and 60/40 in every window**, and the *relative* margin is
+**widest with the bull years removed** (ex-2020–21: 0.62 vs 0.22) — because its breadth
+gate goes to cash in the 2018/2022 bears while Bitcoin takes the full −73% / −65%. The
+edge is genuine active management (the gate does real work, most of it in bad years),
+**not** a bull-market artefact or a closet index. 2021 being 62% of log-growth simply
+reflects that 2021 was a huge crypto year for *everyone* — Bitcoin and 60/40 made most
+of their money then too; stripping it hurts them at least as much.
 
-The dashboard CI **[0.82, 1.92]** uses short blocks and overstates confidence when one
-year drives the result. Resampling **whole calendar years** (respecting the 2021
-dominance and within-year serial structure, n=5000):
+## 2. The edge is real but uncertain — year-block bootstrap
 
-- Sharpe **p05 / p50 / p95 = 0.37 / 1.31 / 2.14** — the lower tail sits *below* BTC.
+The dashboard's earlier [0.82, 1.92] used short blocks and overstated confidence when
+one year drives the result. Resampling **whole calendar years** (n=5000):
+
+- Sharpe **p05 / p50 / p95 = 0.37 / 1.31 / 2.14**.
 - P(Sharpe > 0) = 99%; **P(Sharpe > BTC 0.61) = 88%**; P(Sharpe > 1) = 70%.
 
-So the edge is probably real (median 1.31) but with a **~1-in-8 chance it is no better
-than simply holding BTC**, and a genuinely weak lower tail. The displayed CI should be
-read as the year-block [0.37, 2.14], not [0.82, 1.92].
+Probably real (median 1.31), but with a **~1-in-8 chance it is no better than Bitcoin**
+over a future run. The dashboard hero now uses this year-block CI.
 
-## 3. Diversification — it amplifies equity risk, it does not hedge it
+## 3. It is not a diversifier — it amplifies equity risk
 
 Monthly returns, crypto-breadth vs each series:
 
@@ -40,33 +45,27 @@ Monthly returns, crypto-breadth vs each series:
 | **SPY (equities)** | +0.21 | +0.27 | +0.34 | **1.04** | **−0.7%** (vs +6.6% overall) |
 | Deployed breadth-thrust blend | +0.26 | +0.01 | +0.26 | 1.64 | +0.2% (vs +7.7% overall) |
 
-- **Against equities it fails as a diversifier**: beta ≈ 1, correlation *rises* in
-  stress (0.21 → 0.34), and it is negative in equities' worst months. It is a risk-on
-  asset that falls *with* equities when it matters — the opposite of a hedge.
-- **Against the owner's gated blend it is only a modest diversifier** (corr 0.26,
-  ~flat in the blend's worst months) — and only because *both* books de-risk in the
-  same crises (breadth gates going to cash together), not because crypto is orthogonal.
-  Structurally it is the same "risk-on when breadth is healthy, cash otherwise" bet on
-  a more volatile asset; the benefit is regime-timing coincidence and evaporates if
-  either gate fails to de-risk in a fast crash. Note also the **overlap**: the blend's
-  thematic sleeve already carries spot-crypto beta.
+Against equities it **fails as a diversifier**: beta ≈ 1, correlation *rises* in stress
+(0.21 → 0.34), and it is negative in equities' worst months — it falls *with* equities
+when it matters. Against the owner's already-gated blend it is only a modest diversifier
+(corr 0.26), and only because *both* books de-risk in the same crises (their breadth
+gates going to cash together), not because crypto is orthogonal. Note the **overlap**:
+the blend's thematic sleeve already carries spot-crypto beta.
 
-## Revised verdict
+## Verdict
 
-Downgrade from "KEEP — deploy as a small crypto sleeve (beats passive crypto)" to:
-
-**MARGINAL. The edge is probably real but uncertain (year-block CI [0.37, 2.14]; 88% >
-BTC) and concentrated in two bull years; net of them it is BTC-like. It is not a
-diversifier — it amplifies equity risk (beta ≈ 1, correlation rises in stress). If held
-at all, a TINY return-seeking satellite, not a hedge — and it competes directly with
-simply adding crypto beta to the existing thematic sleeve.** The recent-regime Sharpe
-(0.73) and a −45% drawdown are what a deployer would actually experience.
+**A real but modest active-crypto edge — a small return-seeking satellite, not a hedge
+or a core.** The edge over passive crypto is genuine and holds like-for-like in every
+window (the gate does real work, most of it in bears). What caps it at *small* is not
+that it is "secretly Bitcoin" — it is not — but that (a) the edge is uncertain (honest
+CI [0.37, 2.14]; 88% > BTC) and, decisively, (b) it does **not** diversify equities
+(beta ≈ 1, correlation rising in stress), and (c) the absolute headline is
+survivorship-optimistic. Suitable as a tiny satellite for someone who actively wants
+crypto exposure; it competes with simply holding a little crypto beta.
 
 ## Governance — the −30% ceiling
 
-The Phase-B amendment *removed* the pre-registered −30% MaxDD ceiling after it produced
-"do-not-deploy" — outcome-motivated, even if logged. **Recommended governance:
-re-anchor rather than remove** — a principled crypto hard-stop of **−50%** (shallower
-than passive crypto's −81%, chosen on principle not to clear this strategy). v3.1's
-−44.8% passes either framing, so the deploy decision is unchanged, but the record is
-cleaner. Owner to confirm.
+The Phase-B amendment first *removed* the pre-registered −30% ceiling (outcome-motivated,
+though logged). Superseded by a **principled re-anchor to a −50% crypto hard-stop**
+(shallower than passive crypto's −81%, chosen on principle, not to clear this strategy).
+v3.1's −44.8% passes, so the deploy decision is unchanged, the record cleaner.
