@@ -365,11 +365,119 @@ def render_coin_chart(coin_data: dict, event: dict) -> bytes | None:
     return buf.getvalue()
 
 
+def _mpl():
+    """Lazy Agg-backend matplotlib import shared by the digest charts. Returns
+    the pyplot module or None so a missing dep degrades to a chartless email."""
+    try:
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+        return plt
+    except Exception as e:
+        print(f"  matplotlib import failed, digest chart skipped: {e!r}")
+        return None
+
+
+def render_breadth_chart(ih: dict) -> bytes | None:
+    """Breadth (share of investable coins above their 50d MA) over ~3 months,
+    with the deployment-gate tiers shaded. Lets the reader see how close the
+    strategy is to stepping exposure up or down, and the direction of travel."""
+    plt = _mpl()
+    if plt is None:
+        return None
+    import matplotlib.dates as mdates
+    pts = [(datetime.strptime(d, "%Y-%m-%d"), b)
+           for d, b in zip(ih.get("dates", []), ih.get("breadth", []))
+           if isinstance(b, (int, float))]
+    if len(pts) < 5:
+        return None
+    xs, ys = zip(*pts)
+    fig, ax = plt.subplots(figsize=(7.0, 2.9), dpi=120)
+    # Gate tiers: breadth <30 → cash, 30-50 → 30%, 50-70 → 60%, ≥70 → 100%.
+    for lo, hi, col, lab in [(0.0, 0.30, "#fbeced", "cash"), (0.30, 0.50, "#fdf3e6", "30%"),
+                             (0.50, 0.70, "#eaf1fb", "60%"), (0.70, 1.0, "#e9f5ee", "100%")]:
+        ax.axhspan(lo, hi, color=col, zorder=0)
+        ax.text(xs[0], hi - 0.03, f"  deploy {lab}", fontsize=7.5, color="#8a8f96",
+                va="top", ha="left", zorder=2)
+    for thr in (0.30, 0.50, 0.70):
+        ax.axhline(thr, color="#c7ccd2", linewidth=0.8, linestyle="--", zorder=1)
+    ax.plot(xs, ys, color="#111418", linewidth=1.8, zorder=3)
+    ax.scatter([xs[-1]], [ys[-1]], s=46, color="#1351b4", zorder=4,
+               edgecolor="white", linewidth=1.2)
+    ax.annotate(f"{ys[-1] * 100:.0f}%", xy=(xs[-1], ys[-1]), xytext=(6, 7),
+                textcoords="offset points", fontsize=10, fontweight="bold", color="#1351b4")
+    ax.set_ylim(0, 1)
+    ax.set_yticks([0, 0.3, 0.5, 0.7, 1.0])
+    ax.set_yticklabels(["0", "30", "50", "70", "100"], fontsize=8)
+    ax.set_ylabel("Breadth (% > 50d MA)", fontsize=9, color="#4a5159")
+    ax.set_title("Breadth vs deployment gates — last 3 months",
+                 fontsize=12, fontweight="bold", color="#111418", loc="left")
+    ax.xaxis.set_major_locator(mdates.MonthLocator())
+    ax.xaxis.set_major_formatter(mdates.DateFormatter("%b"))
+    ax.tick_params(axis="both", colors="#4a5159", labelsize=8)
+    for sp in ax.spines.values():
+        sp.set_color("#e3e6ea")
+    fig.patch.set_facecolor("white")
+    fig.tight_layout()
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png", dpi=120, bbox_inches="tight", facecolor="white")
+    plt.close(fig)
+    buf.seek(0)
+    return buf.getvalue()
+
+
+def render_deviation_chart(coin_signals: dict) -> bytes | None:
+    """Horizontal bars: each investable coin's % distance from its own 50d MA,
+    green above / red below. The cross-sectional make-up behind the one breadth
+    number — who is leading, who is lagging, and who is on the cusp."""
+    plt = _mpl()
+    if plt is None:
+        return None
+    rows = []
+    for coin, cd in (coin_signals or {}).items():
+        cl, ma, iv = cd.get("close") or [], cd.get("ma") or [], cd.get("investable") or []
+        if cl and ma and cl[-1] and ma[-1] and (not iv or iv[-1]):
+            rows.append((coin, cl[-1] / ma[-1] - 1.0))
+    if not rows:
+        return None
+    rows.sort(key=lambda r: r[1])  # ascending → largest lands at the top of barh
+    names = [r[0] for r in rows]
+    vals = [r[1] * 100 for r in rows]
+    colors = ["#1d7a3a" if v >= 0 else "#b3261e" for v in vals]
+    fig, ax = plt.subplots(figsize=(7.0, max(2.4, 0.32 * len(rows) + 0.9)), dpi=120)
+    ax.barh(range(len(rows)), vals, color=colors, height=0.68, zorder=3)
+    ax.axvline(0, color="#6b727a", linewidth=1.0, zorder=2)
+    ax.set_yticks(range(len(rows)))
+    ax.set_yticklabels(names, fontsize=8.5)
+    for i, v in enumerate(vals):
+        ax.text(v + (0.5 if v >= 0 else -0.5), i, f"{v:+.1f}%", va="center",
+                ha="left" if v >= 0 else "right", fontsize=8, color="#4a5159")
+    n_above = sum(1 for v in vals if v >= 0)
+    ax.set_title(f"Distance from 50-day MA — {n_above} of {len(rows)} investable coins above the line",
+                 fontsize=12, fontweight="bold", color="#111418", loc="left")
+    ax.set_xlabel("Distance from 50-day moving average (%)", fontsize=9, color="#4a5159")
+    ax.grid(True, axis="x", alpha=0.3, color="#eef0f3", linewidth=0.6)
+    ax.tick_params(axis="both", colors="#4a5159", labelsize=8)
+    lo, hi = min(vals + [0.0]), max(vals + [0.0])
+    pad = max(5.0, (hi - lo) * 0.18)
+    ax.set_xlim(lo - pad, hi + pad)
+    for sp in ax.spines.values():
+        sp.set_color("#e3e6ea")
+    fig.patch.set_facecolor("white")
+    fig.tight_layout()
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png", dpi=120, bbox_inches="tight", facecolor="white")
+    plt.close(fig)
+    buf.seek(0)
+    return buf.getvalue()
+
+
 def send_email(
     subject: str, plain: str, html: str, cfg: dict,
     chart_png: bytes | None = None, chart_cid: str | None = None,
+    charts: list[tuple[str, bytes]] | None = None,
 ) -> None:
-    # multipart/related so the inline image can be referenced from HTML via cid:
+    # multipart/related so the inline image(s) can be referenced from HTML via cid:
     msg = MIMEMultipart("related")
     msg["Subject"] = subject
     msg["From"] = cfg["from"]
@@ -381,10 +489,14 @@ def send_email(
     alt.attach(MIMEText(html, "html", "utf-8"))
     msg.attach(alt)
 
+    # Single-chart form (instant alerts) plus a multi-chart list (the digest).
+    embeds = list(charts or [])
     if chart_png and chart_cid:
-        img = MIMEImage(chart_png, "png")
-        img.add_header("Content-ID", f"<{chart_cid}>")
-        img.add_header("Content-Disposition", "inline", filename=f"{chart_cid}.png")
+        embeds.append((chart_cid, chart_png))
+    for cid, png in embeds:
+        img = MIMEImage(png, "png")
+        img.add_header("Content-ID", f"<{cid}>")
+        img.add_header("Content-Disposition", "inline", filename=f"{cid}.png")
         msg.attach(img)
 
     context = ssl.create_default_context()
@@ -499,16 +611,28 @@ def build_digest(dash: dict, *, window_days: int, cadence: str, coin_signals: di
     gate_dn = (f"-{(b-THR[ti-1])*100:.1f}pp breadth → cut to {TIER[ti-1]}%"
                if ti > 0 else "already in cash")
 
-    # ---- strategy return over the last ~7 days
+    # ---- strategy vs BTC over the last ~7 days: was the cash/exposure call right?
     eq = dash.get("equity", {})
-    eqd, eqs = eq.get("dates", []), eq.get("strategy", [])
-    ret7 = None
-    if eqd and eqs and len(eqd) == len(eqs):
+    eqd = eq.get("dates", [])
+
+    def _ret7(series):
+        if not (eqd and series and len(eqd) == len(series)):
+            return None
         _l = datetime.strptime(eqd[-1], "%Y-%m-%d").date()
         _t = _l - timedelta(days=7)
-        j = min(range(len(eqd)), key=lambda i: abs((datetime.strptime(eqd[i], "%Y-%m-%d").date() - _t).days))
-        if eqs[j] and eqs[-1]:
-            ret7 = eqs[-1] / eqs[j] - 1.0
+        j = min(range(len(eqd)),
+                key=lambda i: abs((datetime.strptime(eqd[i], "%Y-%m-%d").date() - _t).days))
+        return (series[-1] / series[j] - 1.0) if (series[j] and series[-1]) else None
+
+    ret7 = _ret7(eq.get("strategy", []))
+    btc7 = _ret7(eq.get("btc", []))
+    rel7 = (ret7 - btc7) if isinstance(ret7, (int, float)) and isinstance(btc7, (int, float)) else None
+    if rel7 is None:
+        rel_tag = ""
+    elif isinstance(exposure, (int, float)) and exposure <= 0.01:
+        rel_tag = " — cash helped" if rel7 >= 0 else " — cash cost"
+    else:
+        rel_tag = " — ahead" if rel7 >= 0 else " — behind"
 
     # ---- on the cusp: investable coins within 4% of their own 50d MA
     cusp = []
@@ -520,6 +644,15 @@ def build_digest(dash: dict, *, window_days: int, cadence: str, coin_signals: di
                 cusp.append((coin, dist))
     cusp.sort(key=lambda x: abs(x[1]))
     cusp = cusp[:6]
+
+    # ---- inline charts (embedded as cid: images; skipped if matplotlib is absent)
+    charts: list[tuple[str, bytes]] = []
+    _breadth_png = render_breadth_chart(ih)
+    if _breadth_png:
+        charts.append(("digest-breadth", _breadth_png))
+    _dev_png = render_deviation_chart(coin_signals or {})
+    if _dev_png:
+        charts.append(("digest-deviation", _dev_png))
 
     # ---- one-line read
     stance = ("defensive — in cash" if isinstance(exposure, (int, float)) and exposure <= 0.01 else
@@ -542,6 +675,9 @@ def build_digest(dash: dict, *, window_days: int, cadence: str, coin_signals: di
 
     def _pp(d):
         return f"{'+' if d >= 0 else ''}{d*100:.0f}pp" if isinstance(d, (int, float)) else "-"
+
+    def _pctd(x):
+        return f"{'+' if x >= 0 else ''}{x*100:.1f}%" if isinstance(x, (int, float)) else "-"
 
     def _c(x):
         return f"{x:.0f}" if isinstance(x, (int, float)) else "-"
@@ -599,8 +735,10 @@ def build_digest(dash: dict, *, window_days: int, cadence: str, coin_signals: di
           f"  Breadth (>50d MA)   {_pct(br_now):>5}   was {_pct(br_prev):>5}   {_arr(br_d)} {_pp(br_d)}",
           f"  Gross exposure      {_pct(ex_now):>5}   was {_pct(ex_prev):>5}   {_arr(ex_d)} {_pp(ex_d)}",
           f"  Investable coins    {_c(iv_now):>5}   was {_c(iv_prev):>5}   {_arr(iv_d)} {_dc(iv_d)}",
-          f"  Trend-eligible      {_c(el_now):>5}   was {_c(el_prev):>5}   {_arr(el_d)} {_dc(el_d)}",
-          f"  Strategy 7d return  {(_pct(ret7) if ret7 is not None else '-'):>5}"]
+          f"  Trend-eligible      {_c(el_now):>5}   was {_c(el_prev):>5}   {_arr(el_d)} {_dc(el_d)}"]
+    L += ["", "LAST 7 DAYS — strategy vs BTC",
+          f"  Strategy {_pctd(ret7):>7}   BTC {_pctd(btc7):>7}"
+          + (f"   relative {_pp(rel7)}{rel_tag}" if rel7 is not None else "")]
     L += ["", "GATE PROXIMITY",
           f"  Re-engage: {gate_up}",
           f"  De-risk  : {gate_dn}"]
@@ -608,6 +746,11 @@ def build_digest(dash: dict, *, window_days: int, cadence: str, coin_signals: di
         L += ["", "ON THE CUSP (within 4% of 50d MA)"]
         L += [f"  {c:<6} {'+' if d >= 0 else ''}{d*100:.1f}% vs MA  ({'above' if d >= 0 else 'below'})"
               for c, d in cusp]
+    if charts:
+        _clab = {"digest-breadth": "Breadth vs deployment gates (last 3 months)",
+                 "digest-deviation": "Distance from 50-day MA, by coin"}
+        L += ["", "CHARTS (see the HTML version)"]
+        L += [f"  - {_clab.get(cid, cid)}" for cid, _ in charts]
     L += ["", f"CHANGES IN THE LAST {window_days} DAYS"]
     if changes:
         L += [f"  {t['date']}  {verb(t['action'])} {t['coin']}  "
@@ -643,9 +786,25 @@ def build_digest(dash: dict, *, window_days: int, cadence: str, coin_signals: di
                 + _irow("Gross exposure", ex_now, ex_prev, ex_d, True)
                 + _irow("Investable coins", iv_now, iv_prev, iv_d, False)
                 + _irow("Trend-eligible", el_now, el_prev, el_d, False))
-    ret7_html = (f'<div style="margin:8px 0 14px;font-size:13px;color:#4a5159;">Strategy return, last 7 days: '
-                 f'<strong style="color:{"#1d7a3a" if (ret7 or 0) >= 0 else "#b3261e"};">'
-                 f'{_pct(ret7) if ret7 is not None else "-"}</strong></div>')
+    def _rcol(x):
+        return "#1d7a3a" if isinstance(x, (int, float)) and x >= 0 else "#b3261e"
+    ret7_html = (
+        '<div style="margin:8px 0 16px;padding:10px 14px;background:#f7f8fa;border-radius:6px;font-size:13px;color:#4a5159;">'
+        '<div style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#6b727a;font-weight:700;margin-bottom:4px;">Last 7 days — strategy vs BTC</div>'
+        f'Strategy <strong style="color:{_rcol(ret7)};">{_pctd(ret7)}</strong>'
+        f' &nbsp;·&nbsp; BTC <strong style="color:{_rcol(btc7)};">{_pctd(btc7)}</strong>'
+        + (f' &nbsp;·&nbsp; relative <strong style="color:{_rcol(rel7)};">{_pp(rel7)}</strong>'
+           f'<span style="color:#6b727a;">{rel_tag}</span>' if rel7 is not None else '')
+        + '</div>')
+
+    def _chart_block(cid, title):
+        return (f'<div style="font-size:12px;text-transform:uppercase;letter-spacing:0.06em;'
+                f'color:#6b727a;font-weight:700;margin-top:4px;">{title}</div>'
+                f'<img src="cid:{cid}" alt="{title}" style="display:block;width:100%;max-width:600px;'
+                f'height:auto;border:1px solid #e3e6ea;border-radius:6px;margin:6px 0 18px;">')
+    breadth_block = _chart_block("digest-breadth", "Breadth and the deployment gate") if _breadth_png else ""
+    dev_block = _chart_block("digest-deviation", "Who is above their 50-day line") if _dev_png else ""
+
     if cusp:
         cusp_rows = "".join(
             f'<tr><td style="padding:4px 0;font-weight:600;">{c}</td>'
@@ -676,7 +835,9 @@ def build_digest(dash: dict, *, window_days: int, cadence: str, coin_signals: di
     <tr><td style="padding:4px 0;color:#4a5159;">Re-engage</td><td style="padding:4px 0;text-align:right;font-weight:600;">{gate_up}</td></tr>
     <tr><td style="padding:4px 0;color:#4a5159;">De-risk</td><td style="padding:4px 0;text-align:right;font-weight:600;">{gate_dn}</td></tr>
   </table>
+  {breadth_block}
   {cusp_html}
+  {dev_block}
   <div style="font-size:12px;text-transform:uppercase;letter-spacing:0.06em;color:#6b727a;font-weight:700;">Changes in the last {window_days} days</div>
   <div style="margin:6px 0 16px;">{changes_html}</div>
   <a href="{DASHBOARD_URL}" style="display:inline-block;background:#1351b4;color:white;padding:10px 18px;border-radius:5px;text-decoration:none;font-weight:600;font-size:13px;">Open dashboard →</a>
@@ -687,7 +848,7 @@ def build_digest(dash: dict, *, window_days: int, cadence: str, coin_signals: di
     <a href="{REPO_URL}" style="color:#1351b4;">github.com/phuazz/crypto-breadth</a>
   </div>
 </div></body></html>"""
-    return subject, plain, html
+    return subject, plain, html, charts
 
 
 def maybe_send_digest(dash: dict, cfg: dict, state: dict) -> bool:
@@ -700,11 +861,11 @@ def maybe_send_digest(dash: dict, cfg: dict, state: dict) -> bool:
             cs = json.loads(COIN_SIGNALS_JSON.read_text(encoding="utf-8")).get("coins", {})
         except Exception:
             cs = {}
-    subject, plain, html = build_digest(dash, window_days=window, cadence=label, coin_signals=cs)
+    subject, plain, html, charts = build_digest(dash, window_days=window, cadence=label, coin_signals=cs)
     try:
-        send_email(subject, plain, html, cfg)
+        send_email(subject, plain, html, cfg, charts=charts)
         state["last_digest_date"] = datetime.now(timezone.utc).date().isoformat()
-        print(f"  digest sent: {subject}", flush=True)
+        print(f"  digest sent: {subject}{f' (+{len(charts)} charts)' if charts else ''}", flush=True)
         return True
     except Exception as e:
         print(f"  digest FAILED: {e!r}", flush=True)
