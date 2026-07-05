@@ -394,6 +394,152 @@ def send_email(
         server.sendmail(cfg["from"], [cfg["to"]], msg.as_string())
 
 
+def _email_cfg() -> dict:
+    # GitHub injects unset secrets as empty strings, so coalesce with `or`.
+    return {
+        "from": os.environ.get("EMAIL_FROM") or "",
+        "to": os.environ.get("EMAIL_TO") or "",
+        "password": os.environ.get("EMAIL_PASSWORD") or "",
+        "host": os.environ.get("EMAIL_SMTP_HOST") or "smtp.gmail.com",
+        "port": int(os.environ.get("EMAIL_SMTP_PORT") or "587"),
+    }
+
+
+def _fmt_holding(h) -> str:
+    if isinstance(h, dict):
+        c = h.get("coin") or h.get("symbol") or "?"
+        w = h.get("weight")
+        return f"{c} {w*100:.0f}%" if isinstance(w, (int, float)) else str(c)
+    return str(h)
+
+
+def _digest_due(state: dict) -> tuple[bool, str, int]:
+    """(is_due, cadence_label, window_days). Cadence via env DIGEST_CADENCE:
+    weekly (default) | daily | monthly | off. Weekly weekday via DIGEST_WEEKDAY
+    (0=Mon, default 0). De-duplicated by state['last_digest_date']."""
+    mode = (os.environ.get("DIGEST_CADENCE") or "weekly").strip().lower()
+    if mode in ("off", "none", "disabled", ""):
+        return (False, "Off", 7)
+    today = datetime.now(timezone.utc).date()
+    last = state.get("last_digest_date")
+    try:
+        last_d = datetime.strptime(last, "%Y-%m-%d").date() if last else None
+    except Exception:
+        last_d = None
+    if mode == "daily":
+        return (last_d != today, "Daily", 1)
+    if mode == "monthly":
+        due = last_d is None or (last_d.year, last_d.month) != (today.year, today.month)
+        return (due, "Monthly", 31)
+    weekday = int(os.environ.get("DIGEST_WEEKDAY") or "0")
+    return (today.weekday() == weekday and last_d != today, "Weekly", 7)
+
+
+def build_digest(dash: dict, *, window_days: int, cadence: str) -> tuple[str, str, str]:
+    """A regular status digest that ALWAYS sends (heartbeat), so a quiet week is
+    never confused with a broken pipeline. Current position + changes + health."""
+    mon = dash.get("monitor", {})
+    meta = dash.get("meta", {})
+    prov = dash.get("provenance", {})
+    as_of = mon.get("as_of") or meta.get("sample_end", "?")
+    holdings = mon.get("holdings") or []
+    breadth = mon.get("breadth")
+    exposure = mon.get("exposure")
+    tier = mon.get("tier_label", "")
+    n_inv = mon.get("investable_today")
+    hold_items = [_fmt_holding(h) for h in holdings]
+    hold_txt = ", ".join(hold_items) if hold_items else "all cash (0% invested)"
+
+    end_dt = datetime.strptime(meta.get("sample_end"), "%Y-%m-%d")
+    changes = []
+    for t in dash.get("trades", []):
+        try:
+            age = (end_dt - datetime.strptime(t["date"], "%Y-%m-%d")).days
+        except Exception:
+            continue
+        if 0 <= age <= window_days:
+            changes.append(t)
+    changes.sort(key=lambda e: e["date"])
+
+    def verb(a):
+        return {"entry": "BUY", "exit": "SELL", "resize": "RESIZE"}.get(a, a.upper())
+
+    def col(a):
+        return "#1d7a3a" if a == "entry" else "#b3261e" if a == "exit" else "#1351b4"
+
+    subject = f"[crypto-breadth] {cadence} signal update — {as_of}: {hold_txt}"
+
+    L = [f"crypto-breadth — {cadence.lower()} signal update", f"As of {as_of}", "",
+         "CURRENT POSITION", f"  {hold_txt}"]
+    if exposure is not None:
+        L.append(f"  Gross exposure : {exposure*100:.0f}%  ({tier})")
+    if breadth is not None:
+        L.append(f"  Breadth        : {breadth*100:.0f}% of investable universe above 50d MA")
+    if n_inv is not None:
+        L.append(f"  Investable     : {n_inv} of 25 coins")
+    L += ["", f"CHANGES IN THE LAST {window_days} DAYS"]
+    if changes:
+        L += [f"  {t['date']}  {verb(t['action'])} {t['coin']}  "
+              f"({t['trigger']}, {t['old_w']*100:.0f}%→{t['new_w']*100:.0f}%)" for t in changes]
+    else:
+        L.append("  None — holdings unchanged this period.")
+    L += ["", f"Pipeline last ran {meta.get('generated_at','?')}; data through "
+          f"{meta.get('sample_end','?')} ({prov.get('git_sha','?')}).", "",
+          f"Dashboard: {DASHBOARD_URL}", "",
+          "Research monitor — NOT deployed and NOT financial advice. The 2026-07 review",
+          "rated this a small return-seeking satellite at most (a real but modest edge; not",
+          "an equity hedge). This email says WHAT the signal is doing, not to trade it."]
+    plain = "\n".join(L)
+
+    if changes:
+        rows = "".join(
+            f'<tr><td style="padding:5px 0;color:#4a5159;white-space:nowrap;">{t["date"]}</td>'
+            f'<td style="padding:5px 0 5px 12px;font-weight:600;color:{col(t["action"])};">{verb(t["action"])} {t["coin"]}</td>'
+            f'<td style="padding:5px 0;text-align:right;color:#4a5159;font-variant-numeric:tabular-nums;">{t["old_w"]*100:.0f}% → {t["new_w"]*100:.0f}% · {t["trigger"]}</td></tr>'
+            for t in changes)
+        changes_html = f'<table style="width:100%;border-collapse:collapse;font-size:13px;">{rows}</table>'
+    else:
+        changes_html = '<p style="margin:6px 0;color:#4a5159;font-size:14px;">None — holdings unchanged this period.</p>'
+    exp_txt = f"{exposure*100:.0f}% ({tier})" if exposure is not None else "—"
+    br_txt = f"{breadth*100:.0f}% above 50d MA" if breadth is not None else "—"
+    html = f"""<!DOCTYPE html><html><body style="font-family:'Inter',-apple-system,sans-serif;color:#111418;background:#f7f8fa;margin:0;padding:24px;">
+<div style="max-width:640px;margin:0 auto;background:white;border:1px solid #e3e6ea;border-radius:8px;padding:24px 28px;">
+  <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:#6b727a;font-weight:700;">crypto-breadth · {cadence.lower()} update</div>
+  <h1 style="font-size:22px;margin:4px 0 2px;">Signal update — {as_of}</h1>
+  <div style="color:#4a5159;font-size:14px;margin-bottom:16px;">Holding: <strong>{hold_txt}</strong></div>
+  <table style="width:100%;border-collapse:collapse;margin:8px 0 18px;font-size:13px;font-variant-numeric:tabular-nums;">
+    <tr><td style="padding:4px 0;color:#4a5159;">Gross exposure</td><td style="padding:4px 0;text-align:right;font-weight:600;">{exp_txt}</td></tr>
+    <tr><td style="padding:4px 0;color:#4a5159;">Breadth</td><td style="padding:4px 0;text-align:right;font-weight:600;">{br_txt}</td></tr>
+    <tr><td style="padding:4px 0;color:#4a5159;">Investable universe</td><td style="padding:4px 0;text-align:right;font-weight:600;">{n_inv if n_inv is not None else '—'} of 25</td></tr>
+  </table>
+  <div style="font-size:12px;text-transform:uppercase;letter-spacing:0.06em;color:#6b727a;font-weight:700;">Changes in the last {window_days} days</div>
+  <div style="margin:6px 0 16px;">{changes_html}</div>
+  <a href="{DASHBOARD_URL}" style="display:inline-block;background:#1351b4;color:white;padding:10px 18px;border-radius:5px;text-decoration:none;font-weight:600;font-size:13px;">Open dashboard →</a>
+  <hr style="border:none;border-top:1px solid #e3e6ea;margin:20px 0 12px;">
+  <div style="font-size:11px;color:#6b727a;line-height:1.55;">
+    Pipeline last ran {meta.get('generated_at','?')} · data through {meta.get('sample_end','?')} · {prov.get('git_sha','?')}<br>
+    <strong>Research monitor — not deployed, not financial advice.</strong> The 2026-07 review rated this a small return-seeking satellite at most (a real but modest edge; not an equity hedge). This says what the signal is doing, not to trade it.
+    <a href="{REPO_URL}" style="color:#1351b4;">github.com/phuazz/crypto-breadth</a>
+  </div>
+</div></body></html>"""
+    return subject, plain, html
+
+
+def maybe_send_digest(dash: dict, cfg: dict, state: dict) -> bool:
+    due, label, window = _digest_due(state)
+    if not due:
+        return False
+    subject, plain, html = build_digest(dash, window_days=window, cadence=label)
+    try:
+        send_email(subject, plain, html, cfg)
+        state["last_digest_date"] = datetime.now(timezone.utc).date().isoformat()
+        print(f"  digest sent: {subject}", flush=True)
+        return True
+    except Exception as e:
+        print(f"  digest FAILED: {e!r}", flush=True)
+        return False
+
+
 def main() -> int:
     if not DATA_JSON.exists():
         print(f"  no dashboard data at {DATA_JSON}; run pipeline.py first", flush=True)
@@ -427,21 +573,16 @@ def main() -> int:
     print(f"  {len(candidates)} new trade events in last {ALERT_WINDOW_DAYS} days "
           f"(of {len(trades)} total)", flush=True)
     if not candidates:
-        # Still update last_run_at so we know the cron is alive
+        # No new trade events — but still send the regular digest if it is due,
+        # and update last_run_at so we know the cron is alive.
+        cfg = _email_cfg()
+        if all(cfg[k] for k in ("from", "to", "password")):
+            maybe_send_digest(dash, cfg, state)
         state["last_run_at"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         save_state(state)
         return 0
 
-    # NB: in GitHub Actions, secrets that do not exist are injected as empty
-    # strings (not "unset"), so dict.get(..., default) does NOT pick up the
-    # default. Use `or` to coalesce both unset and empty-string cases.
-    cfg = {
-        "from": os.environ.get("EMAIL_FROM") or "",
-        "to": os.environ.get("EMAIL_TO") or "",
-        "password": os.environ.get("EMAIL_PASSWORD") or "",
-        "host": os.environ.get("EMAIL_SMTP_HOST") or "smtp.gmail.com",
-        "port": int(os.environ.get("EMAIL_SMTP_PORT") or "587"),
-    }
+    cfg = _email_cfg()
     missing = [k for k in ("from", "to", "password") if not cfg[k]]
     if missing:
         print(f"  SMTP credentials missing: {missing}. Marking events as seen "
@@ -502,6 +643,8 @@ def main() -> int:
             failed += 1
             print(f"  FAILED: {subject}: {e!r}", flush=True)
 
+    if all(cfg[k] for k in ("from", "to", "password")):
+        maybe_send_digest(dash, cfg, state)
     state["seen"] = sorted(seen)
     state["last_run_at"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     save_state(state)

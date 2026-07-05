@@ -5,6 +5,11 @@ on:
     # Daily at 00:45 UTC (after Binance's daily candle closes at 00:00 UTC).
     - cron: "45 0 * * *"
   workflow_dispatch:  # manual trigger button in the Actions tab
+    inputs:
+      send_digest_now:
+        description: "Also send a status digest immediately (bypass the weekly schedule)"
+        type: boolean
+        default: false
 
 permissions:
   contents: write  # so the workflow can commit updated data files back
@@ -16,7 +21,7 @@ concurrency:
 jobs:
   check:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20  # was 10; CryptoCompare's rate-limited fetch was hitting the cap
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -56,7 +61,7 @@ jobs:
           PYTHONIOENCODING: utf-8
         run: python scripts/pipeline.py
 
-      - name: Send email alerts for new trade events
+      - name: Send email alerts + regular digest
         env:
           PYTHONIOENCODING: utf-8
           EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
@@ -64,6 +69,11 @@ jobs:
           EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
           EMAIL_SMTP_HOST: ${{ secrets.EMAIL_SMTP_HOST }}
           EMAIL_SMTP_PORT: ${{ secrets.EMAIL_SMTP_PORT }}
+          # Regular status digest (always-sends heartbeat) on top of the instant
+          # change-alerts. Change cadence here: weekly (default) | daily | monthly | off.
+          # DIGEST_WEEKDAY: 0=Mon … 6=Sun (weekly only).
+          DIGEST_CADENCE: ${{ inputs.send_digest_now && 'daily' || 'weekly' }}
+          DIGEST_WEEKDAY: "0"
         run: python scripts/notify.py
 
       - name: Commit refreshed artefacts
