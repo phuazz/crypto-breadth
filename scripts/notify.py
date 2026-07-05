@@ -435,7 +435,7 @@ def _digest_due(state: dict) -> tuple[bool, str, int]:
     return (today.weekday() == weekday and last_d != today, "Weekly", 7)
 
 
-def build_digest(dash: dict, *, window_days: int, cadence: str) -> tuple[str, str, str]:
+def build_digest(dash: dict, *, window_days: int, cadence: str, coin_signals: dict | None = None) -> tuple[str, str, str]:
     """A regular status digest that ALWAYS sends (heartbeat), so a quiet week is
     never confused with a broken pipeline. Current position + changes + health."""
     mon = dash.get("monitor", {})
@@ -462,6 +462,93 @@ def build_digest(dash: dict, *, window_days: int, cadence: str) -> tuple[str, st
         tgt_txt = ", ".join(f"{n} {tgt_pcw*100:.0f}%" for n in tgt_names)
     else:
         tgt_txt = "all cash (0% invested)"
+
+    # ---- week-over-week on the indicator history (breadth/exposure/investable/eligible)
+    ih = dash.get("indicator_history", {})
+    ihd = ih.get("dates", [])
+    _pj = None
+    if ihd:
+        _last = datetime.strptime(ihd[-1], "%Y-%m-%d").date()
+        _tgt = _last - timedelta(days=7)
+        _pj = min(range(len(ihd)),
+                  key=lambda i: abs((datetime.strptime(ihd[i], "%Y-%m-%d").date() - _tgt).days))
+
+    def wow(key):
+        vals = ih.get(key) or []
+        now = vals[-1] if vals else None
+        prev = vals[_pj] if (vals and _pj is not None) else None
+        d = (now - prev) if isinstance(now, (int, float)) and isinstance(prev, (int, float)) else None
+        return now, prev, d
+
+    br_now, br_prev, br_d = wow("breadth")
+    ex_now, ex_prev, ex_d = wow("exposure")
+    iv_now, iv_prev, iv_d = wow("n_investable")
+    el_now, el_prev, el_d = wow("n_eligible")
+
+    # ---- gate proximity: distance to the next exposure tier up / down
+    THR, TIER = [0.30, 0.50, 0.70], [0, 30, 60, 100]
+    b = br_now if isinstance(br_now, (int, float)) else (breadth if isinstance(breadth, (int, float)) else 0.0)
+    ti = sum(1 for t in THR if b >= t)
+    gate_up = (f"+{(THR[ti]-b)*100:.1f}pp breadth → deploy {TIER[ti+1]}%"
+               if ti < len(THR) else "already fully invested")
+    gate_dn = (f"-{(b-THR[ti-1])*100:.1f}pp breadth → cut to {TIER[ti-1]}%"
+               if ti > 0 else "already in cash")
+
+    # ---- strategy return over the last ~7 days
+    eq = dash.get("equity", {})
+    eqd, eqs = eq.get("dates", []), eq.get("strategy", [])
+    ret7 = None
+    if eqd and eqs and len(eqd) == len(eqs):
+        _l = datetime.strptime(eqd[-1], "%Y-%m-%d").date()
+        _t = _l - timedelta(days=7)
+        j = min(range(len(eqd)), key=lambda i: abs((datetime.strptime(eqd[i], "%Y-%m-%d").date() - _t).days))
+        if eqs[j] and eqs[-1]:
+            ret7 = eqs[-1] / eqs[j] - 1.0
+
+    # ---- on the cusp: investable coins within 4% of their own 50d MA
+    cusp = []
+    for coin, cd in (coin_signals or {}).items():
+        cl, ma, iv = cd.get("close") or [], cd.get("ma") or [], cd.get("investable") or []
+        if cl and ma and cl[-1] and ma[-1] and (not iv or iv[-1]):
+            dist = cl[-1] / ma[-1] - 1.0
+            if abs(dist) <= 0.04:
+                cusp.append((coin, dist))
+    cusp.sort(key=lambda x: abs(x[1]))
+    cusp = cusp[:6]
+
+    # ---- one-line read
+    stance = ("defensive — in cash" if isinstance(exposure, (int, float)) and exposure <= 0.01 else
+              "fully risk-on" if isinstance(exposure, (int, float)) and exposure >= 0.99 else
+              (f"partial risk ({exposure*100:.0f}% invested)" if isinstance(exposure, (int, float)) else "—"))
+    if br_d is None:
+        drift = ""
+    elif br_d > 0.02:
+        drift = f", breadth improving (+{br_d*100:.0f}pp w/w)"
+    elif br_d < -0.02:
+        drift = f", breadth deteriorating ({br_d*100:.0f}pp w/w)"
+    else:
+        drift = ", breadth ~flat w/w"
+    tail = (f"; {gate_up} to re-engage."
+            if (isinstance(exposure, (int, float)) and exposure <= 0.01 and ti < len(THR)) else ".")
+    read = f"{stance}{drift}{tail}"
+
+    def _pct(x):
+        return f"{x*100:.0f}%" if isinstance(x, (int, float)) else "-"
+
+    def _pp(d):
+        return f"{'+' if d >= 0 else ''}{d*100:.0f}pp" if isinstance(d, (int, float)) else "-"
+
+    def _c(x):
+        return f"{x:.0f}" if isinstance(x, (int, float)) else "-"
+
+    def _dc(d):
+        return f"{'+' if d >= 0 else ''}{d:.0f}" if isinstance(d, (int, float)) else "-"
+
+    def _arr(d):
+        return "→" if (not isinstance(d, (int, float)) or abs(d) < 1e-9) else ("↑" if d > 0 else "↓")
+
+    def _acol(d):
+        return "#6b727a" if (not isinstance(d, (int, float)) or abs(d) < 1e-9) else ("#1d7a3a" if d > 0 else "#b3261e")
 
     end_dt = datetime.strptime(meta.get("sample_end"), "%Y-%m-%d")
     changes = []
@@ -498,14 +585,24 @@ def build_digest(dash: dict, *, window_days: int, cadence: str) -> tuple[str, st
     L = [f"crypto-breadth — {cadence.lower()} signal update", f"As of {as_of}"]
     if stale_line:
         L += ["", stale_line]
-    L += ["", "CURRENT POSITION", f"  {hold_txt}"]
-    if exposure is not None:
-        L.append(f"  Gross exposure : {exposure*100:.0f}%  ({tier})")
-    if breadth is not None:
-        L.append(f"  Breadth        : {breadth*100:.0f}% of investable universe above 50d MA")
-    if n_inv is not None:
-        L.append(f"  Investable     : {n_inv} of 25 coins")
-    L += ["", "TARGET IF REBALANCED AT THE LATEST CLOSE", f"  {tgt_txt}"]
+    L += ["", "AT A GLANCE", f"  {read}"]
+    L += ["", "POSITION",
+          f"  Holding         : {hold_txt}",
+          f"  Gross exposure  : {_pct(exposure)}  ({tier})",
+          f"  Target if rebal : {tgt_txt}"]
+    L += ["", "INDICATORS — now vs 1 week ago",
+          f"  Breadth (>50d MA)   {_pct(br_now):>5}   was {_pct(br_prev):>5}   {_arr(br_d)} {_pp(br_d)}",
+          f"  Gross exposure      {_pct(ex_now):>5}   was {_pct(ex_prev):>5}   {_arr(ex_d)} {_pp(ex_d)}",
+          f"  Investable coins    {_c(iv_now):>5}   was {_c(iv_prev):>5}   {_arr(iv_d)} {_dc(iv_d)}",
+          f"  Trend-eligible      {_c(el_now):>5}   was {_c(el_prev):>5}   {_arr(el_d)} {_dc(el_d)}",
+          f"  Strategy 7d return  {(_pct(ret7) if ret7 is not None else '-'):>5}"]
+    L += ["", "GATE PROXIMITY",
+          f"  Re-engage: {gate_up}",
+          f"  De-risk  : {gate_dn}"]
+    if cusp:
+        L += ["", "ON THE CUSP (within 4% of 50d MA)"]
+        L += [f"  {c:<6} {'+' if d >= 0 else ''}{d*100:.1f}% vs MA  ({'above' if d >= 0 else 'below'})"
+              for c, d in cusp]
     L += ["", f"CHANGES IN THE LAST {window_days} DAYS"]
     if changes:
         L += [f"  {t['date']}  {verb(t['action'])} {t['coin']}  "
@@ -516,8 +613,8 @@ def build_digest(dash: dict, *, window_days: int, cadence: str) -> tuple[str, st
           f"{meta.get('sample_end','?')} ({prov.get('git_sha','?')}).", "",
           f"Dashboard: {DASHBOARD_URL}", "",
           "Research monitor — NOT deployed and NOT financial advice. The 2026-07 review",
-          "rated this a small return-seeking satellite at most (a real but modest edge; not",
-          "an equity hedge). This email says WHAT the signal is doing, not to trade it."]
+          "rated this a small return-seeking satellite at most (real but modest edge; not a hedge).",
+          "This email says WHAT the signal is doing, not to trade it."]
     plain = "\n".join(L)
 
     if changes:
@@ -529,28 +626,59 @@ def build_digest(dash: dict, *, window_days: int, cadence: str) -> tuple[str, st
         changes_html = f'<table style="width:100%;border-collapse:collapse;font-size:13px;">{rows}</table>'
     else:
         changes_html = '<p style="margin:6px 0;color:#4a5159;font-size:14px;">None — holdings unchanged this period.</p>'
-    exp_txt = f"{exposure*100:.0f}% ({tier})" if exposure is not None else "—"
-    br_txt = f"{breadth*100:.0f}% above 50d MA" if breadth is not None else "—"
+    def _irow(label, now, prev, d, is_pct):
+        nows = _pct(now) if is_pct else _c(now)
+        prevs = _pct(prev) if is_pct else _c(prev)
+        ds = _pp(d) if is_pct else _dc(d)
+        return (f'<tr><td style="padding:5px 0;color:#4a5159;">{label}</td>'
+                f'<td style="padding:5px 8px;text-align:right;font-weight:600;">{nows}</td>'
+                f'<td style="padding:5px 8px;text-align:right;color:#8a8a82;">{prevs}</td>'
+                f'<td style="padding:5px 0 5px 8px;text-align:right;font-weight:600;color:{_acol(d)};white-space:nowrap;">{_arr(d)} {ds}</td></tr>')
+    ind_rows = (_irow("Breadth (&gt;50d MA)", br_now, br_prev, br_d, True)
+                + _irow("Gross exposure", ex_now, ex_prev, ex_d, True)
+                + _irow("Investable coins", iv_now, iv_prev, iv_d, False)
+                + _irow("Trend-eligible", el_now, el_prev, el_d, False))
+    ret7_html = (f'<div style="margin:8px 0 14px;font-size:13px;color:#4a5159;">Strategy return, last 7 days: '
+                 f'<strong style="color:{"#1d7a3a" if (ret7 or 0) >= 0 else "#b3261e"};">'
+                 f'{_pct(ret7) if ret7 is not None else "-"}</strong></div>')
+    if cusp:
+        cusp_rows = "".join(
+            f'<tr><td style="padding:4px 0;font-weight:600;">{c}</td>'
+            f'<td style="padding:4px 0;text-align:right;font-variant-numeric:tabular-nums;color:{"#1d7a3a" if d >= 0 else "#b3261e"};">'
+            f'{"+" if d >= 0 else ""}{d*100:.1f}% vs 50d MA ({"above" if d >= 0 else "below"})</td></tr>'
+            for c, d in cusp)
+        cusp_html = (f'<div style="font-size:12px;text-transform:uppercase;letter-spacing:0.06em;color:#6b727a;font-weight:700;">On the cusp (within 4% of 50d MA)</div>'
+                     f'<table style="width:100%;border-collapse:collapse;font-size:13px;margin:6px 0 16px;">{cusp_rows}</table>')
+    else:
+        cusp_html = ""
+
     html = f"""<!DOCTYPE html><html><body style="font-family:'Inter',-apple-system,sans-serif;color:#111418;background:#f7f8fa;margin:0;padding:24px;">
 <div style="max-width:640px;margin:0 auto;background:white;border:1px solid #e3e6ea;border-radius:8px;padding:24px 28px;">
   <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:#6b727a;font-weight:700;">crypto-breadth · {cadence.lower()} update</div>
   <h1 style="font-size:22px;margin:4px 0 2px;">Signal update — {as_of}</h1>
-  <div style="color:#4a5159;font-size:14px;margin-bottom:16px;">Holding: <strong>{hold_txt}</strong></div>
   {stale_html}
-  <table style="width:100%;border-collapse:collapse;margin:8px 0 18px;font-size:13px;font-variant-numeric:tabular-nums;">
-    <tr><td style="padding:4px 0;color:#4a5159;">Gross exposure</td><td style="padding:4px 0;text-align:right;font-weight:600;">{exp_txt}</td></tr>
-    <tr><td style="padding:4px 0;color:#4a5159;">Breadth</td><td style="padding:4px 0;text-align:right;font-weight:600;">{br_txt}</td></tr>
-    <tr><td style="padding:4px 0;color:#4a5159;">Investable universe</td><td style="padding:4px 0;text-align:right;font-weight:600;">{n_inv if n_inv is not None else '—'} of 25</td></tr>
+  <div style="background:#f0f4fc;border-left:3px solid #1351b4;border-radius:4px;padding:11px 14px;margin:8px 0 16px;font-size:14.5px;font-weight:500;">{read}</div>
+  <div style="color:#4a5159;font-size:14px;margin-bottom:3px;">Holding: <strong>{hold_txt}</strong> · gross <strong>{_pct(exposure)}</strong> ({tier})</div>
+  <div style="color:#4a5159;font-size:13px;margin-bottom:16px;">Target if rebalanced now: <strong>{tgt_txt}</strong></div>
+  <div style="font-size:12px;text-transform:uppercase;letter-spacing:0.06em;color:#6b727a;font-weight:700;">Indicators — now vs 1 week ago</div>
+  <table style="width:100%;border-collapse:collapse;margin:6px 0 2px;font-size:13px;font-variant-numeric:tabular-nums;">
+    <tr style="font-size:10px;text-transform:uppercase;color:#8a8a82;"><td></td><td style="text-align:right;padding:0 8px;">now</td><td style="text-align:right;padding:0 8px;">1wk ago</td><td style="text-align:right;padding:0 0 0 8px;">change</td></tr>
+    {ind_rows}
   </table>
-  <div style="font-size:12px;text-transform:uppercase;letter-spacing:0.06em;color:#6b727a;font-weight:700;">Target if rebalanced at the latest close</div>
-  <div style="margin:4px 0 16px;font-size:14px;font-weight:600;">{tgt_txt}</div>
+  {ret7_html}
+  <div style="font-size:12px;text-transform:uppercase;letter-spacing:0.06em;color:#6b727a;font-weight:700;">Gate proximity</div>
+  <table style="width:100%;border-collapse:collapse;font-size:13px;margin:6px 0 16px;">
+    <tr><td style="padding:4px 0;color:#4a5159;">Re-engage</td><td style="padding:4px 0;text-align:right;font-weight:600;">{gate_up}</td></tr>
+    <tr><td style="padding:4px 0;color:#4a5159;">De-risk</td><td style="padding:4px 0;text-align:right;font-weight:600;">{gate_dn}</td></tr>
+  </table>
+  {cusp_html}
   <div style="font-size:12px;text-transform:uppercase;letter-spacing:0.06em;color:#6b727a;font-weight:700;">Changes in the last {window_days} days</div>
   <div style="margin:6px 0 16px;">{changes_html}</div>
   <a href="{DASHBOARD_URL}" style="display:inline-block;background:#1351b4;color:white;padding:10px 18px;border-radius:5px;text-decoration:none;font-weight:600;font-size:13px;">Open dashboard →</a>
   <hr style="border:none;border-top:1px solid #e3e6ea;margin:20px 0 12px;">
   <div style="font-size:11px;color:#6b727a;line-height:1.55;">
     Pipeline last ran {meta.get('generated_at','?')} · data through {meta.get('sample_end','?')} · {prov.get('git_sha','?')}<br>
-    <strong>Research monitor — not deployed, not financial advice.</strong> The 2026-07 review rated this a small return-seeking satellite at most (a real but modest edge; not an equity hedge). This says what the signal is doing, not to trade it.
+    <strong>Research monitor — not deployed, not financial advice.</strong> The 2026-07 review rated this a small return-seeking satellite at most (real but modest edge; not a hedge). This says what the signal is doing, not to trade it.
     <a href="{REPO_URL}" style="color:#1351b4;">github.com/phuazz/crypto-breadth</a>
   </div>
 </div></body></html>"""
@@ -561,7 +689,13 @@ def maybe_send_digest(dash: dict, cfg: dict, state: dict) -> bool:
     due, label, window = _digest_due(state)
     if not due:
         return False
-    subject, plain, html = build_digest(dash, window_days=window, cadence=label)
+    cs = {}
+    if COIN_SIGNALS_JSON.exists():
+        try:
+            cs = json.loads(COIN_SIGNALS_JSON.read_text(encoding="utf-8")).get("coins", {})
+        except Exception:
+            cs = {}
+    subject, plain, html = build_digest(dash, window_days=window, cadence=label, coin_signals=cs)
     try:
         send_email(subject, plain, html, cfg)
         state["last_digest_date"] = datetime.now(timezone.utc).date().isoformat()

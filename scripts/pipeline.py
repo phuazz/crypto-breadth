@@ -926,6 +926,19 @@ def main() -> int:
     breadth = breadth_pct_above_ma(close, p.breadth_ma_window, mask)
     target_exposure = breadth_to_tier(breadth, p.tier_thresholds, p.tier_exposures)
     monitor = current_state(close, volume, res, breadth, target_exposure, mask, p)
+    # Short indicator history (last ~15 days) so the email digest can show
+    # week-over-week CHANGE and direction of travel, not just a snapshot.
+    _ih_idx = breadth.index[-15:]
+    _n_inv = mask.sum(axis=1)
+    _n_elig = (per_coin_trend_entry_mask(close, p.per_coin_trend_window) & mask).sum(axis=1)
+    indicator_history = {
+        "dates": [str(d.date()) for d in _ih_idx],
+        "breadth": [(round(float(breadth.loc[d]), 4) if breadth.loc[d] == breadth.loc[d] else None)
+                    for d in _ih_idx],
+        "exposure": [round(float(target_exposure.loc[d]), 4) for d in _ih_idx],
+        "n_investable": [int(_n_inv.loc[d]) for d in _ih_idx],
+        "n_eligible": [int(_n_elig.loc[d]) for d in _ih_idx],
+    }
     print(f"  as of {monitor['as_of']}: {len(monitor['holdings'])} holdings, "
           f"cash {monitor['cash_weight']:.0%}, breadth {monitor['breadth']:.0%}")
 
@@ -1028,6 +1041,7 @@ def main() -> int:
         "sensitivity": sensitivity,
         "attribution": attribution,
         "monitor": monitor,
+        "indicator_history": indicator_history,
         "trades": trades,
         "recent_trades": recent_trades,
         "exposure_history": exposure_history,
