@@ -416,10 +416,15 @@ def _fmt_holding(h) -> str:
 def _digest_due(state: dict) -> tuple[bool, str, int]:
     """(is_due, cadence_label, window_days). Cadence via env DIGEST_CADENCE:
     weekly (default) | daily | monthly | off. Weekly weekday via DIGEST_WEEKDAY
-    (0=Mon, default 0). De-duplicated by state['last_digest_date']."""
+    (0=Mon, default 0). De-duplicated by state['last_digest_date'].
+
+    DIGEST_FORCE (set by the manual "send digest now" button) overrides both the
+    schedule and the same-day de-dup, so the button always delivers even if a
+    scheduled digest already went out today. It never fires on the cron path."""
+    force = (os.environ.get("DIGEST_FORCE") or "").strip().lower() in ("1", "true", "yes", "on")
     mode = (os.environ.get("DIGEST_CADENCE") or "weekly").strip().lower()
     if mode in ("off", "none", "disabled", ""):
-        return (False, "Off", 7)
+        return (True, "Status", 7) if force else (False, "Off", 7)
     today = datetime.now(timezone.utc).date()
     last = state.get("last_digest_date")
     try:
@@ -427,12 +432,12 @@ def _digest_due(state: dict) -> tuple[bool, str, int]:
     except Exception:
         last_d = None
     if mode == "daily":
-        return (last_d != today, "Daily", 1)
+        return (force or last_d != today, "Daily", 1)
     if mode == "monthly":
         due = last_d is None or (last_d.year, last_d.month) != (today.year, today.month)
-        return (due, "Monthly", 31)
+        return (force or due, "Monthly", 31)
     weekday = int(os.environ.get("DIGEST_WEEKDAY") or "0")
-    return (today.weekday() == weekday and last_d != today, "Weekly", 7)
+    return (force or (today.weekday() == weekday and last_d != today), "Weekly", 7)
 
 
 def build_digest(dash: dict, *, window_days: int, cadence: str, coin_signals: dict | None = None) -> tuple[str, str, str]:

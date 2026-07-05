@@ -82,8 +82,12 @@ jobs:
           # weekly rebalance uses the Monday close and executes on the Tuesday bar — the
           # cron at 00:45 UTC (= 08:45 SGT) Tuesday is the earliest a fresh weekly signal
           # exists. (Daily trend-exits fire any day and are covered by the instant alerts.)
-          DIGEST_CADENCE: ${{ inputs.send_digest_now && 'daily' || 'weekly' }}
+          DIGEST_CADENCE: weekly
           DIGEST_WEEKDAY: "1"
+          # The manual "send digest now" button forces delivery even if a scheduled
+          # digest already went out today (bypasses schedule + same-day de-dup).
+          # Empty on the cron path, so the normal weekly cadence is unaffected.
+          DIGEST_FORCE: ${{ inputs.send_digest_now && '1' || '' }}
         run: python scripts/notify.py
 
       - name: Commit refreshed artefacts
