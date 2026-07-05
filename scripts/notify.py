@@ -480,10 +480,25 @@ def build_digest(dash: dict, *, window_days: int, cadence: str) -> tuple[str, st
     def col(a):
         return "#1d7a3a" if a == "entry" else "#b3261e" if a == "exit" else "#1351b4"
 
+    try:
+        stale_days = (datetime.now(timezone.utc).date()
+                      - datetime.strptime(meta.get("sample_end"), "%Y-%m-%d").date()).days
+    except Exception:
+        stale_days = 0
+    stale_line = (f"WARNING: data is {stale_days} days old — the daily fetch may be failing; "
+                  f"treat the position as indicative until it recovers."
+                  if stale_days > 2 else None)
+    stale_html = (f'<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:6px;'
+                  f'padding:10px 14px;margin:0 0 14px;color:#b3261e;font-weight:600;font-size:13px;">'
+                  f'⚠ Data is {stale_days} days old — the daily fetch may be failing.</div>'
+                  if stale_days > 2 else "")
+
     subject = f"[crypto-breadth] {cadence} signal update — {as_of}: {hold_txt}"
 
-    L = [f"crypto-breadth — {cadence.lower()} signal update", f"As of {as_of}", "",
-         "CURRENT POSITION", f"  {hold_txt}"]
+    L = [f"crypto-breadth — {cadence.lower()} signal update", f"As of {as_of}"]
+    if stale_line:
+        L += ["", stale_line]
+    L += ["", "CURRENT POSITION", f"  {hold_txt}"]
     if exposure is not None:
         L.append(f"  Gross exposure : {exposure*100:.0f}%  ({tier})")
     if breadth is not None:
@@ -521,6 +536,7 @@ def build_digest(dash: dict, *, window_days: int, cadence: str) -> tuple[str, st
   <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:#6b727a;font-weight:700;">crypto-breadth · {cadence.lower()} update</div>
   <h1 style="font-size:22px;margin:4px 0 2px;">Signal update — {as_of}</h1>
   <div style="color:#4a5159;font-size:14px;margin-bottom:16px;">Holding: <strong>{hold_txt}</strong></div>
+  {stale_html}
   <table style="width:100%;border-collapse:collapse;margin:8px 0 18px;font-size:13px;font-variant-numeric:tabular-nums;">
     <tr><td style="padding:4px 0;color:#4a5159;">Gross exposure</td><td style="padding:4px 0;text-align:right;font-weight:600;">{exp_txt}</td></tr>
     <tr><td style="padding:4px 0;color:#4a5159;">Breadth</td><td style="padding:4px 0;text-align:right;font-weight:600;">{br_txt}</td></tr>

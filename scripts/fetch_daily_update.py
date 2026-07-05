@@ -73,6 +73,11 @@ RATE_LIMIT_SLEEP_S = 1.0           # baseline spacing between successful calls
 RATE_LIMIT_RECOVERY_SLEEP_S = 65   # wait at least one per-minute bucket
 MAX_RATE_LIMIT_RETRIES = 2         # retries per coin after the first miss
 MAX_GAP_DAYS = 60                  # ask for at most 60 days back per call
+# Global wall-clock budget. The free tier's per-minute cap means a 25-coin
+# refresh can spiral into minutes of 65s recovery sleeps; bail once we cross
+# this so we never hang the CI job (the workflow also time-boxes the step). Any
+# coins not reached are marked skipped and the run is best-effort.
+FETCH_BUDGET_S = 300               # ~5 min, under the 7-min step timeout
 # CryptoCompare moved the free histoday endpoint behind required auth in
 # June 2026 (silent change — every request returned 401). The key is
 # passed via the Authorization header rather than a query parameter so
@@ -153,7 +158,11 @@ def main() -> int:
     new_rows: list[pd.DataFrame] = []
     updated: list[dict] = []
     skipped: list[dict] = []
+    deadline = time.monotonic() + FETCH_BUDGET_S
     for our_sym, cc_sym in CC_TICKERS.items():
+        if time.monotonic() > deadline:
+            skipped.append({"symbol": our_sym, "reason": "time_budget"})
+            continue
         last = last_dates.get(our_sym)
         if last is None:
             skipped.append({"symbol": our_sym, "reason": "not_in_parquet"})
@@ -174,18 +183,21 @@ def main() -> int:
                 df = fetch_cc_daily(cc_sym, n_days=n_fetch, api_key=api_key)
                 break
             except RateLimitError as e:
-                if attempt < MAX_RATE_LIMIT_RETRIES:
+                budget_left = deadline - time.monotonic()
+                if attempt < MAX_RATE_LIMIT_RETRIES and budget_left > RATE_LIMIT_RECOVERY_SLEEP_S:
                     print(f"    rate limited ({e!s}); sleeping "
                           f"{RATE_LIMIT_RECOVERY_SLEEP_S}s then retrying "
                           f"(attempt {attempt + 2}/{MAX_RATE_LIMIT_RETRIES + 1})",
                           flush=True)
                     time.sleep(RATE_LIMIT_RECOVERY_SLEEP_S)
                 else:
-                    print(f"    rate limited after {MAX_RATE_LIMIT_RETRIES + 1} "
-                          f"attempts — giving up on {our_sym}")
+                    reason = ("rate_limit_exhausted"
+                              if attempt >= MAX_RATE_LIMIT_RETRIES
+                              else "time_budget_rate_limited")
+                    print(f"    giving up on {our_sym} ({reason})")
                     skipped.append({
                         "symbol": our_sym,
-                        "reason": "rate_limit_exhausted",
+                        "reason": reason,
                         "detail": str(e)[:200],
                     })
                     df = None

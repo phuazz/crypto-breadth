@@ -40,7 +40,14 @@ jobs:
       # CryptoCompare updater here instead — it only fetches the missing
       # tail of data and appends to the existing parquet (which retains the
       # full Binance history that was bootstrapped locally).
+      # Best-effort. The free CryptoCompare tier rate-limits ~11 calls/min, so a
+      # 25-coin refresh can stall (it ran 20 min and was cancelled on 2026-07-05).
+      # Time-box it and continue on failure so the regression test, dashboard
+      # rebuild and — critically — the email digest still run on the freshest
+      # available data. Staleness is surfaced honestly in the digest and the UI.
       - name: Fetch incremental daily update (CryptoCompare)
+        timeout-minutes: 7
+        continue-on-error: true
         env:
           PYTHONIOENCODING: utf-8
           CRYPTOCOMPARE_API_KEY: ${{ secrets.CRYPTOCOMPARE_API_KEY }}
