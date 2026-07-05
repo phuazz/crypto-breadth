@@ -450,6 +450,19 @@ def build_digest(dash: dict, *, window_days: int, cadence: str) -> tuple[str, st
     hold_items = [_fmt_holding(h) for h in holdings]
     hold_txt = ", ".join(hold_items) if hold_items else "all cash (0% invested)"
 
+    # Forward-looking target: what the strategy would hold if rebalanced at the latest
+    # close. On the Tuesday send this equals the actual weekly rebalance (the signal is
+    # the Monday close; execution is the Tuesday bar).
+    final = dash.get("walkthrough", {}).get("final", {})
+    tgt_h = final.get("holdings") or []
+    tgt_pcw = final.get("per_coin_weight")
+    tgt_names = [(h.get("coin") or h.get("symbol") or "?") if isinstance(h, dict) else str(h)
+                 for h in tgt_h]
+    if tgt_names and isinstance(tgt_pcw, (int, float)) and tgt_pcw > 0:
+        tgt_txt = ", ".join(f"{n} {tgt_pcw*100:.0f}%" for n in tgt_names)
+    else:
+        tgt_txt = "all cash (0% invested)"
+
     end_dt = datetime.strptime(meta.get("sample_end"), "%Y-%m-%d")
     changes = []
     for t in dash.get("trades", []):
@@ -477,6 +490,7 @@ def build_digest(dash: dict, *, window_days: int, cadence: str) -> tuple[str, st
         L.append(f"  Breadth        : {breadth*100:.0f}% of investable universe above 50d MA")
     if n_inv is not None:
         L.append(f"  Investable     : {n_inv} of 25 coins")
+    L += ["", "TARGET IF REBALANCED AT THE LATEST CLOSE", f"  {tgt_txt}"]
     L += ["", f"CHANGES IN THE LAST {window_days} DAYS"]
     if changes:
         L += [f"  {t['date']}  {verb(t['action'])} {t['coin']}  "
@@ -512,6 +526,8 @@ def build_digest(dash: dict, *, window_days: int, cadence: str) -> tuple[str, st
     <tr><td style="padding:4px 0;color:#4a5159;">Breadth</td><td style="padding:4px 0;text-align:right;font-weight:600;">{br_txt}</td></tr>
     <tr><td style="padding:4px 0;color:#4a5159;">Investable universe</td><td style="padding:4px 0;text-align:right;font-weight:600;">{n_inv if n_inv is not None else '—'} of 25</td></tr>
   </table>
+  <div style="font-size:12px;text-transform:uppercase;letter-spacing:0.06em;color:#6b727a;font-weight:700;">Target if rebalanced at the latest close</div>
+  <div style="margin:4px 0 16px;font-size:14px;font-weight:600;">{tgt_txt}</div>
   <div style="font-size:12px;text-transform:uppercase;letter-spacing:0.06em;color:#6b727a;font-weight:700;">Changes in the last {window_days} days</div>
   <div style="margin:6px 0 16px;">{changes_html}</div>
   <a href="{DASHBOARD_URL}" style="display:inline-block;background:#1351b4;color:white;padding:10px 18px;border-radius:5px;text-decoration:none;font-weight:600;font-size:13px;">Open dashboard →</a>
