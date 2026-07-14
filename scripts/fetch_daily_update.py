@@ -159,8 +159,12 @@ def main() -> int:
             skipped.append({"symbol": sym, "reason": "not_in_parquet"})
             continue
         gap = (today - last).days
-        if gap <= 0:
-            continue  # already current
+        # The current UTC day's candle has not closed yet, so the newest
+        # fetchable (closed) candle is always dated today-1. Holding
+        # yesterday's close (gap == 1) is therefore fully current, not a gap —
+        # fetch only when a completed day is genuinely missing (gap >= 2).
+        if gap <= 1:
+            continue  # already have the latest closed candle
 
         pair = f"{sym}USDT"
         start_ms = int(last.timestamp() * 1000) + MS_PER_DAY  # day after last observed
