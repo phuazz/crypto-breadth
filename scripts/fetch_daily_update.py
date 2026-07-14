@@ -2,34 +2,51 @@
 fetch_daily_update.py
 ---------------------
 Incremental daily update for the prices parquet. Designed for GitHub
-Actions, where Binance returns HTTP 451 "restricted location" from US
-runners.
+Actions, where Binance's TRADING host (api.binance.com) returns HTTP 451
+"restricted location" from US runners.
+
+Data source: Binance's public MARKET-DATA mirror,
+``data-api.binance.vision``. This host serves the identical spot klines as
+api.binance.com but is NOT geo-restricted (it exists precisely to serve
+market data globally, including from US IPs). Critically, this means the
+operational daily tail is now drawn from the SAME substrate as the frozen
+research history in prices.parquet (Binance USDT spot) — there is no longer
+a cross-vendor splice to police (contrast the retired CryptoCompare path;
+see DATA_INTEGRITY_POLICY.md §4).
+
+Why this replaced CryptoCompare (2026-07-14):
+  - CryptoCompare's free histoday tier is rate-limited (~11 calls/min) and
+    its key had exhausted, freezing the parquet at 2026-07-04 for ten days
+    while the CI reported green (the fetch step was continue-on-error).
+  - The mirror needs no API key, has no per-minute cap at our 25-coin
+    cadence (klines weight 2; 1200 weight/min budget), and is the same
+    exchange as the research substrate.
 
 Strategy:
-  1. Load the existing data/prices.parquet (which has the full Binance
-     history from the original scripts/fetch_data.py run).
-  2. For each coin in the universe, find the most-recent observed date.
-  3. Fetch only the gap from CryptoCompare's free histoday endpoint
-     (USDT-quoted to mirror our Binance pair convention).
+  1. Load the existing data/prices.parquet (the full Binance history
+     bootstrapped locally via scripts/fetch_data.py).
+  2. For each coin, find the most-recent observed date.
+  3. Fetch only the gap from the mirror's klines endpoint. Keep only
+     CLOSED daily candles (the current UTC day is still forming at the
+     00:45 UTC cron and must not be ingested — drop_duplicates(keep="first")
+     would otherwise lock in a partial candle permanently).
   4. Append the new rows, drop duplicates, save.
 
-CryptoCompare is used because:
-  - Free, no auth required, no rate-limit headaches at our 25-coin × 1-day
-    cadence
-  - USDT quoting available (closest match to the historical Binance pairs)
-  - Works from US IPs (the actual reason we're not using Binance here)
+Delisted / rebranded pairs: EOS and MATIC were rebranded on Binance
+(MATIC -> POL in 2024; EOS -> A/Vaulta in 2025), so their legacy *USDT
+pairs return no data. Both are OUTSIDE the investable set, so freezing them
+has no effect on the live signal or breadth. They are listed in
+DELISTED_ON_BINANCE and treated as expected-frozen rather than fetch
+failures. Whether to remap them to the successor pairs (POLUSDT / AUSDT) is
+a token-migration splice decision that belongs to the Phase-2 survivorship
+audit, not this script.
 
-The volume column is NOT identical to Binance's (CryptoCompare aggregates
-across exchanges). For the rolling-30-day ADV liquidity gate, this is
-acceptable noise — the threshold is $25M which is well above any borderline
-exchange-specific variation for our majors universe.
-
-If a coin is missing on CryptoCompare or the API fails, the script
-exits non-zero. The dashboard cannot silently publish on partial data —
-either every coin updates, or CI fails loud and we investigate. A
-sidecar `data/fetch_status.json` is always written first (whether or
-not the script then exits 1) so pipeline.py can still show which coins
-were updated and which lagged.
+If a coin that is NOT known-delisted returns no data or the API fails, the
+script exits non-zero. The dashboard cannot silently publish on partial
+data — either every live coin updates, or CI fails loud and we investigate.
+A sidecar data/fetch_status.json is always written first (whether or not
+the script then exits 1) so pipeline.py can still show which coins updated
+and which lagged.
 """
 
 from __future__ import annotations
@@ -46,88 +63,71 @@ import requests
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-PARQUET_PATH = PROJECT_ROOT / "data" / "prices.parquet"
-STATUS_PATH = PROJECT_ROOT / "data" / "fetch_status.json"
+# Env overrides let a dry-run point at a scratch copy without touching the
+# production parquet. CI sets neither, so it uses the canonical paths.
+PARQUET_PATH = Path(os.environ.get("CB_PARQUET_PATH") or (PROJECT_ROOT / "data" / "prices.parquet"))
+STATUS_PATH = Path(os.environ.get("CB_STATUS_PATH") or (PROJECT_ROOT / "data" / "fetch_status.json"))
 
-# Map our universe symbols to CryptoCompare's tickers.
-# Most match 1:1. LUNA was renamed to LUNC after the May 2022 crash;
-# CryptoCompare uses LUNC. FTT was delisted from most venues but CC
-# still has the historical series.
-CC_TICKERS = {
-    "BTC": "BTC", "ETH": "ETH", "BNB": "BNB", "SOL": "SOL",
-    "XRP": "XRP", "ADA": "ADA", "DOGE": "DOGE", "AVAX": "AVAX",
-    "DOT": "DOT", "LINK": "LINK",
-    "LTC": "LTC", "BCH": "BCH", "TRX": "TRX", "EOS": "EOS",
-    "ETC": "ETC", "XLM": "XLM", "ATOM": "ATOM", "MATIC": "MATIC",
-    "UNI": "UNI", "AAVE": "AAVE", "NEAR": "NEAR", "ALGO": "ALGO",
-    "FIL": "FIL", "LUNA": "LUNC", "FTT": "FTT",
-}
+# Our universe symbols map 1:1 to Binance spot pairs as SYMBOL + "USDT".
+UNIVERSE: list[str] = [
+    "BTC", "ETH", "BNB", "SOL", "XRP", "ADA", "DOGE", "AVAX", "DOT", "LINK",
+    "LTC", "BCH", "TRX", "EOS", "ETC", "XLM", "ATOM", "MATIC", "UNI", "AAVE",
+    "NEAR", "ALGO", "FIL", "LUNA", "FTT",
+]
 
-CC_ENDPOINT = "https://min-api.cryptocompare.com/data/v2/histoday"
-# CryptoCompare's free Apikey tier has a hard per-minute cap (~10-15 calls
-# before the bucket exhausts). Empirically: first 11 calls go through, then
-# every subsequent call returns "You are over your rate limit please upgrade
-# your account!" until the bucket refills 60s later. Strategy: small spacer
-# between calls + long pause + one retry when the cap fires.
-RATE_LIMIT_SLEEP_S = 1.0           # baseline spacing between successful calls
-RATE_LIMIT_RECOVERY_SLEEP_S = 65   # wait at least one per-minute bucket
-MAX_RATE_LIMIT_RETRIES = 2         # retries per coin after the first miss
-MAX_GAP_DAYS = 60                  # ask for at most 60 days back per call
-# Global wall-clock budget. The free tier's per-minute cap means a 25-coin
-# refresh can spiral into minutes of 65s recovery sleeps; bail once we cross
-# this so we never hang the CI job (the workflow also time-boxes the step). Any
-# coins not reached are marked skipped and the run is best-effort.
-FETCH_BUDGET_S = 300               # ~5 min, under the 7-min step timeout
-# CryptoCompare moved the free histoday endpoint behind required auth in
-# June 2026 (silent change — every request returned 401). The key is
-# passed via the Authorization header rather than a query parameter so
-# it never lands in URL error logs on HTTP failures.
-API_KEY_ENV = "CRYPTOCOMPARE_API_KEY"
+# Pairs delisted / rebranded on Binance spot — their legacy SYMBOLUSDT pair
+# returns no candles. All are OUTSIDE the current investable set, so a frozen
+# tail here does not perturb the live signal. Returning no data for these is
+# EXPECTED and does not trip the fail-loud exit.
+#   MATIC -> POL   (rebrand, Sep 2024)
+#   EOS   -> A     (Vaulta rebrand, 2025)
+DELISTED_ON_BINANCE: set[str] = {"EOS", "MATIC"}
+
+# Binance market-data mirror — not geo-restricted (unlike api.binance.com).
+KLINES_ENDPOINT = "https://data-api.binance.vision/api/v3/klines"
+KLINES_LIMIT = 1000            # one call spans ~2.7y of daily candles; no paging needed for a tail
+REQUEST_TIMEOUT_S = 30
+POLITE_SLEEP_S = 0.1           # trivial spacing; well within the weight budget
+
+MS_PER_DAY = 86_400_000
 
 
-class RateLimitError(Exception):
-    """Raised when CryptoCompare reports its per-minute cap is exhausted."""
+def fetch_binance_daily(pair: str, start_ms: int, now_ms: int) -> pd.DataFrame:
+    """Fetch CLOSED daily klines for `pair` with open-time >= start_ms.
 
-
-def fetch_cc_daily(symbol: str, n_days: int, api_key: str) -> pd.DataFrame:
-    """Fetch last `n_days` daily OHLCV rows from CryptoCompare.
-
-    Quoted in USDT to match our Binance pair convention. CryptoCompare's
-    `volumefrom` field is the base-asset volume (e.g. BTC), so it lines
-    up with what CCXT returns for Binance.
-
-    Raises RateLimitError when CC reports the per-minute cap is exhausted,
-    so the caller can sleep + retry rather than swallowing it as "no data".
+    Returns a DataFrame with columns date, open, high, low, close, volume
+    (base-asset volume, matching CCXT's convention in fetch_data.py). Only
+    candles whose close-time is in the past are kept, so the still-forming
+    current UTC-day candle is never ingested. An empty DataFrame means the
+    pair returned no candles (delisted / rebranded).
     """
     params = {
-        "fsym": symbol,
-        "tsym": "USDT",
-        "limit": max(1, min(n_days - 1, 2000)),
-        "aggregate": 1,
+        "symbol": pair,
+        "interval": "1d",
+        "startTime": int(start_ms),
+        "limit": KLINES_LIMIT,
     }
-    headers = {"Authorization": f"Apikey {api_key}"}
-    r = requests.get(CC_ENDPOINT, params=params, headers=headers, timeout=30)
+    r = requests.get(KLINES_ENDPOINT, params=params, timeout=REQUEST_TIMEOUT_S)
     r.raise_for_status()
-    j = r.json()
-    if j.get("Response") != "Success":
-        msg = j.get("Message", "unknown")
-        if "rate limit" in msg.lower() or "over your" in msg.lower():
-            raise RateLimitError(msg)
-        print(f"    CC error for {symbol}: {msg}")
-        return pd.DataFrame()
-    rows = j.get("Data", {}).get("Data", [])
+    rows = r.json()
     if not rows:
         return pd.DataFrame()
-    df = pd.DataFrame(rows)
-    # CC returns 0/0/0/0/0 for days a pair did not exist — drop those
-    df = df[df["close"] > 0].copy()
+
+    # Binance kline layout: [openTime, open, high, low, close, volume,
+    # closeTime, quoteVolume, trades, takerBase, takerQuote, ignore].
+    df = pd.DataFrame(rows, columns=[
+        "open_ms", "open", "high", "low", "close", "volume",
+        "close_ms", "quote_vol", "trades", "taker_base", "taker_quote", "ignore",
+    ])
+    # Keep only fully-closed candles (close-time strictly in the past).
+    df = df[df["close_ms"] < now_ms].copy()
     if df.empty:
         return pd.DataFrame()
-    df["date"] = pd.to_datetime(df["time"], unit="s").dt.tz_localize(None).dt.normalize()
-    out = df[["date", "open", "high", "low", "close", "volumefrom"]].rename(
-        columns={"volumefrom": "volume"}
-    )
-    return out
+
+    for col in ("open", "high", "low", "close", "volume"):
+        df[col] = pd.to_numeric(df[col], errors="coerce")
+    df["date"] = pd.to_datetime(df["open_ms"], unit="ms", utc=True).dt.tz_convert(None).dt.normalize()
+    return df[["date", "open", "high", "low", "close", "volume"]]
 
 
 def main() -> int:
@@ -136,101 +136,69 @@ def main() -> int:
         print("  Run scripts/fetch_data.py once locally to bootstrap, then commit.")
         return 1
 
-    api_key = os.environ.get(API_KEY_ENV) or ""
-    if not api_key:
-        print(f"  ERROR: ${API_KEY_ENV} is not set.")
-        print(f"  CryptoCompare's histoday endpoint requires authentication.")
-        print(f"  Generate a free key at https://www.cryptocompare.com/cryptopian/api-keys")
-        print(f"  with the 'Poll Live and Historical Data' permission, then add it as a")
-        print(f"  GitHub repo secret named {API_KEY_ENV}. README has the full instructions.")
-        return 1
-
     existing = pd.read_parquet(PARQUET_PATH)
     existing["date"] = pd.to_datetime(existing["date"])
     last_dates = existing.groupby("symbol")["date"].max()
-    today = pd.Timestamp(datetime.now(timezone.utc).date())
+
+    now_utc = datetime.now(timezone.utc)
+    now_ms = int(now_utc.timestamp() * 1000)
+    today = pd.Timestamp(now_utc.date())
 
     print(f"Loaded {len(existing):,} existing rows, "
           f"latest data point at {existing['date'].max().date()}")
-    print(f"Target end date: {today.date()}")
+    print(f"Now (UTC): {now_utc.isoformat()}  target end: {today.date()}")
     print()
 
     new_rows: list[pd.DataFrame] = []
     updated: list[dict] = []
     skipped: list[dict] = []
-    deadline = time.monotonic() + FETCH_BUDGET_S
-    for our_sym, cc_sym in CC_TICKERS.items():
-        if time.monotonic() > deadline:
-            skipped.append({"symbol": our_sym, "reason": "time_budget"})
-            continue
-        last = last_dates.get(our_sym)
+
+    for sym in UNIVERSE:
+        last = last_dates.get(sym)
         if last is None:
-            skipped.append({"symbol": our_sym, "reason": "not_in_parquet"})
+            skipped.append({"symbol": sym, "reason": "not_in_parquet"})
             continue
         gap = (today - last).days
         if gap <= 0:
-            continue  # already current — not counted as skip
-        n_fetch = min(gap + 2, MAX_GAP_DAYS)
-        print(f"  {our_sym} ({cc_sym}): last {last.date()}, gap {gap}d, "
-              f"fetching {n_fetch}d ...", flush=True)
-        # Try up to MAX_RATE_LIMIT_RETRIES extra attempts when CC reports the
-        # per-minute cap. Each retry waits a full bucket (~65s) so the next
-        # call lands in a fresh window. Non-rate-limit errors are still
-        # treated as terminal for the coin.
-        df = None
-        for attempt in range(MAX_RATE_LIMIT_RETRIES + 1):
-            try:
-                df = fetch_cc_daily(cc_sym, n_days=n_fetch, api_key=api_key)
-                break
-            except RateLimitError as e:
-                budget_left = deadline - time.monotonic()
-                if attempt < MAX_RATE_LIMIT_RETRIES and budget_left > RATE_LIMIT_RECOVERY_SLEEP_S:
-                    print(f"    rate limited ({e!s}); sleeping "
-                          f"{RATE_LIMIT_RECOVERY_SLEEP_S}s then retrying "
-                          f"(attempt {attempt + 2}/{MAX_RATE_LIMIT_RETRIES + 1})",
-                          flush=True)
-                    time.sleep(RATE_LIMIT_RECOVERY_SLEEP_S)
-                else:
-                    reason = ("rate_limit_exhausted"
-                              if attempt >= MAX_RATE_LIMIT_RETRIES
-                              else "time_budget_rate_limited")
-                    print(f"    giving up on {our_sym} ({reason})")
-                    skipped.append({
-                        "symbol": our_sym,
-                        "reason": reason,
-                        "detail": str(e)[:200],
-                    })
-                    df = None
-                    break
-            except Exception as e:
-                print(f"    error: {e!r}")
-                skipped.append({
-                    "symbol": our_sym,
-                    "reason": "fetch_error",
-                    "detail": f"{type(e).__name__}: {e!s}"[:200],
-                })
-                df = None
-                break
-        if df is None:
+            continue  # already current
+
+        pair = f"{sym}USDT"
+        start_ms = int(last.timestamp() * 1000) + MS_PER_DAY  # day after last observed
+        print(f"  {sym} ({pair}): last {last.date()}, gap {gap}d ...", flush=True)
+        try:
+            df = fetch_binance_daily(pair, start_ms=start_ms, now_ms=now_ms)
+        except Exception as e:
+            print(f"    error: {e!r}")
+            skipped.append({
+                "symbol": sym,
+                "reason": "fetch_error",
+                "detail": f"{type(e).__name__}: {e!s}"[:200],
+            })
             continue
+
+        # Keep only strictly-new dates so we never overwrite Binance history.
+        if not df.empty:
+            df = df[df["date"] > last]
+
         if df.empty:
-            print(f"    no rows returned")
-            skipped.append({"symbol": our_sym, "reason": "no_data"})
+            if sym in DELISTED_ON_BINANCE:
+                # Expected: legacy pair no longer trades. Not a failure.
+                print(f"    delisted/rebranded on Binance — frozen (non-investable)")
+                skipped.append({"symbol": sym, "reason": "delisted_frozen"})
+            else:
+                print(f"    no rows returned")
+                skipped.append({"symbol": sym, "reason": "no_data"})
             continue
-        # Keep only strictly-new dates so we never overwrite Binance history
-        df = df[df["date"] > last]
-        if df.empty:
-            # CC had rows but none were strictly newer — treat as current.
-            continue
-        df = df.assign(symbol=our_sym)
+
+        df = df.assign(symbol=sym)
         new_rows.append(df)
         updated.append({
-            "symbol": our_sym,
+            "symbol": sym,
             "n_appended": int(len(df)),
             "new_last_date": str(df["date"].max().date()),
         })
         print(f"    +{len(df)} new rows up to {df['date'].max().date()}")
-        time.sleep(RATE_LIMIT_SLEEP_S)
+        time.sleep(POLITE_SLEEP_S)
 
     if skipped:
         print(f"\nSkipped: {[s['symbol'] + ':' + s['reason'] for s in skipped]}")
@@ -251,31 +219,32 @@ def main() -> int:
         print("\nNo new data to append. Parquet unchanged.")
 
     # Always emit a status sidecar so pipeline.py / the dashboard can render
-    # exactly which coins succeeded and which lagged on the last run. Written
-    # BEFORE we decide to exit non-zero on partial failure, so a follow-up
-    # manual pipeline rebuild can still surface the breakage in the UI.
+    # which coins succeeded and which lagged on the last run. Written BEFORE
+    # we decide to exit non-zero, so a follow-up manual pipeline rebuild can
+    # still surface the breakage in the UI. delisted_frozen skips are counted
+    # separately so they do NOT force the fail-loud exit.
+    hard_fail = [s for s in skipped if s["reason"] != "delisted_frozen"]
     status = {
-        "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "generated_at": now_utc.strftime("%Y-%m-%dT%H:%M:%SZ"),
         "today_utc": str(today.date()),
+        "source": "binance_data_vision",
         "updated": updated,
         "skipped": skipped,
-        "n_total": len(CC_TICKERS),
+        "n_total": len(UNIVERSE),
         "n_updated": len(updated),
         "n_skipped": len(skipped),
+        "n_hard_fail": len(hard_fail),
     }
     STATUS_PATH.parent.mkdir(parents=True, exist_ok=True)
     STATUS_PATH.write_text(json.dumps(status, indent=2), encoding="utf-8")
     print(f"Wrote status sidecar -> {STATUS_PATH}")
 
-    if skipped:
-        # Fail loud rather than silently publish a partial refresh. The audit
-        # finding was that the previous behaviour (skip + continue + publish)
-        # let stale data ride for days without any alert. Exit non-zero so
-        # the CI workflow halts before pipeline.py runs and the dashboard
-        # stays on yesterday's good build until we investigate.
-        print(f"\nFAILED: {len(skipped)} coin(s) could not be updated. "
-              f"See data/fetch_status.json. Refusing to publish a partial "
-              f"refresh — fix the upstream fetch or update CC_TICKERS.")
+    if hard_fail:
+        # Fail loud rather than silently publish a partial refresh. Only
+        # unexpected failures count — delisted_frozen (EOS/MATIC) is normal.
+        print(f"\nFAILED: {len(hard_fail)} live coin(s) could not be updated. "
+              f"See {STATUS_PATH.name}. Refusing to publish a partial refresh — "
+              f"fix the upstream fetch or update UNIVERSE / DELISTED_ON_BINANCE.")
         return 1
     return 0
 
