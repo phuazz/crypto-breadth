@@ -1,112 +1,20 @@
 {
-  "generated_at": "2026-07-14T06:01:06Z",
+  "generated_at": "2026-07-14T06:08:45Z",
   "today_utc": "2026-07-14",
   "source": "binance_data_vision",
   "updated": [],
   "skipped": [
     {
-      "symbol": "BTC",
-      "reason": "no_data"
-    },
-    {
-      "symbol": "ETH",
-      "reason": "no_data"
-    },
-    {
-      "symbol": "BNB",
-      "reason": "no_data"
-    },
-    {
-      "symbol": "SOL",
-      "reason": "no_data"
-    },
-    {
-      "symbol": "XRP",
-      "reason": "no_data"
-    },
-    {
-      "symbol": "ADA",
-      "reason": "no_data"
-    },
-    {
-      "symbol": "DOGE",
-      "reason": "no_data"
-    },
-    {
-      "symbol": "AVAX",
-      "reason": "no_data"
-    },
-    {
-      "symbol": "DOT",
-      "reason": "no_data"
-    },
-    {
-      "symbol": "LINK",
-      "reason": "no_data"
-    },
-    {
-      "symbol": "LTC",
-      "reason": "no_data"
-    },
-    {
-      "symbol": "BCH",
-      "reason": "no_data"
-    },
-    {
-      "symbol": "TRX",
-      "reason": "no_data"
-    },
-    {
       "symbol": "EOS",
       "reason": "delisted_frozen"
     },
     {
-      "symbol": "ETC",
-      "reason": "no_data"
-    },
-    {
-      "symbol": "XLM",
-      "reason": "no_data"
-    },
-    {
-      "symbol": "ATOM",
-      "reason": "no_data"
-    },
-    {
       "symbol": "MATIC",
       "reason": "delisted_frozen"
-    },
-    {
-      "symbol": "UNI",
-      "reason": "no_data"
-    },
-    {
-      "symbol": "AAVE",
-      "reason": "no_data"
-    },
-    {
-      "symbol": "NEAR",
-      "reason": "no_data"
-    },
-    {
-      "symbol": "ALGO",
-      "reason": "no_data"
-    },
-    {
-      "symbol": "FIL",
-      "reason": "no_data"
-    },
-    {
-      "symbol": "LUNA",
-      "reason": "no_data"
-    },
-    {
-      "symbol": "FTT",
-      "reason": "no_data"
     }
   ],
   "n_total": 25,
   "n_updated": 0,
-  "n_skipped": 25,
-  "n_hard_fail": 23
+  "n_skipped": 2,
+  "n_hard_fail": 0
 }
