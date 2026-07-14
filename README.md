@@ -207,25 +207,36 @@ rebalance or daily exit fires. Each email explains the trade in plain
 text + HTML and links back to the live dashboard's Signal Explorer with
 the relevant coin pre-selected.
 
-**Data source for the cron is CryptoCompare, not Binance.** Binance
-geo-blocks GitHub Actions' US-based runners (HTTP 451). The cron uses
-`scripts/fetch_daily_update.py`, which loads the existing parquet,
-fetches only the missing tail from CryptoCompare's histoday endpoint
-(USDT-quoted), and appends. The full 8-year Binance history in the
-parquet is untouched. For local development from a non-blocked
-location, `scripts/fetch_data.py` is still the canonical full-history
-bootstrap path.
+**Data source for the cron is Binance's public market-data mirror.**
+`api.binance.com` geo-blocks GitHub Actions' US-based runners (HTTP 451),
+but Binance's market-data host `data-api.binance.vision` does not. The
+cron uses `scripts/fetch_daily_update.py`, which loads the existing
+parquet, fetches only the missing tail of closed daily candles from the
+mirror (same Binance USDT-spot substrate as the frozen history), and
+appends. No API key is required and there is no per-minute rate cap at
+our 25-coin cadence. The full 8-year Binance history in the parquet is
+untouched. For local development, `scripts/fetch_data.py` is still the
+canonical full-history bootstrap path.
+
+This replaced CryptoCompare on 2026-07-14. CryptoCompare's free histoday
+tier is rate-limited (~11 calls/min) and its key exhausted, freezing the
+parquet for ten days while CI reported green (the fetch step was
+`continue-on-error`). The mirror is the same substrate, needs no key, and
+runs in ~20s; a genuine fetch failure now turns the CI run red via the
+"Fail if fetch broke" gate while still sending the digest's staleness
+banner. EOS and MATIC were rebranded on Binance (POL / Vaulta), so their
+legacy `*USDT` pairs return no data; both are outside the investable set
+and are frozen (`DELISTED_ON_BINANCE` in the fetch script) pending the
+Phase-2 survivorship audit.
 
 ### Required and optional GitHub repository secrets
 
 Add at GitHub → Settings → Secrets and variables → Actions → New
 repository secret.
 
-**Required — the daily cron will hard-fail without it.**
-
-| Secret | Value |
-|---|---|
-| `CRYPTOCOMPARE_API_KEY` | Free key from <https://www.cryptocompare.com/cryptopian/api-keys>. Generate with the **Poll Live and Historical Data** permission only (no streaming, no user data, no full read/write). CryptoCompare moved the free histoday endpoint behind required auth in June 2026 — without this key, every fetch returns 401. |
+**None required for the data fetch.** The Binance data-vision mirror needs
+no API key. (The former `CRYPTOCOMPARE_API_KEY` secret is no longer read by
+any script and can be deleted from the repo settings.)
 
 **Optional — controls the email alert path. If unset, trade events are still marked as seen so the backlog does not pile up.**
 

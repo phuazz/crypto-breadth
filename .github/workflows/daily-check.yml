@@ -35,22 +35,24 @@ jobs:
       - name: Install dependencies
         run: pip install -r scripts/requirements.txt
 
-      # NOTE: scripts/fetch_data.py talks to Binance directly, which returns
-      # HTTP 451 from US-based GitHub runners. We use the incremental
-      # CryptoCompare updater here instead — it only fetches the missing
-      # tail of data and appends to the existing parquet (which retains the
-      # full Binance history that was bootstrapped locally).
-      # Best-effort. The free CryptoCompare tier rate-limits ~11 calls/min, so a
-      # 25-coin refresh can stall (it ran 20 min and was cancelled on 2026-07-05).
-      # Time-box it and continue on failure so the regression test, dashboard
-      # rebuild and — critically — the email digest still run on the freshest
-      # available data. Staleness is surfaced honestly in the digest and the UI.
-      - name: Fetch incremental daily update (CryptoCompare)
-        timeout-minutes: 7
+      # scripts/fetch_data.py talks to api.binance.com directly, which returns
+      # HTTP 451 from US-based GitHub runners. The incremental updater instead
+      # uses Binance's public market-data mirror (data-api.binance.vision),
+      # which is NOT geo-restricted, needs no API key, and is the SAME substrate
+      # as the frozen history — it only fetches the missing tail and appends.
+      # Kept continue-on-error so the smoke test, dashboard rebuild and — the
+      # thing that surfaces trouble — the email digest still run and send their
+      # honest "data is N days old" banner on a fetch failure. The run is NOT
+      # allowed to stay green on a real failure, though: the "Fail if fetch
+      # broke" gate at the end turns it RED. That combination (email out AND red
+      # CI) is the fix for the July 2026 outage, where continue-on-error alone
+      # let a ten-day CryptoCompare rate-limit failure hide behind a green run.
+      - name: Fetch incremental daily update (Binance data-vision mirror)
+        id: fetch
+        timeout-minutes: 5
         continue-on-error: true
         env:
           PYTHONIOENCODING: utf-8
-          CRYPTOCOMPARE_API_KEY: ${{ secrets.CRYPTOCOMPARE_API_KEY }}
         run: python scripts/fetch_daily_update.py
 
       # Regression smoke test on the refreshed parquet. Asserts OOS Sharpe /
@@ -101,3 +103,13 @@ jobs:
             git commit -m "ci: daily refresh $(date -u +%Y-%m-%d) [skip ci]"
             git push
           fi
+
+      # Turn the run RED if the fetch actually failed. This runs AFTER the
+      # digest has sent its staleness banner and the stale rebuild has been
+      # committed, so an outage produces both a proactive email and a visible
+      # red run — instead of the silent green that hid the July 2026 outage.
+      - name: Fail if fetch broke
+        if: steps.fetch.outcome != 'success'
+        run: |
+          echo "::error::Daily fetch step failed — data may be stale. See data/fetch_status.json."
+          exit 1
