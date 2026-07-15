@@ -460,6 +460,29 @@ def coin_signal_history(
     return coins_out
 
 
+def intended_per_coin_weight(cur_exposure: float | None, n_selected: int) -> float:
+    """Per-coin weight the ENGINE would deploy at `cur_exposure` across
+    `n_selected` names.
+
+    Must mirror backtest.rank_top_n, which equal-weights `1 / min(n, len(valid))`
+    and then scales by the tier exposure. The engine therefore deploys the FULL
+    tier exposure across however many names are trend-eligible — it CONCENTRATES
+    when the eligible set is thin rather than under-deploying.
+
+    The previous form divided by `top_n` instead of the number actually selected,
+    which understated the per-coin weight (and overstated cash) by
+    top_n/n_selected whenever fewer than top_n names qualified: 2 eligible at the
+    30% tier displayed 7.5% each / 85% cash against the engine's true 15% each /
+    70% cash. `n_selected` is already capped at top_n by the caller's step-4
+    slice, so it equals the engine's actual_n.
+
+    Display-only path — the frozen v3.1 engine is not touched by this.
+    """
+    if not n_selected or not isinstance(cur_exposure, (int, float)):
+        return 0.0
+    return cur_exposure / n_selected
+
+
 def signal_walkthrough(
     close: pd.DataFrame, volume: pd.DataFrame,
     breadth: pd.Series, target_exposure: pd.Series,
@@ -583,8 +606,18 @@ def signal_walkthrough(
 
     # ---- Step 4: top-N pick ----
     top_n = p.rank_top_n
-    selected = [r["coin"] for r in step3_rows[:top_n]]
-    cut_coins = [r["coin"] for r in step3_rows[top_n:]]
+    # Only names with a VALID composite score are rankable. backtest.rank_top_n
+    # does `row.dropna()`, so a NaN-score coin is never held by the engine — but
+    # step3_rows retains them (sorted to the bottom) for display. A coin with
+    # 90-180d of history reaches here with a NaN score: it clears the 90d
+    # liquidity/history gate and the 50d trend filter, yet the 180d momentum
+    # lookback is still undefined. Slicing step3_rows directly would then both
+    # show a phantom target the engine will never hold AND understate the
+    # per-coin weight (dividing by n_selected instead of the engine's n_valid).
+    rankable = [r for r in step3_rows if r["score"] is not None]
+    selected = [r["coin"] for r in rankable[:top_n]]
+    _sel = set(selected)
+    cut_coins = [r["coin"] for r in step3_rows if r["coin"] not in _sel]
 
     # ---- Step 5: breadth gate ----
     cur_breadth = _f(breadth.loc[last_date])
@@ -607,7 +640,7 @@ def signal_walkthrough(
         ranges[-1]["active"] = True
 
     # ---- Final intended allocation ----
-    final_weight_per_coin = (cur_exposure or 0.0) / max(top_n, 1) if selected else 0.0
+    final_weight_per_coin = intended_per_coin_weight(cur_exposure, len(selected))
     final_holdings = [{"coin": c, "weight": final_weight_per_coin} for c in selected]
     final_cash = max(0.0, 1.0 - final_weight_per_coin * len(selected))
 

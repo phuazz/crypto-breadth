@@ -525,6 +525,42 @@ def _fmt_holding(h) -> str:
     return str(h)
 
 
+# Mirrors backtest.Params.rebalance_weekday (0 = Monday). Held as a constant rather
+# than importing the engine (notify.py deliberately carries no pandas dependency);
+# tests/test_digest_timing.py asserts the two never drift apart.
+REBALANCE_WEEKDAY = 0
+
+
+def rebalance_timing(as_of: str, weekday: int = REBALANCE_WEEKDAY) -> tuple[bool, str]:
+    """Describe when the gate reading at `as_of` actually trades.
+
+    The engine sets target weights on `weekday`'s close and executes them at the
+    NEXT bar (lag_days=1 in run_backtest). Therefore:
+      - `as_of` IS the rebalance weekday → that reading is the LIVE signal and it
+        executes at the following day's close. This is the NORMAL scheduled case:
+        the Tuesday cron reports Monday's close, which trades that same Tuesday.
+      - otherwise → the reading is not actionable; the gate is re-read at the next
+        rebalance weekday's close and trades the day after.
+
+    A hardcoded "applies at the next Monday rebalance" was wrong on the scheduled
+    path: it told the reader a trade was six days away when it executed that night.
+
+    Weekdays and offsets come from a date library, never from memory (Python:
+    Monday=0 … Sunday=6; months are 1-indexed). Returns (is_live_signal, phrase,
+    execution_date) using explicit ISO dates, so the phrase cannot be misread
+    relative to whenever the mail happens to be opened.
+    """
+    d = datetime.strptime(as_of, "%Y-%m-%d").date()
+    if d.weekday() == weekday:
+        ex = d + timedelta(days=1)
+        return True, f"this is the live signal; it executes at the {ex} close", ex
+    days_ahead = (weekday - d.weekday()) % 7 or 7
+    nxt = d + timedelta(days=days_ahead)
+    ex = nxt + timedelta(days=1)
+    return False, (f"not yet actionable; the gate is re-read at the {nxt} close "
+                   f"and trades at the {ex} close"), ex
+
+
 def _digest_due(state: dict) -> tuple[bool, str, int]:
     """(is_due, cadence_label, window_days). Cadence via env DIGEST_CADENCE:
     weekly (default) | daily | monthly | off. Weekly weekday via DIGEST_WEEKDAY
@@ -566,6 +602,13 @@ def build_digest(dash: dict, *, window_days: int, cadence: str, coin_signals: di
     n_inv = mon.get("investable_today")
     hold_items = [_fmt_holding(h) for h in holdings]
     hold_txt = ", ".join(hold_items) if hold_items else "all cash (0% invested)"
+    # The ACTUAL book. `exposure` below is the GATE's target at the latest close and
+    # is a different quantity — conflating the two reported "partial risk (30%
+    # invested)" beside a 100%-cash book in the 2026-07-14 digest. Every line that
+    # describes what we HOLD must key off held_gross; only gate/target lines may use
+    # `exposure`.
+    held_gross = sum(h["weight"] for h in holdings
+                     if isinstance(h, dict) and isinstance(h.get("weight"), (int, float)))
 
     # Forward-looking target: what the strategy would hold if rebalanced at the latest
     # close. On the Tuesday send this equals the actual weekly rebalance (the signal is
@@ -606,10 +649,14 @@ def build_digest(dash: dict, *, window_days: int, cadence: str, coin_signals: di
     THR, TIER = [0.30, 0.50, 0.70], [0, 30, 60, 100]
     b = br_now if isinstance(br_now, (int, float)) else (breadth if isinstance(breadth, (int, float)) else 0.0)
     ti = sum(1 for t in THR if b >= t)
-    gate_up = (f"+{(THR[ti]-b)*100:.1f}pp breadth → deploy {TIER[ti+1]}%"
-               if ti < len(THR) else "already fully invested")
-    gate_dn = (f"-{(b-THR[ti-1])*100:.1f}pp breadth → cut to {TIER[ti-1]}%"
-               if ti > 0 else "already in cash")
+    # Phrase these in the GATE's frame, not the book's. "deploy"/"cut to" are book
+    # verbs: with a 0% book and a 30% gate they rendered "De-risk: -8.5pp → cut to
+    # 0%", which is incoherent when already holding nothing. The gate moves; whether
+    # the book follows is decided at the next rebalance.
+    gate_up = (f"+{(THR[ti]-b)*100:.1f}pp breadth → target {TIER[ti+1]}%"
+               if ti < len(THR) else "already at the top tier (100%)")
+    gate_dn = (f"-{(b-THR[ti-1])*100:.1f}pp breadth → target {TIER[ti-1]}%"
+               if ti > 0 else "already at the bottom tier (0%)")
 
     # ---- strategy vs BTC over the last ~7 days: was the cash/exposure call right?
     eq = dash.get("equity", {})
@@ -629,7 +676,10 @@ def build_digest(dash: dict, *, window_days: int, cadence: str, coin_signals: di
     rel7 = (ret7 - btc7) if isinstance(ret7, (int, float)) and isinstance(btc7, (int, float)) else None
     if rel7 is None:
         rel_tag = ""
-    elif isinstance(exposure, (int, float)) and exposure <= 0.01:
+    elif held_gross <= 0.005:
+        # Key off the BOOK, not the gate: with a 30% gate and a flat-cash book, the
+        # old `exposure`-based test printed "ahead"/"behind" as though an invested
+        # book had raced BTC.
         rel_tag = " — cash helped" if rel7 >= 0 else " — cash cost"
     else:
         rel_tag = " — ahead" if rel7 >= 0 else " — behind"
@@ -655,9 +705,12 @@ def build_digest(dash: dict, *, window_days: int, cadence: str, coin_signals: di
         charts.append(("digest-deviation", _dev_png))
 
     # ---- one-line read
-    stance = ("defensive — in cash" if isinstance(exposure, (int, float)) and exposure <= 0.01 else
-              "fully risk-on" if isinstance(exposure, (int, float)) and exposure >= 0.99 else
-              (f"partial risk ({exposure*100:.0f}% invested)" if isinstance(exposure, (int, float)) else "—"))
+    if held_gross <= 0.005:
+        stance = "defensive — in cash (0% invested)"
+    elif held_gross >= 0.99:
+        stance = "fully risk-on (100% invested)"
+    else:
+        stance = f"partial risk ({held_gross*100:.0f}% invested)"
     if br_d is None:
         drift = ""
     elif br_d > 0.02:
@@ -666,9 +719,22 @@ def build_digest(dash: dict, *, window_days: int, cadence: str, coin_signals: di
         drift = f", breadth deteriorating ({br_d*100:.0f}pp w/w)"
     else:
         drift = ", breadth ~flat w/w"
+    # When the gate's target has moved MATERIALLY away from the book, say so and say
+    # exactly when it bites — otherwise the reader cannot tell why a 30% gate sits
+    # beside a 0% book. The 2pp tolerance is deliberate: a held book drifts with
+    # prices between rebalances (a 30% book on four names easily reads 30.5%), and a
+    # 0.5pp trigger fired on nearly every send, drowning the case this exists for.
+    if isinstance(exposure, (int, float)) and abs(exposure - held_gross) > 0.02:
+        _, _when, _exec_date = rebalance_timing(as_of)
+        gate_note = f"; breadth now maps to a {exposure*100:.0f}% target — {_when}"
+    else:
+        gate_note, _exec_date = "", None
+    # "X to re-engage" only makes sense while the gate itself is still at cash. If the
+    # gate has already flipped, gate_note above is the operative message.
     tail = (f"; {gate_up} to re-engage."
-            if (isinstance(exposure, (int, float)) and exposure <= 0.01 and ti < len(THR)) else ".")
-    read = f"{stance}{drift}{tail}"
+            if (isinstance(exposure, (int, float)) and exposure <= 0.01
+                and held_gross <= 0.005 and ti < len(THR)) else ".")
+    read = f"{stance}{drift}{gate_note}{tail}"
 
     def _pct(x):
         return f"{x*100:.0f}%" if isinstance(x, (int, float)) else "-"
@@ -721,27 +787,37 @@ def build_digest(dash: dict, *, window_days: int, cadence: str, coin_signals: di
                   f'⚠ Data is {stale_days} days old — the daily fetch may be failing.</div>'
                   if stale_days > 2 else "")
 
+    # Lead with the BOOK — that is what the reader is actually exposed to. Append the
+    # pending change only when the gate has genuinely diverged, so an allocator
+    # scanning an inbox can see a trade is coming without opening the mail.
     subject = f"[crypto-breadth] {cadence} signal update — {as_of}: {hold_txt}"
+    if gate_note and _exec_date is not None:
+        subject += f" → gate {_pct(exposure)}, trades {_exec_date}"
 
     L = [f"crypto-breadth — {cadence.lower()} signal update", f"As of {as_of}"]
     if stale_line:
         L += ["", stale_line]
     L += ["", "AT A GLANCE", f"  {read}"]
-    L += ["", "POSITION",
+    # Book and gate are separate lines with separate labels. These are the two lines
+    # that previously read "Holding: all cash (0% invested)" directly above "Gross
+    # exposure: 30% (30% tier)" and made the gate look like the book.
+    L += ["", "POSITION (what we hold now)",
           f"  Holding         : {hold_txt}",
-          f"  Gross exposure  : {_pct(exposure)}  ({tier})",
+          f"  Gross           : {_pct(held_gross)}"]
+    L += ["", "GATE (what breadth targets at the latest close)",
+          f"  Target exposure : {_pct(exposure)}  ({tier})",
           f"  Target if rebal : {tgt_txt}"]
     L += ["", "INDICATORS — now vs 1 week ago",
           f"  Breadth (>50d MA)   {_pct(br_now):>5}   was {_pct(br_prev):>5}   {_arr(br_d)} {_pp(br_d)}",
-          f"  Gross exposure      {_pct(ex_now):>5}   was {_pct(ex_prev):>5}   {_arr(ex_d)} {_pp(ex_d)}",
+          f"  Target exposure     {_pct(ex_now):>5}   was {_pct(ex_prev):>5}   {_arr(ex_d)} {_pp(ex_d)}",
           f"  Investable coins    {_c(iv_now):>5}   was {_c(iv_prev):>5}   {_arr(iv_d)} {_dc(iv_d)}",
           f"  Trend-eligible      {_c(el_now):>5}   was {_c(el_prev):>5}   {_arr(el_d)} {_dc(el_d)}"]
     L += ["", "LAST 7 DAYS — strategy vs BTC",
           f"  Strategy {_pctd(ret7):>7}   BTC {_pctd(btc7):>7}"
           + (f"   relative {_pp(rel7)}{rel_tag}" if rel7 is not None else "")]
     L += ["", "GATE PROXIMITY",
-          f"  Re-engage: {gate_up}",
-          f"  De-risk  : {gate_dn}"]
+          f"  Next tier up  : {gate_up}",
+          f"  Next tier down: {gate_dn}"]
     if cusp:
         L += ["", "ON THE CUSP (within 4% of 50d MA)"]
         L += [f"  {c:<6} {'+' if d >= 0 else ''}{d*100:.1f}% vs MA  ({'above' if d >= 0 else 'below'})"
@@ -783,7 +859,7 @@ def build_digest(dash: dict, *, window_days: int, cadence: str, coin_signals: di
                 f'<td style="padding:5px 8px;text-align:right;color:#8a8a82;">{prevs}</td>'
                 f'<td style="padding:5px 0 5px 8px;text-align:right;font-weight:600;color:{_acol(d)};white-space:nowrap;">{_arr(d)} {ds}</td></tr>')
     ind_rows = (_irow("Breadth (&gt;50d MA)", br_now, br_prev, br_d, True)
-                + _irow("Gross exposure", ex_now, ex_prev, ex_d, True)
+                + _irow("Target exposure", ex_now, ex_prev, ex_d, True)
                 + _irow("Investable coins", iv_now, iv_prev, iv_d, False)
                 + _irow("Trend-eligible", el_now, el_prev, el_d, False))
     def _rcol(x):
@@ -822,8 +898,8 @@ def build_digest(dash: dict, *, window_days: int, cadence: str, coin_signals: di
   <h1 style="font-size:22px;margin:4px 0 2px;">Signal update — {as_of}</h1>
   {stale_html}
   <div style="background:#f0f4fc;border-left:3px solid #1351b4;border-radius:4px;padding:11px 14px;margin:8px 0 16px;font-size:14.5px;font-weight:500;">{read}</div>
-  <div style="color:#4a5159;font-size:14px;margin-bottom:3px;">Holding: <strong>{hold_txt}</strong> · gross <strong>{_pct(exposure)}</strong> ({tier})</div>
-  <div style="color:#4a5159;font-size:13px;margin-bottom:16px;">Target if rebalanced now: <strong>{tgt_txt}</strong></div>
+  <div style="color:#4a5159;font-size:14px;margin-bottom:3px;">Holding now: <strong>{hold_txt}</strong> · gross <strong>{_pct(held_gross)}</strong></div>
+  <div style="color:#4a5159;font-size:13px;margin-bottom:16px;">Gate at latest close: target exposure <strong>{_pct(exposure)}</strong> ({tier}) · if rebalanced now: <strong>{tgt_txt}</strong></div>
   <div style="font-size:12px;text-transform:uppercase;letter-spacing:0.06em;color:#6b727a;font-weight:700;">Indicators — now vs 1 week ago</div>
   <table style="width:100%;border-collapse:collapse;margin:6px 0 2px;font-size:13px;font-variant-numeric:tabular-nums;">
     <tr style="font-size:10px;text-transform:uppercase;color:#8a8a82;"><td></td><td style="text-align:right;padding:0 8px;">now</td><td style="text-align:right;padding:0 8px;">1wk ago</td><td style="text-align:right;padding:0 0 0 8px;">change</td></tr>
@@ -832,8 +908,8 @@ def build_digest(dash: dict, *, window_days: int, cadence: str, coin_signals: di
   {ret7_html}
   <div style="font-size:12px;text-transform:uppercase;letter-spacing:0.06em;color:#6b727a;font-weight:700;">Gate proximity</div>
   <table style="width:100%;border-collapse:collapse;font-size:13px;margin:6px 0 16px;">
-    <tr><td style="padding:4px 0;color:#4a5159;">Re-engage</td><td style="padding:4px 0;text-align:right;font-weight:600;">{gate_up}</td></tr>
-    <tr><td style="padding:4px 0;color:#4a5159;">De-risk</td><td style="padding:4px 0;text-align:right;font-weight:600;">{gate_dn}</td></tr>
+    <tr><td style="padding:4px 0;color:#4a5159;">Next tier up</td><td style="padding:4px 0;text-align:right;font-weight:600;">{gate_up}</td></tr>
+    <tr><td style="padding:4px 0;color:#4a5159;">Next tier down</td><td style="padding:4px 0;text-align:right;font-weight:600;">{gate_dn}</td></tr>
   </table>
   {breadth_block}
   {cusp_html}
