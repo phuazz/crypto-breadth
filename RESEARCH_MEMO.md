@@ -103,6 +103,88 @@ halve the −42.5% MaxDD). Net of costs. Registered as trials in the register.
 Breadth gate versus a simple BTC 200-day MA on / off filter, same universe and sizing,
 net of costs. Clean ablation: does the gate earn its complexity post-2024.
 
+### PR-5. Concentration floor (post-close, pre-registered 2026-07-15)
+
+**Status: PRE-REGISTERED, NOT RUN.** No code written, no trial executed. Frozen below
+BEFORE any data work, per house rule.
+
+**Provenance — a post-close discovery, logged honestly.** The review CLOSED 2026-07-04.
+On 2026-07-15, while fixing a display bug in the dashboard / digest (which had been
+halving the apparent position size and thereby masking this), an UNREGISTERED
+structural property of the frozen engine was found and verified. This re-opens a
+narrow, named question; it does not re-open the verdict.
+
+**The named flaw.** `rank_top_n` assigns `1/min(n, len(valid))` and `build_target_weights`
+then scales by the tier. The engine therefore deploys the FULL tier exposure across
+however many names are trend-eligible: when eligibility is thin it CONCENTRATES rather
+than under-deploying. Verified on the frozen baseline over 236 risk-on rebalance
+Mondays: 39 held fewer than four names, 17 held exactly one, and **5 put 100% of the
+book into a single coin** — 2018-10-01 BTC, 2018-10-08 BTC, 2019-02-25 BNB,
+2019-10-28 XRP, 2026-03-16 NEAR.
+
+**The mechanism is the high-tier / thin-eligibility corner.** Breadth (% above own 50d
+MA) and entry eligibility (above own MA AND MA rising) are near-collinear but disagree
+sharply after a fast bounce, when price jumps back above a still-falling MA. Breadth
+then reads high (max tier) while almost nothing has a rising MA. On 2026-03-16 breadth
+was 100% (⇒ the full 100% tier) and NEAR alone was eligible ⇒ 100% of the book into one
+altcoin: maximum exposure meeting minimum diversification. It fell 18.1% in 14 days
+(−20.0% to trough). The daily trend-exit is a stop, not diversification.
+
+**Why this is in scope despite the closed verdict.** PR-1's MODIFY clause already names
+"the 2018 three-coin whipsaw via a minimum-qualifier floor" as an example structural
+fix — the 2018-10 BTC-only Mondays ARE that regime, so this is a continuation of the
+pre-registered path, not a new invention. Materially: the −44.8% MaxDD that clears the
+−50% hard-stop (PR-1 Amendment 2) was NOT measured on a single-name book. It is a
+portfolio-level statistic over a book that was sometimes one alt. Sizing guidance for a
+"tiny satellite" is conditioned on it.
+
+**Arms — declared in full, up front. Each row is one v3.1-pool trial.**
+
+- **E.1 — minimum-qualifier floor.** Deploy only if `n_eligible ≥ k`, else cash.
+  `k ∈ {2, 3}`. (2 trials)
+- **E.2 — per-name cap.** Cap any single name at `c` of the book; residual to cash.
+  `c ∈ {0.34, 0.50}`. (2 trials)
+- **E.3 — pro-rata scaling.** `gross = tier × (n_eligible / top_n)`; unfilled slots
+  cash. (1 trial)
+
+**Total: 5 trials. v3.1 pool 99 → 104. C.3b's pool is untouched.**
+
+Note on E.3: it is the most obvious fix and the most suspect. It double-counts — breadth
+and eligibility measure near-collinear things — and it destroys the tier's meaning as
+gross exposure, under-deploying broadly to fix a corner. It is registered as the honest
+comparator, not the expected winner. E.1 / E.2 target the corner specifically.
+
+**Success bar — asymmetric, because this is a RISK fix, not a return fix.**
+
+ADOPT a variant iff BOTH hold:
+1. **The tail actually improves.** 100%-single-name Mondays → 0 (E.1 / E.3) or max
+   single-name weight ≤ c (E.2); AND the worst 14-day drawdown CONDITIONAL on
+   `n_eligible ≤ 2` improves materially.
+2. **The edge is not bought with it.** Full-sample Sharpe loss ≤ **0.15** vs frozen v3.1
+   (tighter than PR-1's 0.30 OOS tolerance, because this is a targeted guard and not a
+   re-fit); MaxDD does not worsen; and the variant still clears the −50% hard-stop and
+   PR-1 KEEP (1)–(3) after DSR deflation over the ENLARGED count (N=104).
+
+REJECT (keep v3.1 as-is) if no variant clears both — and in that case record the
+concentration property as an ACCEPTED, DOCUMENTED risk that governs SIZING, not as a
+defect. A null result here is a publishable outcome, not a failed trial.
+
+**Numbers frozen 2026-07-15, before any run:** `k ∈ {2,3}`; `c ∈ {0.34, 0.50}`;
+Sharpe-loss tolerance 0.15; DSR over N=104.
+
+**Three ways this could be silently wrong (standing house rule, per-arm):**
+1. **Outcome-motivated design** — the grid was chosen AFTER watching NEAR fail. Guard:
+   frozen here before any run; k / c are round and principled (k=2 "never single-name";
+   k=3 "at least three of four slots"; c=0.34 "no name above a third"; c=0.50 "no name
+   above half"), NOT tuned to 2026-03-16. Report ALL five arms, not the best.
+2. **Selection on a 5-event tail** — five single-name Mondays out of 236 is a thin base,
+   and a variant can look good merely by dodging one bad draw. Guard: report the FULL
+   distribution of `n_eligible` and max-weight across all 236, plus the conditional
+   statistic (`n_eligible ≤ 2`) — never just the five.
+3. **Look-ahead in the floor** — `n_eligible` must be computed from the same close-T
+   information as the rest of the signal and traded T+1. Guard: extend the existing
+   no-look-ahead assertion in `tests/` to the new path before any metric is read.
+
 ---
 
 ## Three ways each backtest could be silently wrong (standing set + guards)
