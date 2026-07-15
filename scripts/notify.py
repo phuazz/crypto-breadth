@@ -812,8 +812,8 @@ def build_digest(dash: dict, *, window_days: int, cadence: str, coin_signals: di
           f"  Target exposure     {_pct(ex_now):>5}   was {_pct(ex_prev):>5}   {_arr(ex_d)} {_pp(ex_d)}",
           f"  Investable coins    {_c(iv_now):>5}   was {_c(iv_prev):>5}   {_arr(iv_d)} {_dc(iv_d)}",
           f"  Trend-eligible      {_c(el_now):>5}   was {_c(el_prev):>5}   {_arr(el_d)} {_dc(el_d)}"]
-    L += ["", "LAST 7 DAYS — strategy vs BTC",
-          f"  Strategy {_pctd(ret7):>7}   BTC {_pctd(btc7):>7}"
+    L += ["", "LAST 7 DAYS — SIMULATED strategy vs BTC",
+          f"  Simulated {_pctd(ret7):>7}   BTC {_pctd(btc7):>7}"
           + (f"   relative {_pp(rel7)}{rel_tag}" if rel7 is not None else "")]
     L += ["", "GATE PROXIMITY",
           f"  Next tier up  : {gate_up}",
@@ -866,8 +866,8 @@ def build_digest(dash: dict, *, window_days: int, cadence: str, coin_signals: di
         return "#1d7a3a" if isinstance(x, (int, float)) and x >= 0 else "#b3261e"
     ret7_html = (
         '<div style="margin:8px 0 16px;padding:10px 14px;background:#f7f8fa;border-radius:6px;font-size:13px;color:#4a5159;">'
-        '<div style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#6b727a;font-weight:700;margin-bottom:4px;">Last 7 days — strategy vs BTC</div>'
-        f'Strategy <strong style="color:{_rcol(ret7)};">{_pctd(ret7)}</strong>'
+        '<div style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#6b727a;font-weight:700;margin-bottom:4px;">Last 7 days — simulated strategy vs BTC</div>'
+        f'Simulated strategy <strong style="color:{_rcol(ret7)};">{_pctd(ret7)}</strong>'
         f' &nbsp;·&nbsp; BTC <strong style="color:{_rcol(btc7)};">{_pctd(btc7)}</strong>'
         + (f' &nbsp;·&nbsp; relative <strong style="color:{_rcol(rel7)};">{_pp(rel7)}</strong>'
            f'<span style="color:#6b727a;">{rel_tag}</span>' if rel7 is not None else '')

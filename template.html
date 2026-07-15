@@ -2834,7 +2834,7 @@ function renderMonitor(d) {
     <th>allocation</th>
   </tr></thead><tbody>`;
   if (m.holdings.length === 0) {
-    h += `<tr><td colspan="4" style="text-align:center;color:var(--ink-faint);padding:18px">All cash. The strategy is gated off right now.</td></tr>`;
+    h += `<tr><td colspan="4" style="text-align:center;color:var(--ink-faint);padding:18px">All cash — the last rebalance took no positions. The gate's current reading is shown above; it applies at the next rebalance.</td></tr>`;
   } else {
     m.holdings.forEach(p => {
       const w = p.weight;
