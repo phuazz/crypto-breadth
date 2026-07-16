@@ -1,8 +1,124 @@
 {
-  "generated_at": "2026-07-15T13:06:25Z",
-  "today_utc": "2026-07-15",
+  "generated_at": "2026-07-16T03:51:44Z",
+  "today_utc": "2026-07-16",
   "source": "binance_data_vision",
-  "updated": [],
+  "updated": [
+    {
+      "symbol": "BTC",
+      "n_appended": 1,
+      "new_last_date": "2026-07-15"
+    },
+    {
+      "symbol": "ETH",
+      "n_appended": 1,
+      "new_last_date": "2026-07-15"
+    },
+    {
+      "symbol": "BNB",
+      "n_appended": 1,
+      "new_last_date": "2026-07-15"
+    },
+    {
+      "symbol": "SOL",
+      "n_appended": 1,
+      "new_last_date": "2026-07-15"
+    },
+    {
+      "symbol": "XRP",
+      "n_appended": 1,
+      "new_last_date": "2026-07-15"
+    },
+    {
+      "symbol": "ADA",
+      "n_appended": 1,
+      "new_last_date": "2026-07-15"
+    },
+    {
+      "symbol": "DOGE",
+      "n_appended": 1,
+      "new_last_date": "2026-07-15"
+    },
+    {
+      "symbol": "AVAX",
+      "n_appended": 1,
+      "new_last_date": "2026-07-15"
+    },
+    {
+      "symbol": "DOT",
+      "n_appended": 1,
+      "new_last_date": "2026-07-15"
+    },
+    {
+      "symbol": "LINK",
+      "n_appended": 1,
+      "new_last_date": "2026-07-15"
+    },
+    {
+      "symbol": "LTC",
+      "n_appended": 1,
+      "new_last_date": "2026-07-15"
+    },
+    {
+      "symbol": "BCH",
+      "n_appended": 1,
+      "new_last_date": "2026-07-15"
+    },
+    {
+      "symbol": "TRX",
+      "n_appended": 1,
+      "new_last_date": "2026-07-15"
+    },
+    {
+      "symbol": "ETC",
+      "n_appended": 1,
+      "new_last_date": "2026-07-15"
+    },
+    {
+      "symbol": "XLM",
+      "n_appended": 1,
+      "new_last_date": "2026-07-15"
+    },
+    {
+      "symbol": "ATOM",
+      "n_appended": 1,
+      "new_last_date": "2026-07-15"
+    },
+    {
+      "symbol": "UNI",
+      "n_appended": 1,
+      "new_last_date": "2026-07-15"
+    },
+    {
+      "symbol": "AAVE",
+      "n_appended": 1,
+      "new_last_date": "2026-07-15"
+    },
+    {
+      "symbol": "NEAR",
+      "n_appended": 1,
+      "new_last_date": "2026-07-15"
+    },
+    {
+      "symbol": "ALGO",
+      "n_appended": 1,
+      "new_last_date": "2026-07-15"
+    },
+    {
+      "symbol": "FIL",
+      "n_appended": 1,
+      "new_last_date": "2026-07-15"
+    },
+    {
+      "symbol": "LUNA",
+      "n_appended": 1,
+      "new_last_date": "2026-07-15"
+    },
+    {
+      "symbol": "FTT",
+      "n_appended": 1,
+      "new_last_date": "2026-07-15"
+    }
+  ],
   "skipped": [
     {
       "symbol": "EOS",
@@ -14,7 +130,7 @@
     }
   ],
   "n_total": 25,
-  "n_updated": 0,
+  "n_updated": 23,
   "n_skipped": 2,
   "n_hard_fail": 0
 }
