@@ -1,0 +1,117 @@
+{
+  "generated_utc": "2026-07-16T23:06:50Z",
+  "cap": 0.34,
+  "tolerance": 0.3,
+  "data_end": "2026-07-15",
+  "grid_size": 60,
+  "arms": {
+    "uncapped": {
+      "refit_sharpe": 1.3535061013270246,
+      "frozen_sharpe": 1.4336569153631633,
+      "loss_frozen_minus_refit": 0.08015081403613866,
+      "n_default_picks": 5,
+      "n_anchors": 7,
+      "rows": [
+        {
+          "anchor": 2020,
+          "best": "((30, 90, 180), 4, 70)",
+          "picked_default": false,
+          "is_sharpe": 1.111668534080385
+        },
+        {
+          "anchor": 2021,
+          "best": "((30, 90, 180), 4, 70)",
+          "picked_default": false,
+          "is_sharpe": 1.2415228977206623
+        },
+        {
+          "anchor": 2022,
+          "best": "((30, 90, 180), 4, 50)",
+          "picked_default": true,
+          "is_sharpe": 2.073759280443293
+        },
+        {
+          "anchor": 2023,
+          "best": "((30, 90, 180), 4, 50)",
+          "picked_default": true,
+          "is_sharpe": 1.69004545354809
+        },
+        {
+          "anchor": 2024,
+          "best": "((30, 90, 180), 4, 50)",
+          "picked_default": true,
+          "is_sharpe": 1.6779648598680086
+        },
+        {
+          "anchor": 2025,
+          "best": "((30, 90, 180), 4, 50)",
+          "picked_default": true,
+          "is_sharpe": 1.5726523928667486
+        },
+        {
+          "anchor": 2026,
+          "best": "((30, 90, 180), 4, 50)",
+          "picked_default": true,
+          "is_sharpe": 1.4556520638970583
+        }
+      ],
+      "full_sharpe": 1.3487419558789606,
+      "full_max_dd": -0.44778232944203644,
+      "pass": true
+    },
+    "capped": {
+      "refit_sharpe": 1.3717587237299051,
+      "frozen_sharpe": 1.4562870393500043,
+      "loss_frozen_minus_refit": 0.0845283156200991,
+      "n_default_picks": 5,
+      "n_anchors": 7,
+      "rows": [
+        {
+          "anchor": 2020,
+          "best": "((30, 90, 180), 4, 70)",
+          "picked_default": false,
+          "is_sharpe": 1.0647448874094758
+        },
+        {
+          "anchor": 2021,
+          "best": "((30, 90, 180), 4, 70)",
+          "picked_default": false,
+          "is_sharpe": 1.189636931610354
+        },
+        {
+          "anchor": 2022,
+          "best": "((30, 90, 180), 4, 50)",
+          "picked_default": true,
+          "is_sharpe": 2.0624946584115706
+        },
+        {
+          "anchor": 2023,
+          "best": "((30, 90, 180), 4, 50)",
+          "picked_default": true,
+          "is_sharpe": 1.6754533552710338
+        },
+        {
+          "anchor": 2024,
+          "best": "((30, 90, 180), 4, 50)",
+          "picked_default": true,
+          "is_sharpe": 1.6662557956797308
+        },
+        {
+          "anchor": 2025,
+          "best": "((30, 90, 180), 4, 50)",
+          "picked_default": true,
+          "is_sharpe": 1.5610041085363506
+        },
+        {
+          "anchor": 2026,
+          "best": "((30, 90, 180), 4, 50)",
+          "picked_default": true,
+          "is_sharpe": 1.4443736998573726
+        }
+      ],
+      "full_sharpe": 1.3594253762707862,
+      "full_max_dd": -0.39487937624508185,
+      "pass": true
+    }
+  }
+}

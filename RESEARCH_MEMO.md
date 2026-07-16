@@ -210,11 +210,34 @@ forward drawdown benefit — the −44.8% → −37.5% is what happened in two s
 episodes, one a degenerate era. Adopt on principle, not on the point estimate.
 
 **Recommendation: E.2 cap c=0.34** ("no single name above a third") if adopting — chosen
-on governance grounds precisely BECAUSE the metrics cannot separate the arms. **Adoption
-is conditional and incomplete: PR-5 ran KEEP-1 (DSR) but NOT KEEP-2** (full-config
-walk-forward) on any variant. The chosen arm must clear KEEP (1)–(3) in full before it
-replaces v3.1. Until then **v3.1 remains the recorded baseline** and this is a logged
-trial, not a modification.
+on governance grounds precisely BECAUSE the metrics cannot separate the arms.
+
+**KEEP-2 / KEEP-3 CLOSED (2026-07-16, owner selected E.2 c=0.34 — full record:
+`results/phase_e_keep2_walkforward.md`).** The gap PR-5 left open is now shut: the cap
+clears PR-1 KEEP (1), (2) and (3).
+- **KEEP-2 PASS.** Phase-B protocol verbatim (60-config grid, expand-window anchors
+  2020–2026). The uncapped control **reproduces the recorded +0.080 exactly**, which is
+  what makes the capped **+0.085** comparable to the number on record. The cap moves the
+  walk-forward loss by +0.005 against a 0.30 tolerance, and does not change config
+  selection (both arms pick the default in 5/7 anchors).
+- **KEEP-3 PASS, inherited verbatim.** The cap **never binds in 2024–25**, so the
+  weak-patch book is bit-identical (Sharpe 0.598, +40.1% both). The 2024–25 diagnosis
+  (BTC-dominance regime, not decay) carries over unchanged — the weak patch was never a
+  concentration problem.
+- **Cost:** binds 14 / 236 risk-on rebalances (5.9%); gives up 143pp of cumulative
+  return (+11871.9% → +11728.6%, ~1.2% of total) for 5.3pp less drawdown and the removal
+  of every 100%-single-name book. PR-5's caveat still attaches — the drawdown number is
+  NOT a reliable forward estimate. The defensible claim remains **cheap insurance, not
+  an edge gain**; KEEP-2/3 add that it is also structurally harmless.
+- **Data vintage:** KEEP-2 ran on the 2026-07-15 parquet, PR-5 on 2026-07-14 (a CI
+  refresh landed between). Both arms shift +0.0002 Sharpe; nothing turns on it, but the
+  two records are not bit-comparable. Vintage is now pinned in the JSON.
+
+**Status: ELIGIBLE, NOT ADOPTED.** Adoption is an engine change (v3.1 → v3.2) whose
+consequences reach the public dashboard (headline MaxDD −44.8% → −39.5%, a figure every
+filed v3.1 record and the banner still quote). It needs explicit sign-off plus a
+versioning plan that keeps the filed v3.1 records reproducible. **v3.1 remains the
+production baseline** until then.
 
 **Errors in this pre-registration, logged not silently fixed:** (a) the frozen "N=104"
 cross-contaminates the pools — the v3.1 pool is B+C2+C3a+C4=79, so the correct figure is
