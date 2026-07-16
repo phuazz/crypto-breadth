@@ -185,6 +185,45 @@ Sharpe-loss tolerance 0.15; DSR over N=104.
    information as the rest of the signal and traded T+1. Guard: extend the existing
    no-look-ahead assertion in `tests/` to the new path before any metric is read.
 
+**RESULT (run 2026-07-15 — full record: `results/phase_e_concentration.md`).**
+Guards asserted first (`tests/test_phase_e_floor.py`, 6 tests); baseline reproduces the
+recorded review figures exactly (Sharpe 1.349, MaxDD −44.8%, CAGR 75.2%).
+
+**All five arms clear the pre-registered bar — and that sweep must NOT be read as five
+wins.** Two findings govern the interpretation:
+- **The arms are statistically indistinguishable.** Sharpe SE over 8.5y ≈ 0.342; the
+  whole spread across arms is +0.003…+0.048, about **one seventh of one SE**. Ranking
+  them on Sharpe would be noise-mining. Declared tied on edge.
+- **The measured drawdown gain is ~two episodes, not a persistent effect.** Every arm's
+  full-sample MaxDD IS its loss inside the single 2024-12-02 → 2026-06-06 window. E.1
+  k=2 is IDENTICAL to baseline in 2020–2025, differing only in 2018 (−26.0% → 0.0%) and
+  2026 (−22.7% → −13.0%). It binds on 17 Mondays, **13 of them in 2018–2019** when the
+  median investable universe was **3 and 5 coins** — the three-coin whipsaw PR-1 already
+  names. Four of the five 100%-single-name events are 2018–2019; only NEAR (2026-03-16)
+  is modern.
+
+**Verdict: the floor is CHEAP INSURANCE, not an edge improvement.** Established: the
+concentration exposure is real (100% single-name, five times) and removing it costs
+nothing measurable (no arm loses Sharpe beyond noise, none worsens MaxDD, all clear the
+−50% hard-stop, all keep DSR ≥ 0.9986 at the v3.1 pool N=84). NOT established: any
+forward drawdown benefit — the −44.8% → −37.5% is what happened in two specific
+episodes, one a degenerate era. Adopt on principle, not on the point estimate.
+
+**Recommendation: E.2 cap c=0.34** ("no single name above a third") if adopting — chosen
+on governance grounds precisely BECAUSE the metrics cannot separate the arms. **Adoption
+is conditional and incomplete: PR-5 ran KEEP-1 (DSR) but NOT KEEP-2** (full-config
+walk-forward) on any variant. The chosen arm must clear KEEP (1)–(3) in full before it
+replaces v3.1. Until then **v3.1 remains the recorded baseline** and this is a logged
+trial, not a modification.
+
+**Errors in this pre-registration, logged not silently fixed:** (a) the frozen "N=104"
+cross-contaminates the pools — the v3.1 pool is B+C2+C3a+C4=79, so the correct figure is
+**N=84**; both are reported (0.9986 vs 0.9984, materially identical). (b) No tie-break
+was pre-specified; the bar assumed at most one arm would clear and five did, so the
+recommendation is an explicit post-hoc judgement on principle. (c) The E.3 prediction
+("expected to lose") was **wrong** — it improved on every axis and gives the tightest
+diversification guarantee (max name weight 25%).
+
 ---
 
 ## Three ways each backtest could be silently wrong (standing set + guards)
@@ -214,20 +253,23 @@ Append-only JSONL at `results/trial_registry.jsonl` (house format, per
 `risk-overlay-lab`). One JSON object per registered config per line:
 
 ```
-{"run_utc": "<ISO8601 UTC>", "arm": "B|C2|C3a|C3b|C4", "config_id": "<10-hex>",
+{"run_utc": "<ISO8601 UTC>", "arm": "B|C2|C3a|C3b|C4|E", "config_id": "<10-hex>",
  "config": { ... arm-specific params ... },
  "metrics": {"sharpe": .., "cagr": .., "max_dd": .., "worst_12m": .., "dsr": ..},
  "split": "full|is|oos|train|test", "notes": "<string>"}
 ```
 
 Two SEPARATE deflation pools (do not cross-contaminate):
-- **v3.1 pool** — arm B + C.2 + C.3a + C.4 modifications — feeds v3.1's DSR.
-- **C.3b pool** — the new majors engine — feeds C.3b's own DSR.
+- **v3.1 pool** — arm B + C.2 + C.3a + C.4 + E modifications — feeds v3.1's DSR.
+  **79 → 84** after PR-5 (2026-07-15).
+- **C.3b pool** — the new majors engine — feeds C.3b's own DSR. 20, untouched by PR-5.
 
 The true v3.1 trial count for the DSR haircut was reconstructed in Phase B (2026-07-04)
 ≈ **50** distinct configs (sensitivity OAT ~33 + vol-target grid 12 + walk-forward grid
 6 + structural ladder ~5, net of overlaps). The DSR is robust to this estimate — ≥0.999
-for N=10→200. 69 trials logged in `results/trial_registry.jsonl` (arms B + C2).
+for N=10→200, and ≥0.9986 at the post-PR-5 v3.1 pool N=84. **104 trials logged** in
+`results/trial_registry.jsonl` as of 2026-07-15 (B 64 + C2 5 + C3a 5 + C4 5 + E 5 = 84
+in the v3.1 pool; C3b 20 in its own).
 
 ---
 
