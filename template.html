@@ -7,41 +7,88 @@
 <meta name="description" content="Crypto Breadth & Momentum: cross-sectional momentum on crypto majors, gated by breadth and per-coin trend filters. Binance USDT spot, 25-coin rolling universe. Research v3.1, not deployed.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
 <style>
 :root {
-  --ink: #111418;
-  --ink-soft: #4a5159;
-  --ink-faint: #6b727a;
-  --bg: #ffffff;
-  --bg-soft: #f7f8fa;
-  --bg-card: #ffffff;
-  --border: #e3e6ea;
-  --border-strong: #c8ccd2;
-  --accent: #1351b4;
-  --accent-soft: rgba(19, 81, 180, 0.08);
-  --good: #1d7a3a;
-  --good-soft: rgba(29, 122, 58, 0.10);
-  --bad: #b3261e;
-  --bad-soft: rgba(179, 38, 30, 0.06);
-  --warn: #b76e00;
-  --warn-soft: #fef9e7;
-  --grid: #eef0f3;
-  --strategy: #111418;
+  /* ===== canonical tokens — copied verbatim from C:\dev\design.md (2026-07-17) ===== */
+  /* surfaces */
+  --bg: #fafaf8;        /* page background — warm off-white */
+  --bg2: #ffffff;       /* cards, raised surfaces */
+  --bg3: #f5f5f0;       /* table headers, inset chips */
+  --bg4: #eeeee8;       /* progress tracks, deep insets */
+  --bg-hover: #f0f0ea;  /* row / cell hover */
+  /* borders */
+  --bd: #e2e0d8;        /* default hairline */
+  --bd2: #d5d3ca;       /* medium */
+  --bd-strong: #c0beb5; /* emphasis / axis lines */
+  /* text */
+  --t1: #1a1a18;        /* primary — near-black */
+  --t2: #5c5c56;        /* secondary */
+  --t3: #8a8a82;        /* tertiary / labels */
+  --t4: #b0b0a8;        /* disabled / faint */
+  /* semantic: green = gain/long, red = loss/short */
+  --g: #1a8754;  --g2: #22a366;  --g-bg: rgba(26,135,84,0.07);  --g-bg2: rgba(26,135,84,0.14);
+  --r: #c0392b;  --r2: #e74c3c;  --r-bg: rgba(192,57,43,0.07);  --r-bg2: rgba(192,57,43,0.14);
+  /* accents: blue = neutral/benchmark, amber = caution, purple = cost, cyan = info, pink = alt */
+  --b: #2563eb;  --b2: #3b82f6;  --b-bg: rgba(37,99,235,0.06);  --b-bg2: rgba(37,99,235,0.12);
+  --a: #b45309;  --a-bg: rgba(180,83,9,0.07);
+  --p: #7c3aed;  --p-bg: rgba(124,58,237,0.06);
+  --c: #0891b2;  --c-bg: rgba(8,145,178,0.06);
+  --pk: #be185d; --pk-bg: rgba(190,24,93,0.06);
+  /* -text variants — for TEXT; base values are for fills, borders, chart lines and large type */
+  --g-text: #146c43;  --r-text: #a93226;  --b-text: #1d4ed8;  --a-text: #92400e;
+  --p-text: #7c3aed;  --c-text: #0e7490;  --pk-text: #be185d;
+  --t3-text: #66665e; /* muted label text — lightest grey passing AA on a tinted tile */
+  /* type */
+  --serif: 'Instrument Serif', Georgia, serif;
+  --sans: 'DM Sans', -apple-system, sans-serif;
+  --mono: 'JetBrains Mono', 'SF Mono', 'Menlo', monospace;
+  /* elevation */
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+  --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md: 0 4px 6px rgba(0,0,0,0.05), 0 2px 4px rgba(0,0,0,0.04);
+  --shadow-lg: 0 10px 15px rgba(0,0,0,0.06), 0 4px 6px rgba(0,0,0,0.04);
+  /* radius */
+  --radius: 8px;
+  --radius-lg: 12px;
+  /* ===== legacy aliases → canonical (2026-07-17 migration) =====
+     Existing rules keep resolving; new rules use canonical names directly.
+     Text-ish legacy tokens map to the -text variants because they are used on
+     11–13px text (chips, labels, table cells), which needs 4.5:1 — see the
+     Contrast section of design.md. Fills use the -bg tints. */
+  --ink: var(--t1);
+  --ink-soft: var(--t2);
+  --ink-faint: var(--t3-text);
+  --bg-soft: var(--bg3);
+  --bg-card: var(--bg2);
+  --border: var(--bd);
+  --border-strong: var(--bd2);
+  --accent: var(--b-text);
+  --accent-soft: var(--b-bg);
+  --good: var(--g-text);
+  --good-soft: var(--g-bg);
+  --bad: var(--r-text);
+  --bad-soft: var(--r-bg);
+  --warn: var(--a-text);
+  --warn-soft: var(--a-bg);
+  --grid: #f0f0ea;
+  /* chart series: strategy = primary ink, BTC = brand orange (kept — semantic),
+     EW = green, 60/40 = benchmark blue */
+  --strategy: var(--t1);
   --btc: #f7931a;
-  --ew: #1d7a3a;
-  --bm6040: #1351b4;
+  --ew: var(--g);
+  --bm6040: var(--b);
 }
 
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
 body {
-  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: var(--sans);
   color: var(--ink);
   background: var(--bg);
   line-height: 1.55;
-  font-size: 15px;
+  font-size: 14px;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -53,7 +100,7 @@ body {
   margin: 20px 0 2px;
   padding: 13px 18px;
   background: var(--warn-soft);
-  border: 1px solid rgba(183, 110, 0, 0.28);
+  border: 1px solid rgba(180, 83, 9, 0.28);
   border-left: 4px solid var(--warn);
   border-radius: 9px;
   font-size: 13px;
@@ -66,12 +113,12 @@ body {
 .caveat-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 9px 0 1px; }
 .chip.caveat {
   background: #fff; color: var(--warn);
-  border: 1px solid rgba(183, 110, 0, 0.35);
+  border: 1px solid rgba(180, 83, 9, 0.35);
   border-radius: 999px; padding: 3px 11px;
   font-size: 11.5px; font-weight: 600; letter-spacing: 0.01em;
   text-transform: none; cursor: default;
 }
-.chip.caveat.engine { color: var(--accent); border-color: rgba(19, 81, 180, 0.35); }
+.chip.caveat.engine { color: var(--accent); border-color: rgba(37, 99, 235, 0.35); }
 .review-banner details { margin-top: 9px; }
 .review-banner summary {
   cursor: pointer; font-size: 11.5px; font-weight: 700;
@@ -113,12 +160,15 @@ header.top {
   background: var(--bg);
   border-bottom: 1px solid var(--border);
 }
+/* masthead pattern per design.md: serif title, 2px --t1 underline under the title row */
 header.top .title-row {
   display: flex;
-  align-items: flex-start;
+  align-items: flex-end;
   justify-content: space-between;
   gap: 32px;
-  margin-bottom: 4px;
+  margin-bottom: 14px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid var(--t1);
 }
 header.top .title-left { flex: 1 1 auto; min-width: 0; }
 header.top .title-right {
@@ -165,9 +215,9 @@ header.top .title-right .stale-badge {
   font-weight: 600;
   letter-spacing: 0.02em;
   border-radius: 9px;
-  background: rgba(179, 38, 30, 0.10);
+  background: rgba(192, 57, 43, 0.10);
   color: var(--bad);
-  border: 1px solid rgba(179, 38, 30, 0.25);
+  border: 1px solid rgba(192, 57, 43, 0.25);
 }
 header.top .title-right .fresh-badge {
   display: inline-block;
@@ -178,15 +228,16 @@ header.top .title-right .fresh-badge {
   font-weight: 600;
   letter-spacing: 0.02em;
   border-radius: 9px;
-  background: rgba(20, 132, 71, 0.10);
+  background: rgba(26, 135, 84, 0.10);
   color: var(--good);
-  border: 1px solid rgba(20, 132, 71, 0.25);
+  border: 1px solid rgba(26, 135, 84, 0.25);
 }
 header.top h1 {
   margin: 0 0 4px 0;
-  font-size: 22px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
+  font-family: var(--serif);
+  font-size: 32px;
+  font-weight: 400;
+  letter-spacing: -0.5px;
 }
 header.top h1 .version-tag {
   font-size: 11px;
@@ -195,7 +246,7 @@ header.top h1 .version-tag {
   margin-left: 10px;
   padding: 3px 8px;
   background: var(--accent-soft);
-  border: 1px solid rgba(19, 81, 180, 0.20);
+  border: 1px solid rgba(37, 99, 235, 0.20);
   border-radius: 4px;
   vertical-align: 2px;
   letter-spacing: 0.04em;
@@ -237,7 +288,7 @@ header.top .meta .sep { color: var(--border-strong); margin: 0 8px; }
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
   line-height: 1.05;
-  font-family: "JetBrains Mono", "Inter", monospace;
+  font-family: var(--mono);
 }
 .hero-strip .number.good { color: var(--good); }
 .hero-strip .number.bad  { color: var(--bad); }
@@ -289,9 +340,9 @@ header.top .meta .sep { color: var(--border-strong); margin: 0 8px; }
 .verdict .year-score { display: grid; grid-template-columns: repeat(9, minmax(0, 1fr)); gap: 6px; margin: 2px 0 8px; }
 .ys-tile { border-radius: 8px; padding: 8px 4px 7px; text-align: center; border: 1px solid var(--border); background: #fff; }
 .ys-tile.win { background: var(--good-soft); border-color: rgba(29, 122, 58, 0.28); }
-.ys-tile.lag { background: var(--warn-soft); border-color: rgba(183, 110, 0, 0.32); }
+.ys-tile.lag { background: var(--warn-soft); border-color: rgba(180, 83, 9, 0.32); }
 .ys-tile .yr { font-size: 10.5px; font-weight: 700; letter-spacing: 0.05em; color: var(--ink-faint); }
-.ys-tile .sv { font-family: "JetBrains Mono", monospace; font-variant-numeric: tabular-nums; font-size: 14px; font-weight: 700; color: var(--ink); margin-top: 3px; }
+.ys-tile .sv { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 14px; font-weight: 700; color: var(--ink); margin-top: 3px; }
 .ys-tile .bv { font-size: 10.5px; color: var(--ink-soft); margin-top: 1px; font-variant-numeric: tabular-nums; }
 .ys-tile .ex { font-size: 10.5px; font-weight: 700; margin-top: 3px; }
 .ys-tile.win .ex { color: var(--good); }
@@ -341,9 +392,12 @@ nav.tabs a {
 }
 nav.tabs a:hover { color: var(--ink); }
 nav.tabs a.active {
-  color: var(--accent);
-  border-bottom-color: var(--accent);
+  color: var(--t1);
+  border-bottom-color: var(--t1);
   font-weight: 600;
+}
+@media (pointer: coarse) {
+  nav.tabs a { min-height: 44px; display: inline-flex; align-items: center; }
 }
 
 /* ===== sections ===== */
@@ -456,7 +510,7 @@ section .section-sub {
 .window-card .v {
   font-size: 28px;
   font-weight: 700;
-  font-family: "JetBrains Mono", "Inter", monospace;
+  font-family: var(--mono);
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.01em;
   margin-top: 12px;
@@ -541,7 +595,7 @@ table.simple .bad { color: var(--bad); }
 .m-card .v {
   font-size: 24px;
   font-weight: 700;
-  font-family: "JetBrains Mono", "Inter", monospace;
+  font-family: var(--mono);
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.01em;
   line-height: 1.1;
@@ -613,7 +667,7 @@ table.holdings tbody tr:last-child td { border-bottom: none; }
 .window-strip .cell .v {
   font-size: 22px;
   font-weight: 700;
-  font-family: "JetBrains Mono", "Inter", monospace;
+  font-family: var(--mono);
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.01em;
   color: var(--ink);
@@ -732,12 +786,12 @@ table.holdings tbody tr:last-child td { border-bottom: none; }
   vertical-align: middle;
 }
 .explorer-legend .swatch.held {
-  background: rgba(19, 81, 180, 0.15);
-  border: 1px solid rgba(19, 81, 180, 0.30);
+  background: rgba(37, 99, 235, 0.15);
+  border: 1px solid rgba(37, 99, 235, 0.30);
 }
 .explorer-legend .swatch.bear {
-  background: rgba(183, 110, 0, 0.10);
-  border: 1px solid rgba(183, 110, 0, 0.30);
+  background: rgba(180, 83, 9, 0.10);
+  border: 1px solid rgba(180, 83, 9, 0.30);
 }
 .explorer-legend .marker {
   font-weight: 700;
@@ -795,7 +849,7 @@ table.holdings tbody tr:last-child td { border-bottom: none; }
 .signal-step .step-rule {
   font-size: 12px; color: var(--ink-faint);
   margin-bottom: 14px;
-  font-family: "JetBrains Mono", monospace;
+  font-family: var(--mono);
   background: var(--bg-soft);
   padding: 6px 10px;
   border-radius: 4px;
@@ -827,7 +881,7 @@ table.holdings tbody tr:last-child td { border-bottom: none; }
 .coin-chip.pass {
   background: var(--good-soft);
   color: var(--good);
-  border: 1px solid rgba(29,122,58,0.3);
+  border: 1px solid rgba(26,135,84,0.3);
 }
 .coin-chip.fail {
   background: var(--bg-soft);
@@ -845,7 +899,7 @@ table.holdings tbody tr:last-child td { border-bottom: none; }
 .coin-chip.runner-up {
   background: var(--accent-soft);
   color: var(--accent);
-  border: 1px solid rgba(19,81,180,0.3);
+  border: 1px solid rgba(37,99,235,0.3);
 }
 .chip-cluster { line-height: 2.0; }
 .coin-chip .small { font-size: 10.5px; opacity: 0.75; font-weight: 500; }
@@ -916,7 +970,7 @@ table.rank tbody tr.winner .rank-badge { background: var(--accent); }
 .tier-rung .exposure {
   font-size: 22px;
   font-weight: 700;
-  font-family: "JetBrains Mono", monospace;
+  font-family: var(--mono);
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.01em;
   margin-top: 4px;
@@ -947,7 +1001,7 @@ table.rank tbody tr.winner .rank-badge { background: var(--accent); }
 .final-alloc .alloc-row:last-child { border-bottom: none; }
 .final-alloc .alloc-row .coin { font-weight: 600; }
 .final-alloc .alloc-row .w {
-  font-family: "JetBrains Mono", monospace;
+  font-family: var(--mono);
   font-variant-numeric: tabular-nums;
 }
 .final-alloc .alloc-row.cash { color: var(--ink-soft); }
@@ -1061,9 +1115,9 @@ section h2 .sec-no {
   color: var(--ink-soft);
   font-variant-numeric: tabular-nums;
 }
-.signal-pill.low { color: var(--bad); border-color: rgba(179,38,30,0.3); background: var(--bad-soft); }
-.signal-pill.mid { color: var(--warn); border-color: rgba(183,110,0,0.3); background: var(--warn-soft); }
-.signal-pill.high { color: var(--good); border-color: rgba(29,122,58,0.3); background: var(--good-soft); }
+.signal-pill.low { color: var(--bad); border-color: rgba(192,57,43,0.3); background: var(--bad-soft); }
+.signal-pill.mid { color: var(--warn); border-color: rgba(180,83,9,0.3); background: var(--warn-soft); }
+.signal-pill.high { color: var(--good); border-color: rgba(26,135,84,0.3); background: var(--good-soft); }
 
 table.ledger {
   border-collapse: collapse;
@@ -1098,9 +1152,9 @@ table.ledger tbody tr:last-child td { border-bottom: none; }
   letter-spacing: 0.02em;
   text-transform: uppercase;
 }
-.chip.entry { background: var(--good-soft); color: var(--good); border: 1px solid rgba(29,122,58,0.3); }
-.chip.exit  { background: var(--bad-soft); color: var(--bad); border: 1px solid rgba(179,38,30,0.3); }
-.chip.resize { background: var(--accent-soft); color: var(--accent); border: 1px solid rgba(19,81,180,0.3); }
+.chip.entry { background: var(--good-soft); color: var(--good); border: 1px solid rgba(26,135,84,0.3); }
+.chip.exit  { background: var(--bad-soft); color: var(--bad); border: 1px solid rgba(192,57,43,0.3); }
+.chip.resize { background: var(--accent-soft); color: var(--accent); border: 1px solid rgba(37,99,235,0.3); }
 .chip.muted { background: var(--bg-soft); color: var(--ink-faint); border: 1px solid var(--border); }
 
 .ledger-table-wrap {
@@ -1148,7 +1202,7 @@ footer.bottom a { color: var(--accent); text-decoration: none; }
 footer.bottom a:hover { text-decoration: underline; }
 
 /* ===== utility ===== */
-.mono { font-family: "JetBrains Mono", monospace; font-variant-numeric: tabular-nums; }
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
 .positive { color: var(--good); }
 .negative { color: var(--bad); }
 .muted { color: var(--ink-faint); }
@@ -1213,11 +1267,11 @@ footer.bottom a:hover { text-decoration: underline; }
       <div class="item">
         <div class="number" id="hero-ci-num">—</div>
         <svg id="hero-ci-bar" width="100%" height="14" viewBox="0 0 200 14" preserveAspectRatio="none" style="margin-top:6px; overflow:visible">
-          <line x1="0" y1="7" x2="200" y2="7" stroke="#e3e6ea" stroke-width="1"/>
-          <line id="hero-ci-line" x1="40" y1="7" x2="160" y2="7" stroke="#1351b4" stroke-width="3" stroke-linecap="round"/>
-          <circle id="hero-ci-low" cx="40" cy="7" r="3.5" fill="#b3261e"/>
-          <circle id="hero-ci-med" cx="100" cy="7" r="3.5" fill="#111418"/>
-          <circle id="hero-ci-high" cx="160" cy="7" r="3.5" fill="#b3261e"/>
+          <line x1="0" y1="7" x2="200" y2="7" stroke="#d5d3ca" stroke-width="1"/>
+          <line id="hero-ci-line" x1="40" y1="7" x2="160" y2="7" stroke="#2563eb" stroke-width="3" stroke-linecap="round"/>
+          <circle id="hero-ci-low" cx="40" cy="7" r="3.5" fill="#c0392b"/>
+          <circle id="hero-ci-med" cx="100" cy="7" r="3.5" fill="#1a1a18"/>
+          <circle id="hero-ci-high" cx="160" cy="7" r="3.5" fill="#c0392b"/>
         </svg>
         <div class="label">Year-block bootstrap 90% CI (p05–p95)</div>
         <div class="desc" id="hero-ci-sub">—</div>
@@ -1558,27 +1612,34 @@ const num = (v, d) => (v == null || isNaN(v)) ? "—" : v.toFixed(d == null ? 2 
 const signed = (v) => (v == null || isNaN(v)) ? "—" : (v >= 0 ? "+" : "") + (v * 100).toFixed(1) + "%";
 const cls = (v) => v >= 0 ? "good" : "bad";
 
-// ===== shared Plotly config (breadth-thrust-etf style) =====
+// ===== shared Plotly config — chart DNA per C:\dev\design.md (2026-07-17) =====
+// Deliberate adaptations from the spec block: no dtick pin (the 8.5-year sample
+// would produce ~50 M2 ticks), and tickformat "%b '%y" lives in DATE_XAXIS only,
+// because the base xaxis is shared by numeric axes (yearly, bootstrap, sensitivity).
 const PLOTLY_CFG = { displayModeBar: false, responsive: true };
-const FONT_STACK = "Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif";
+const FONT_STACK = "DM Sans, -apple-system, sans-serif";
 const LAYOUT_BASE = {
-  font: { family: FONT_STACK, size: 11, color: "#4a5159" },
-  margin: { l: 60, r: 16, t: 16, b: 44 },
+  font: { family: FONT_STACK, size: 10, color: "#5c5c56" },
+  margin: { l: 16, r: 52, t: 16, b: 40 },
   paper_bgcolor: "transparent",
   plot_bgcolor: "transparent",
   hovermode: "x unified",
   hoverlabel: {
     bgcolor: "#ffffff",
-    bordercolor: "#e3e6ea",
-    font: { family: FONT_STACK, size: 12, color: "#111418" }
+    bordercolor: "#d5d3ca",
+    font: { family: FONT_STACK, size: 10, color: "#1a1a18" }
   },
-  legend: { orientation: "h", x: 0, y: 1.10, font: { size: 11 } },
-  xaxis: { gridcolor: "#eef0f3", color: "#4a5159", zeroline: false,
-           tickfont: { size: 10 } },
-  yaxis: { gridcolor: "#eef0f3", color: "#4a5159", zeroline: true,
-           zerolinecolor: "#9ca3af", zerolinewidth: 1,
-           tickfont: { size: 10 } },
+  legend: { orientation: "h", x: 0, y: 1.10, font: { size: 9 }, bgcolor: "transparent" },
+  xaxis: { showgrid: false, linecolor: "#d5d3ca", linewidth: 1, color: "#5c5c56",
+           zeroline: false, tickfont: { size: 9 } },
+  yaxis: { gridcolor: "#f0f0ea", linecolor: "#d5d3ca", linewidth: 1, color: "#5c5c56",
+           side: "right", zeroline: true,
+           zerolinecolor: "#c0beb5", zerolinewidth: 1,
+           tickfont: { size: 9, family: "JetBrains Mono" } },
 };
+// Date-axis variant for time-series charts (equity, exposure, drawdown, rolling,
+// walk-forward, recent) — y-axis right is finance convention per design.md.
+const DATE_XAXIS = Object.assign({}, LAYOUT_BASE.xaxis, { tickformat: "%b '%y" });
 
 // Hard-coded bear regime windows so the equity chart can shade them.
 const BEAR_REGIMES = [
@@ -1788,13 +1849,14 @@ function renderRecentPerf(d) {
   const x = dates.slice(i90);
   const traces = [
     { x, y: rebased(e.strategy), type: "scatter", mode: "lines", name: "Strategy (book)",
-      line: { color: "#111418", width: 2 }, hovertemplate: "%{x}<br>Book %{y:.1f}<extra></extra>" },
+      line: { color: "#1a1a18", width: 2 }, hovertemplate: "%{x}<br>Book %{y:.1f}<extra></extra>" },
     { x, y: rebased(e.btc), type: "scatter", mode: "lines", name: "BTC",
       line: { color: "#f7931a", width: 1.6 }, hovertemplate: "%{x}<br>BTC %{y:.1f}<extra></extra>" },
   ];
   const layout = Object.assign({}, LAYOUT_BASE, {
     height: 220,
-    margin: { l: 44, r: 12, t: 26, b: 34 },
+    margin: { l: 12, r: 44, t: 26, b: 34 },
+    xaxis: DATE_XAXIS,
   });
   Plotly.newPlot(chartEl, traces, layout, PLOTLY_CFG);
 }
@@ -1803,7 +1865,7 @@ function bearRegimeShapes(yref) {
   return BEAR_REGIMES.map(r => ({
     type: "rect", xref: "x", x0: r.start, x1: r.end,
     yref: yref || "paper", y0: 0, y1: 1,
-    fillcolor: "rgba(183,110,0,0.10)", line: { width: 0 }, layer: "below"
+    fillcolor: "rgba(180,83,9,0.10)", line: { width: 0 }, layer: "below"
   }));
 }
 
@@ -1812,7 +1874,7 @@ function bearRegimeAnnotations() {
     x: r.start, y: 1, yref: "paper", xref: "x",
     text: r.name, showarrow: false,
     xanchor: "left", yanchor: "bottom",
-    font: { size: 10, color: "#b76e00" }
+    font: { size: 10, color: "#92400e" }
   }));
 }
 
@@ -1949,32 +2011,32 @@ function renderEquity(d) {
 
   const traces = [
     { x: dates, y: rebased0.strategy, name: "Strategy v3.1", type: "scatter", mode: "lines",
-      line: { color: "#111418", width: 2.4 },
+      line: { color: "#1a1a18", width: 2.4 },
       hovertemplate: "Strategy: %{y:+.2%}<extra></extra>" },
     { x: dates, y: rebased0.btc, name: "BTC HODL", type: "scatter", mode: "lines",
       line: { color: "#f7931a", width: 1.2 },
       hovertemplate: "BTC: %{y:+.2%}<extra></extra>" },
     { x: dates, y: rebased0.ew, name: "Equal-weight investable", type: "scatter", mode: "lines",
-      line: { color: "#1d7a3a", width: 1.2 },
+      line: { color: "#1a8754", width: 1.2 },
       hovertemplate: "EW: %{y:+.2%}<extra></extra>" },
     { x: dates, y: rebased0["6040"], name: "60/40 BTC/ETH", type: "scatter", mode: "lines",
-      line: { color: "#1351b4", width: 1.2 },
+      line: { color: "#2563eb", width: 1.2 },
       hovertemplate: "60/40: %{y:+.2%}<extra></extra>" },
   ];
   const shapes = bearRegimeShapes("paper").concat([{
     type: "line", xref: "x", x0: d.meta.oos_start, x1: d.meta.oos_start,
     yref: "paper", y0: 0, y1: 1,
-    line: { color: "#6b727a", width: 1, dash: "dash" }
+    line: { color: "#66665e", width: 1, dash: "dash" }
   }, {
     type: "line", xref: "paper", x0: 0, x1: 1,
     yref: "y", y0: 0, y1: 0,
-    line: { color: "#9ca3af", width: 1 }
+    line: { color: "#c0beb5", width: 1 }
   }]);
   const annotations = bearRegimeAnnotations().concat([{
     x: d.meta.oos_start, y: 1, yref: "paper", xref: "x",
     text: "  IS / OOS",
     showarrow: false, xanchor: "left", yanchor: "bottom",
-    font: { size: 10, color: "#6b727a" }
+    font: { size: 10, color: "#66665e" }
   }]);
   const layout = Object.assign({}, LAYOUT_BASE, {
     yaxis: Object.assign({}, LAYOUT_BASE.yaxis, {
@@ -1982,8 +2044,7 @@ function renderEquity(d) {
       title: { text: "Cumulative return (0% at period start)", font: { size: 11 } }
     }),
     shapes: shapes, annotations: annotations,
-    legend: { orientation: "h", x: 0, y: 1.10, font: { size: 11 } },
-    xaxis: Object.assign({}, LAYOUT_BASE.xaxis, {
+    xaxis: Object.assign({}, DATE_XAXIS, {
       range: [new Date(x0Ms0).toISOString().slice(0, 10),
               new Date(x1Ms0).toISOString().slice(0, 10)],
       rangeselector: {
@@ -1996,11 +2057,11 @@ function renderEquity(d) {
           { count: 5, label: "5Y", step: "year", stepmode: "backward" },
           { step: "all", label: "MAX" }
         ],
-        bgcolor: "#f7f8fa",
-        activecolor: "#cfe0f5",
-        bordercolor: "#cbd5e1",
+        bgcolor: "#f5f5f0",
+        activecolor: "rgba(37,99,235,0.12)",
+        bordercolor: "#d5d3ca",
         borderwidth: 1,
-        font: { size: 11, color: "#1351b4" },
+        font: { size: 10, color: "#1d4ed8" },
         x: 1, xanchor: "right", y: 1.08
       }
     })
@@ -2036,7 +2097,7 @@ function renderEquity(d) {
 
 // Stable palette so the same coin gets the same colour across runs.
 const COIN_COLOURS = [
-  "#1351b4", "#f7931a", "#1d7a3a", "#b3261e", "#7e57c2", "#0e7490",
+  "#2563eb", "#f7931a", "#1a8754", "#c0392b", "#7c3aed", "#0e7490",
   "#dc2626", "#2563eb", "#16a34a", "#ea580c", "#0891b2", "#9333ea",
   "#65a30d", "#c026d3", "#0f766e", "#4338ca", "#a16207", "#9f1239",
   "#0369a1", "#15803d", "#b91c1c", "#6d28d9", "#7c2d12", "#155e75",
@@ -2069,7 +2130,7 @@ function renderExposure(d) {
       stackgroup: "exposure",
       groupnorm: "percent",
       hovertemplate: coin + ": %{y:.1%}<extra></extra>",
-      line: { width: 0.5, color: isCash ? "#cbd5e1" : COIN_COLOURS[plotIdx % COIN_COLOURS.length] },
+      line: { width: 0.5, color: isCash ? "#d5d3ca" : COIN_COLOURS[plotIdx % COIN_COLOURS.length] },
       fillcolor: isCash ? "#e2e8f0" : undefined
     };
   });
@@ -2079,7 +2140,8 @@ function renderExposure(d) {
     yaxis: Object.assign({}, LAYOUT_BASE.yaxis, { range: [0, 100], ticksuffix: "%", title: { text: "% of NAV (stacked)", font: { size: 11 } } }),
     shapes: shapes,
     annotations: annotations,
-    legend: { orientation: "h", y: -0.18, font: { size: 10 } },
+    xaxis: DATE_XAXIS,
+    legend: { orientation: "h", y: -0.18, font: { size: 9 }, bgcolor: "transparent" },
     hovermode: "x unified"
   });
   Plotly.newPlot("chart-exposure", traces, layout, PLOTLY_CFG);
@@ -2089,13 +2151,14 @@ function renderDrawdown(d) {
   const dd = d.drawdown;
   const traces = [{
     x: dd.dates, y: dd.strategy, type: "scatter", mode: "lines",
-    fill: "tozeroy", line: { color: "#b3261e", width: 0.8 },
-    fillcolor: "rgba(179,38,30,0.18)",
+    fill: "tozeroy", line: { color: "#c0392b", width: 0.8 },
+    fillcolor: "rgba(192,57,43,0.18)",
     hovertemplate: "DD: %{y:.1%}<extra></extra>",
     name: "Drawdown"
   }];
   const layout = Object.assign({}, LAYOUT_BASE, {
     showlegend: false,
+    xaxis: DATE_XAXIS,
     yaxis: Object.assign({}, LAYOUT_BASE.yaxis, { tickformat: ".0%" }),
     shapes: bearRegimeShapes("paper")
   });
@@ -2120,10 +2183,10 @@ function renderIsOos(d) {
      </div>`;
 
   const rows = [
-    { label: "Strategy v3", key: "strategy", c: "#111418" },
+    { label: "Strategy v3", key: "strategy", c: "#1a1a18" },
     { label: "BTC HODL", key: "btc", c: "#f7931a" },
-    { label: "Equal-weight investable", key: "ew", c: "#1d7a3a" },
-    { label: "60/40 BTC/ETH", key: "bm_6040", c: "#1351b4" },
+    { label: "Equal-weight investable", key: "ew", c: "#1a8754" },
+    { label: "60/40 BTC/ETH", key: "bm_6040", c: "#2563eb" },
   ];
   let h = `<thead><tr><th>series</th>
     <th colspan="3" style="text-align:center;border-left:1px solid var(--border)">in-sample (2018–2020)</th>
@@ -2155,11 +2218,11 @@ function renderYearly(d) {
   const yearLabels = y.years.map(String);
   const traces = [
     { x: yearLabels, y: y.strategy, name: "Strategy v3.1", type: "bar",
-      marker: { color: "#111418" }, hovertemplate: "%{x}<br>Strategy %{y:+.1%}<extra></extra>" },
+      marker: { color: "#1a1a18" }, hovertemplate: "%{x}<br>Strategy %{y:+.1%}<extra></extra>" },
     { x: yearLabels, y: y.btc, name: "BTC HODL", type: "bar",
       marker: { color: "#f7931a" }, hovertemplate: "%{x}<br>BTC %{y:+.1%}<extra></extra>" },
     { x: yearLabels, y: y["6040"], name: "60/40 BTC/ETH", type: "bar",
-      marker: { color: "#1351b4" }, hovertemplate: "%{x}<br>60/40 %{y:+.1%}<extra></extra>" },
+      marker: { color: "#2563eb" }, hovertemplate: "%{x}<br>60/40 %{y:+.1%}<extra></extra>" },
   ];
   // Cap the visible y-range at +500% so the 2021 monster bars do not
   // squash the other years to invisible. Outliers surfaced as a caption
@@ -2211,28 +2274,29 @@ function renderRolling(d) {
   const fullSh = d.summary.full.sharpe;
   const traces = [{
     x: r.dates, y: r.values, type: "scatter", mode: "lines",
-    line: { color: "#111418", width: 1.5 },
+    line: { color: "#1a1a18", width: 1.5 },
     fill: "tozeroy", fillcolor: "rgba(17,20,24,0.04)",
     hovertemplate: "Sharpe: %{y:.2f}<extra></extra>",
     name: "Rolling 252d Sharpe"
   }];
   const layout = Object.assign({}, LAYOUT_BASE, {
     showlegend: false,
+    xaxis: DATE_XAXIS,
     yaxis: Object.assign({}, LAYOUT_BASE.yaxis, { title: { text: "Sharpe", font: { size: 11 } } }),
     shapes: [
       { type: "line", xref: "paper", x0: 0, x1: 1, yref: "y", y0: 1, y1: 1,
-        line: { color: "#1d7a3a", width: 1, dash: "dot" } },
+        line: { color: "#1a8754", width: 1, dash: "dot" } },
       { type: "line", xref: "paper", x0: 0, x1: 1, yref: "y", y0: fullSh, y1: fullSh,
-        line: { color: "#b3261e", width: 1, dash: "dash" } }
+        line: { color: "#c0392b", width: 1, dash: "dash" } }
     ],
     annotations: [
       { x: r.dates[Math.floor(r.dates.length * 0.98)], y: 1, xref: "x", yref: "y",
         text: "= 1.0", showarrow: false, xanchor: "right", yanchor: "bottom",
-        font: { size: 10, color: "#1d7a3a" } },
+        font: { size: 10, color: "#1a8754" } },
       { x: r.dates[Math.floor(r.dates.length * 0.98)], y: fullSh, xref: "x", yref: "y",
         text: "full-sample " + num(fullSh), showarrow: false,
         xanchor: "right", yanchor: "bottom",
-        font: { size: 10, color: "#b3261e" } }
+        font: { size: 10, color: "#c0392b" } }
     ]
   });
   Plotly.newPlot("chart-rolling", traces, layout, PLOTLY_CFG);
@@ -2242,7 +2306,7 @@ function renderBootstrap(d) {
   const b = d.bootstrap;
   const traces = [{
     x: b.bins_mid, y: b.counts, type: "bar",
-    marker: { color: "rgba(19,81,180,0.35)", line: { color: "#1351b4", width: 0.4 } },
+    marker: { color: "rgba(37,99,235,0.35)", line: { color: "#2563eb", width: 0.4 } },
     hovertemplate: "Sharpe %{x:.2f}: %{y} samples<extra></extra>",
     name: "bootstrap"
   }];
@@ -2252,21 +2316,21 @@ function renderBootstrap(d) {
     yaxis: Object.assign({}, LAYOUT_BASE.yaxis, { title: { text: "samples", font: { size: 11 } } }),
     shapes: [
       { type: "rect", xref: "x", x0: b.p25, x1: b.p75, yref: "paper", y0: 0, y1: 1,
-        fillcolor: "rgba(19,81,180,0.06)", line: { width: 0 }, layer: "below" },
+        fillcolor: "rgba(37,99,235,0.06)", line: { width: 0 }, layer: "below" },
       { type: "line", xref: "x", x0: b.p05, x1: b.p05, yref: "paper", y0: 0, y1: 1,
-        line: { color: "#b3261e", width: 1.2, dash: "dash" } },
+        line: { color: "#c0392b", width: 1.2, dash: "dash" } },
       { type: "line", xref: "x", x0: b.p50, x1: b.p50, yref: "paper", y0: 0, y1: 1,
-        line: { color: "#111418", width: 1.6 } },
+        line: { color: "#1a1a18", width: 1.6 } },
       { type: "line", xref: "x", x0: b.p95, x1: b.p95, yref: "paper", y0: 0, y1: 1,
-        line: { color: "#b3261e", width: 1.2, dash: "dash" } }
+        line: { color: "#c0392b", width: 1.2, dash: "dash" } }
     ],
     annotations: [
       { x: b.p05, y: 1, yref: "paper", text: "p05 " + num(b.p05), showarrow: false,
-        xanchor: "right", yanchor: "top", font: { size: 10, color: "#b3261e" } },
+        xanchor: "right", yanchor: "top", font: { size: 10, color: "#c0392b" } },
       { x: b.p50, y: 1, yref: "paper", text: " median " + num(b.p50), showarrow: false,
-        xanchor: "left", yanchor: "top", font: { size: 11, color: "#111418" } },
+        xanchor: "left", yanchor: "top", font: { size: 11, color: "#1a1a18" } },
       { x: b.p95, y: 1, yref: "paper", text: "p95 " + num(b.p95), showarrow: false,
-        xanchor: "left", yanchor: "top", font: { size: 10, color: "#b3261e" } }
+        xanchor: "left", yanchor: "top", font: { size: 10, color: "#c0392b" } }
     ]
   });
   Plotly.newPlot("chart-bootstrap", traces, layout, PLOTLY_CFG);
@@ -2281,19 +2345,19 @@ function renderSensitivity(d) {
   const traces = [
     { type: "bar", orientation: "h",
       x: ranges, y: labels, base: mins,
-      marker: { color: "rgba(19,81,180,0.16)", line: { color: "#1351b4", width: 0.4 } },
+      marker: { color: "rgba(37,99,235,0.16)", line: { color: "#2563eb", width: 0.4 } },
       name: "IS Sharpe range",
       hovertemplate: "min %{base:.2f}, max %{x:.2f}<extra>%{y}</extra>" },
     { type: "scatter", mode: "markers",
       x: defaults, y: labels,
-      marker: { color: "#111418", size: 11, symbol: "circle" },
+      marker: { color: "#1a1a18", size: 11, symbol: "circle" },
       name: "default",
       hovertemplate: "default %{x:.2f}<extra>%{y}</extra>" }
   ];
   const layout = Object.assign({}, LAYOUT_BASE, {
     barmode: "stack",
     xaxis: Object.assign({}, LAYOUT_BASE.xaxis, { title: { text: "IS Sharpe", font: { size: 11 } } }),
-    yaxis: Object.assign({}, LAYOUT_BASE.yaxis, { automargin: true, zeroline: false }),
+    yaxis: Object.assign({}, LAYOUT_BASE.yaxis, { automargin: true, zeroline: false, side: "left" }),
     margin: { l: 220, r: 16, t: 16, b: 44 },
     legend: { orientation: "h", x: 0, y: 1.12, font: { size: 11 } }
   });
@@ -2331,17 +2395,17 @@ function renderAttribution(d) {
   const traces = [
     { type: "bar", orientation: "h",
       x: vals_full, y: labels, name: "full-sample",
-      marker: { color: vals_full.map(v => v >= 0 ? "#1d7a3a" : "#b3261e") },
+      marker: { color: vals_full.map(v => v >= 0 ? "#1a8754" : "#c0392b") },
       hovertemplate: "%{y}: %{x:+.2f}<extra>full</extra>" },
     { type: "bar", orientation: "h",
       x: vals_oos, y: labels, name: "OOS only",
-      marker: { color: vals_oos.map(v => v >= 0 ? "rgba(29,122,58,0.45)" : "rgba(179,38,30,0.45)") },
+      marker: { color: vals_oos.map(v => v >= 0 ? "rgba(26,135,84,0.45)" : "rgba(192,57,43,0.45)") },
       hovertemplate: "%{y}: %{x:+.2f}<extra>OOS</extra>" }
   ];
   const layout = Object.assign({}, LAYOUT_BASE, {
     barmode: "group",
     xaxis: Object.assign({}, LAYOUT_BASE.xaxis, { title: { text: "$ contribution (units of starting capital)", font: { size: 11 } } }),
-    yaxis: Object.assign({}, LAYOUT_BASE.yaxis, { automargin: true, zeroline: false }),
+    yaxis: Object.assign({}, LAYOUT_BASE.yaxis, { automargin: true, zeroline: false, side: "left" }),
     height: Math.max(360, labels.length * 22 + 60)
   });
   Plotly.newPlot("chart-attribution", traces, layout, PLOTLY_CFG);
@@ -2391,16 +2455,17 @@ function renderWalkForward(d) {
   const wkEqRf = wf.equity_chained;
   const traces = [
     { x: wkEqDef.dates, y: wkEqDef.values, name: "default (no tuning)",
-      type: "scatter", mode: "lines", line: { color: "#6b727a", width: 1.4 },
+      type: "scatter", mode: "lines", line: { color: "#66665e", width: 1.4 },
       hovertemplate: "Default: %{y:.2f}x<extra></extra>" },
     { x: wkEqIs.dates, y: wkEqIs.values, name: "IS-tuned once (frozen)",
       type: "scatter", mode: "lines", line: { color: "#f7931a", width: 1.4, dash: "dot" },
       hovertemplate: "IS-once: %{y:.2f}x<extra></extra>" },
     { x: wkEqRf.dates, y: wkEqRf.values, name: "Walk-forward refit (annual)",
-      type: "scatter", mode: "lines", line: { color: "#1351b4", width: 2 },
+      type: "scatter", mode: "lines", line: { color: "#2563eb", width: 2 },
       hovertemplate: "WF refit: %{y:.2f}x<extra></extra>" },
   ];
   const layout = Object.assign({}, LAYOUT_BASE, {
+    xaxis: DATE_XAXIS,
     yaxis: Object.assign({}, LAYOUT_BASE.yaxis, { type: "log", title: { text: "wealth multiple (log)", font: { size: 11 } } })
   });
   Plotly.newPlot("chart-walkforward", traces, layout, PLOTLY_CFG);
@@ -2636,7 +2701,7 @@ async function renderExplorerChart(coin) {
       heldShapes.push({
         type: "rect", xref: "x", yref: "paper",
         x0: start, x1: c.dates[i], y0: 0, y1: 1,
-        fillcolor: "rgba(19, 81, 180, 0.15)", line: { width: 0 }, layer: "below"
+        fillcolor: "rgba(37, 99, 235, 0.15)", line: { width: 0 }, layer: "below"
       });
       start = null;
     }
@@ -2645,14 +2710,14 @@ async function renderExplorerChart(coin) {
     heldShapes.push({
       type: "rect", xref: "x", yref: "paper",
       x0: start, x1: c.dates[c.dates.length - 1], y0: 0, y1: 1,
-      fillcolor: "rgba(19, 81, 180, 0.15)", line: { width: 0 }, layer: "below"
+      fillcolor: "rgba(37, 99, 235, 0.15)", line: { width: 0 }, layer: "below"
     });
   }
 
   // Trade markers
   const tradeXs = c.events.map(e => e.date);
-  const tradeColors = c.events.map(e => e.action === "entry" ? "#1d7a3a" :
-                                          e.action === "exit" ? "#b3261e" : "#1351b4");
+  const tradeColors = c.events.map(e => e.action === "entry" ? "#1a8754" :
+                                          e.action === "exit" ? "#c0392b" : "#2563eb");
   const tradeSymbols = c.events.map(e => e.action === "entry" ? "triangle-up" :
                                           e.action === "exit" ? "triangle-down" : "diamond");
   const tradeHover = c.events.map(e => `${e.date}<br>${e.action}: ${(e.old_w*100).toFixed(1)}% → ${(e.new_w*100).toFixed(1)}%`);
@@ -2675,13 +2740,13 @@ async function renderExplorerChart(coin) {
     // Price (top panel)
     { x: c.dates, y: c.close, name: "Close",
       type: "scatter", mode: "lines",
-      line: { color: "#111418", width: 2 },
+      line: { color: "#1a1a18", width: 2 },
       hovertemplate: "Close: %{y:.4f}<extra></extra>",
       xaxis: "x", yaxis: "y" },
     // 50d MA (top panel)
     { x: c.dates, y: c.ma, name: "50d MA",
       type: "scatter", mode: "lines",
-      line: { color: "#1351b4", width: 1.4, dash: "dot" },
+      line: { color: "#2563eb", width: 1.4, dash: "dot" },
       hovertemplate: "MA: %{y:.4f}<extra></extra>",
       xaxis: "x", yaxis: "y" },
     // Trade markers (top panel)
@@ -2695,8 +2760,8 @@ async function renderExplorerChart(coin) {
     // Momentum (bottom panel)
     { x: c.dates, y: c.momentum, name: "Momentum score",
       type: "scatter", mode: "lines",
-      line: { color: "#1d7a3a", width: 1.5 },
-      fill: "tozeroy", fillcolor: "rgba(29,122,58,0.08)",
+      line: { color: "#1a8754", width: 1.5 },
+      fill: "tozeroy", fillcolor: "rgba(26,135,84,0.08)",
       hovertemplate: "Momentum: %{y:.2f}<extra></extra>",
       xaxis: "x2", yaxis: "y2" },
   ];
@@ -2705,7 +2770,7 @@ async function renderExplorerChart(coin) {
   // Zero line for momentum panel (in panel coords)
   allShapes.push({
     type: "line", xref: "x2", x0: c.dates[0], x1: c.dates[c.dates.length - 1],
-    yref: "y2", y0: 0, y1: 0, line: { color: "#9ca3af", width: 1 }
+    yref: "y2", y0: 0, y1: 0, line: { color: "#c0beb5", width: 1 }
   });
 
   // Default the x-range to the last 3 months so the chart opens zoomed-in
@@ -2758,20 +2823,21 @@ async function renderExplorerChart(coin) {
   const initialYRanges = computeYRanges(defaultRange[0], defaultRange[1]);
 
   const layout = {
-    font: { family: FONT_STACK, size: 11, color: "#4a5159" },
-    margin: { l: 60, r: 20, t: 50, b: 40 },
+    font: { family: FONT_STACK, size: 10, color: "#5c5c56" },
+    margin: { l: 16, r: 56, t: 50, b: 40 },
     paper_bgcolor: "transparent",
     plot_bgcolor: "transparent",
     hovermode: "x unified",
     hoverlabel: {
       bgcolor: "#ffffff",
-      bordercolor: "#e3e6ea",
-      font: { family: FONT_STACK, size: 12, color: "#111418" }
+      bordercolor: "#d5d3ca",
+      font: { family: FONT_STACK, size: 10, color: "#1a1a18" }
     },
     showlegend: true,
-    legend: { orientation: "h", x: 0, y: 1.14, font: { size: 11 } },
+    legend: { orientation: "h", x: 0, y: 1.14, font: { size: 9 }, bgcolor: "transparent" },
     grid: { rows: 2, columns: 1, pattern: "independent", roworder: "top to bottom" },
-    xaxis:  { domain: [0, 1], anchor: "y", gridcolor: "#eef0f3", zeroline: false, tickfont: { size: 10 },
+    xaxis:  { domain: [0, 1], anchor: "y", showgrid: false, linecolor: "#d5d3ca", linewidth: 1,
+              zeroline: false, tickfont: { size: 9 }, tickformat: "%b '%y",
               range: defaultRange,
               rangeselector: {
                 buttons: [
@@ -2783,19 +2849,24 @@ async function renderExplorerChart(coin) {
                   { count: 5, label: "5Y", step: "year", stepmode: "backward" },
                   { step: "all", label: "MAX" }
                 ],
-                bgcolor: "#f7f8fa",
-                activecolor: "#cfe0f5",
-                bordercolor: "#cbd5e1",
+                bgcolor: "#f5f5f0",
+                activecolor: "rgba(37,99,235,0.12)",
+                bordercolor: "#d5d3ca",
                 borderwidth: 1,
-                font: { size: 11, color: "#1351b4" },
+                font: { size: 10, color: "#1d4ed8" },
                 x: 1, xanchor: "right", y: 1.14
               } },
-    yaxis:  { domain: [0.35, 1], anchor: "x", gridcolor: "#eef0f3", type: "log",
-              title: { text: "price (USDT, log)", font: { size: 11 } }, tickfont: { size: 10 },
+    yaxis:  { domain: [0.35, 1], anchor: "x", gridcolor: "#f0f0ea", linecolor: "#d5d3ca",
+              side: "right", type: "log",
+              title: { text: "price (USDT, log)", font: { size: 11 } },
+              tickfont: { size: 9, family: "JetBrains Mono" },
               range: initialYRanges.priceRange, autorange: false },
-    xaxis2: { domain: [0, 1], anchor: "y2", gridcolor: "#eef0f3", zeroline: false, tickfont: { size: 10 }, matches: "x" },
-    yaxis2: { domain: [0, 0.28], anchor: "x2", gridcolor: "#eef0f3", zeroline: false,
-              title: { text: "momentum score", font: { size: 11 } }, tickfont: { size: 10 },
+    xaxis2: { domain: [0, 1], anchor: "y2", showgrid: false, linecolor: "#d5d3ca", linewidth: 1,
+              zeroline: false, tickfont: { size: 9 }, tickformat: "%b '%y", matches: "x" },
+    yaxis2: { domain: [0, 0.28], anchor: "x2", gridcolor: "#f0f0ea", linecolor: "#d5d3ca",
+              side: "right", zeroline: false,
+              title: { text: "momentum score", font: { size: 11 } },
+              tickfont: { size: 9, family: "JetBrains Mono" },
               range: initialYRanges.momRange, autorange: false },
     shapes: allShapes,
   };

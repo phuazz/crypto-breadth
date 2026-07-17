@@ -140,13 +140,17 @@ then — not now, against a book that does not exist.
   gate/target lines use `target_exposure`. Display sizing must mirror
   `backtest.rank_top_n` — see `pipeline.intended_per_coin_weight` and
   `tests/test_intended_allocation.py`, which pin the parity.
-- Style per `C:\dev\design.md`. NOTE (2026-07-04): this dashboard predates design.md
-  and uses its own token system (`--ink`, `--accent`, `--warn`), not design.md's
-  (`--t1`, `--a`, `--serif`). A full token migration was **deliberately deferred** in
-  Phase 6, justified at the time by the do-not-deploy conclusion. **That rationale is
-  now superseded** (the verdict is KEEP-as-small-satellite), so the deferral is an
-  OPEN decision rather than a settled one — but it is still not automatically worth
-  doing. Ask before starting it.
+- Style per `C:\dev\design.md`. **MIGRATED 2026-07-17 (owner-requested)**: the
+  template carries design.md's `:root` token block verbatim plus a legacy-alias
+  layer (`--ink: var(--t1)` etc.), so pre-migration rule names still resolve —
+  write NEW rules against the canonical names only. Text-ish legacy tokens map to
+  the `-text` variants per design.md's contrast rule (11–13px text needs 4.5:1).
+  Serif masthead, DM Sans body, Plotly chart DNA via `LAYOUT_BASE` + the
+  `DATE_XAXIS` helper (right-side mono y-axis, warm grid, `"%b '%y"` ticks).
+  Three deliberate deviations, do not "fix" them: no `dtick: "M2"` pin (an
+  8.5-year sample would draw ~50 ticks); sensitivity + attribution keep their
+  categorical y-axis on the LEFT (`side: "left"`) because their bar labels live
+  there; `--btc: #f7931a` remains a project-local series colour (BTC brand).
 - Local preview: `python scripts/pipeline.py` then `npx serve docs`; or `npx serve .`
   and open `template.html` (fetch fallback).
 
