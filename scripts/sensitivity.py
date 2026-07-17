@@ -62,7 +62,8 @@ def run_v3(close: pd.DataFrame, volume: pd.DataFrame, p: Params) -> dict:
     if entry_trend is not None:
         mom = mom.where(entry_trend)
     weights_rank = rank_top_n(mom, p.rank_top_n)
-    target_w = build_target_weights(weights_rank, target_exposure, p.rebalance_weekday)
+    target_w = build_target_weights(weights_rank, target_exposure, p.rebalance_weekday,
+                                    single_name_cap=p.single_name_cap)
     exit_mask = (
         per_coin_trend_exit_mask(close, p.per_coin_trend_window)
         if p.use_daily_trend_exit else None

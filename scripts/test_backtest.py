@@ -1,7 +1,7 @@
 """
 test_backtest.py
 ----------------
-Regression smoke test. Runs the production v3.1 backtest end-to-end on the
+Regression smoke test. Runs the production v3.2 backtest end-to-end on the
 current parquet and asserts that the headline numbers fall inside a sane
 band. This is the backstop against silent regressions from:
 
@@ -75,7 +75,7 @@ def main() -> int:
           f"{close.index.max().date()}")
 
     p = Params()
-    print("Running v3.1 backtest ...")
+    print("Running v3.2 backtest (single_name_cap=%s) ..." % p.single_name_cap)
     mask = investability_mask_liquidity(
         close, volume,
         lookback_d=p.liquidity_lookback_d,
@@ -87,7 +87,8 @@ def main() -> int:
     entry_trend = per_coin_trend_entry_mask(close, p.per_coin_trend_window)
     mom = momentum_score(close, p.momentum_lookbacks_d, mask).where(entry_trend)
     weights_rank = rank_top_n(mom, p.rank_top_n)
-    target_w = build_target_weights(weights_rank, target_exposure, p.rebalance_weekday)
+    target_w = build_target_weights(weights_rank, target_exposure, p.rebalance_weekday,
+                                    single_name_cap=p.single_name_cap)
     exit_mask = per_coin_trend_exit_mask(close, p.per_coin_trend_window)
     res = run_backtest(
         close, target_w, p.fee_bps_per_side, lag_days=1, daily_exit_mask=exit_mask,

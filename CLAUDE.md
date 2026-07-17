@@ -20,6 +20,18 @@ number: the headline is survivorship-optimistic (see Data layer), the edge is
 uncertain (honest year-block Sharpe CI [0.37, 2.14]; P(Sharpe > BTC) = 88% only), and
 it is not a diversifier (beta ≈ 1.0 to SPY, correlation RISES in stress).
 
+**ENGINE VERSIONS — the review measured v3.1; v3.2 is what trades.** Every figure
+above and in `results/` is a **v3.1** figure. **v3.2** (adopted 2026-07-16, PR-5 arm
+E.2) = v3.1 + a **34% single-name cap**; it measures Sharpe 1.359 / MaxDD −39.5% and
+clears KEEP (1)–(3) independently (DSR 0.9987, WF loss +0.085, weak patch
+bit-identical). It is **insurance, not an edge gain** — the drawdown difference rests
+on ~2 episodes and the Sharpe gap is ~1/7 of one SE. Do not quote v3.2's −39.5% as if
+the review had produced it, and do not "update" the v3.1 records to it.
+`build_target_weights(single_name_cap=...)` defaults to **None = v3.1 bit-for-bit**,
+which is why the `phase_*` record harnesses still reproduce (pinned by
+`tests/test_v31_reproducibility.py` — do NOT make them pass the cap). Production
+paths pass `p.single_name_cap`. Reproduce v3.1 with `Params(single_name_cap=None)`.
+
 Deployment gate history — do not misread this: the original frozen −30% MaxDD ceiling
 made v3.1 **do-not-deploy**, but that ceiling was **removed post-hoc at owner
 instruction** (logged transparently as an equity frame mis-applied to crypto). The
@@ -66,20 +78,20 @@ record. The dashboard banner accordingly reads "Review complete", not "under rev
   equity code.
 - Two SEPARATE DSR deflation pools: v3.1 (B / C.2 / C.3a / C.4) and C.3b (the new
   majors engine). Never cross-contaminate the trial counts. 99 trials logged.
-- **Auto-concentration (known, UNREGISTERED structural property — 2026-07-15).**
+- **Auto-concentration — FOUND 2026-07-15, RESOLVED in v3.2 (PR-5 arm E.2).**
   `rank_top_n` equal-weights `1/min(n, len(valid))`, so the engine deploys the FULL
-  tier exposure across however many names are trend-eligible: it CONCENTRATES when
-  eligibility is thin rather than under-deploying. Verified on the frozen baseline: of
-  236 risk-on rebalance Mondays, 39 held fewer than four names, 17 held exactly one,
-  and **5 put 100% of the book into a single coin** — most recently NEAR on
-  2026-03-16, where breadth was 100% (⇒ the full 100% tier) but only NEAR had a rising
-  MA, so maximum exposure met minimum diversification. It fell 20%. This is an
-  accident of `rank_top_n`, not a pre-registered choice: it is absent from the README,
-  from PR-1…PR-4 and from the OAT grid, and it cuts against C.3a (concentration
-  degrades Sharpe and MaxDD via dispersion loss). An eligibility-floor trial is
-  PENDING pre-registration — do not run it ad hoc; it is a v3.1-pool config change and
-  would consume a DSR trial. Note the −44.8% MaxDD was NOT measured on a single-name
-  book.
+  tier across however many names are trend-eligible: it CONCENTRATES when eligibility
+  is thin rather than under-deploying. On v3.1, of 236 risk-on rebalance Mondays 39
+  held fewer than four names, 17 held exactly one, and **5 put 100% of the book into a
+  single coin** — most recently NEAR on 2026-03-16, where breadth was 100% (⇒ the full
+  100% tier) but only NEAR had a rising MA, so maximum exposure met minimum
+  diversification. It fell 20%. **v3.2's 34% cap closes this** (binds 14/236). The
+  −44.8% MaxDD in the v3.1 records was NOT measured on a single-name book — that is
+  why the cap matters for SIZING, and it is the reason not to quote v3.1's drawdown
+  for a v3.2 book. PR-5 registered 5 trials (v3.1 pool 79→84); the other four arms
+  (E.1 k∈{2,3}, E.3 pro-rata) were tested and NOT adopted — all five cleared the bar,
+  and the arms are statistically indistinguishable, so E.2 was chosen on governance
+  grounds, not metrics. Do not re-litigate by re-running arms ad hoc.
 - `rebalance_weekday = 0` (Monday) is **not** in the OAT grid — the "6 of 7 parameters
   robust" claim does not cover it. The gate is read on Monday's close only, so a
   breadth crossing on any other day waits for the next Monday. A sweep is a Phase-B

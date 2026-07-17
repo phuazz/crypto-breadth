@@ -144,7 +144,8 @@ def run_v3(close: pd.DataFrame, volume: pd.DataFrame, p: Params) -> tuple[dict, 
     entry_trend = per_coin_trend_entry_mask(close, p.per_coin_trend_window)
     mom = momentum_score(close, p.momentum_lookbacks_d, mask).where(entry_trend)
     weights_rank = rank_top_n(mom, p.rank_top_n)
-    target_w = build_target_weights(weights_rank, target_exposure, p.rebalance_weekday)
+    target_w = build_target_weights(weights_rank, target_exposure, p.rebalance_weekday,
+                                    single_name_cap=p.single_name_cap)
     exit_mask = per_coin_trend_exit_mask(close, p.per_coin_trend_window)
     res = run_backtest(
         close, target_w, p.fee_bps_per_side, lag_days=1, daily_exit_mask=exit_mask,
@@ -460,27 +461,40 @@ def coin_signal_history(
     return coins_out
 
 
-def intended_per_coin_weight(cur_exposure: float | None, n_selected: int) -> float:
+def intended_per_coin_weight(cur_exposure: float | None, n_selected: int,
+                             single_name_cap: float | None = None) -> float:
     """Per-coin weight the ENGINE would deploy at `cur_exposure` across
     `n_selected` names.
 
-    Must mirror backtest.rank_top_n, which equal-weights `1 / min(n, len(valid))`
-    and then scales by the tier exposure. The engine therefore deploys the FULL
-    tier exposure across however many names are trend-eligible — it CONCENTRATES
-    when the eligible set is thin rather than under-deploying.
+    Must mirror backtest.rank_top_n + build_target_weights exactly:
+      - rank_top_n equal-weights `1 / min(n, len(valid))`, then the tier scales
+        it, so the engine deploys the FULL tier across however many names are
+        trend-eligible — it CONCENTRATES when the eligible set is thin rather
+        than under-deploying.
+      - v3.2 then clips each name at `single_name_cap`, the residual falling to
+        cash. Pass p.single_name_cap so this tracks the engine automatically; the
+        default None reproduces v3.1.
 
-    The previous form divided by `top_n` instead of the number actually selected,
-    which understated the per-coin weight (and overstated cash) by
-    top_n/n_selected whenever fewer than top_n names qualified: 2 eligible at the
-    30% tier displayed 7.5% each / 85% cash against the engine's true 15% each /
-    70% cash. `n_selected` is already capped at top_n by the caller's step-4
-    slice, so it equals the engine's actual_n.
-
-    Display-only path — the frozen v3.1 engine is not touched by this.
+    Two ways this has been wrong before, both of which misstated forward
+    guidance on the live dashboard and in the email digest:
+      1. Dividing by `top_n` rather than by the number actually selected
+         understated the per-coin weight (and overstated cash) by
+         top_n/n_selected whenever fewer than top_n names qualified — 2 eligible
+         at the 30% tier displayed 7.5% each / 85% cash against the engine's true
+         15% / 70%.
+      2. Omitting the v3.2 cap would OVERSTATE the per-coin weight in exactly the
+         thin-eligibility corner the cap exists for (1 name at the 100% tier would
+         display 100% against the engine's true 34%).
+    `n_selected` is already capped at top_n by the caller's step-4 slice, so it
+    equals the engine's actual_n. tests/test_intended_allocation.py pins the
+    parity against rank_top_n itself.
     """
     if not n_selected or not isinstance(cur_exposure, (int, float)):
         return 0.0
-    return cur_exposure / n_selected
+    w = cur_exposure / n_selected
+    if single_name_cap is not None:
+        w = min(w, single_name_cap)
+    return w
 
 
 def signal_walkthrough(
@@ -640,7 +654,8 @@ def signal_walkthrough(
         ranges[-1]["active"] = True
 
     # ---- Final intended allocation ----
-    final_weight_per_coin = intended_per_coin_weight(cur_exposure, len(selected))
+    final_weight_per_coin = intended_per_coin_weight(cur_exposure, len(selected),
+                                                     p.single_name_cap)
     final_holdings = [{"coin": c, "weight": final_weight_per_coin} for c in selected]
     final_cash = max(0.0, 1.0 - final_weight_per_coin * len(selected))
 

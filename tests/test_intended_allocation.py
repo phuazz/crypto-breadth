@@ -24,39 +24,63 @@ import pandas as pd
 import pytest
 
 from backtest import (Params, investability_mask_liquidity, breadth_pct_above_ma,
-                      breadth_to_tier, momentum_score, per_coin_trend_entry_mask,
-                      rank_top_n)
+                      breadth_to_tier, build_target_weights, momentum_score,
+                      per_coin_trend_entry_mask, rank_top_n)
 from pipeline import intended_per_coin_weight, signal_walkthrough
 
 
-def _engine_per_coin_weight(scores: dict, top_n: int, exposure: float) -> float:
-    """What the engine actually deploys per held name: rank_top_n × exposure.
+def _engine_per_coin_weight(scores: dict, top_n: int, exposure: float,
+                            cap: float | None = None) -> float:
+    """What the engine actually deploys per held name, straight from the frozen
+    path: rank_top_n scaled by the tier, then clipped at the v3.2 cap.
 
     `scores` maps coin -> composite momentum score, with NaN for names that
     failed the trend filter (mirroring `mom.where(entry_trend)` in backtest.main).
+    Uses build_target_weights itself rather than re-deriving the maths, so the
+    test cannot drift from the engine.
     """
     idx = pd.date_range("2026-07-13", periods=1, freq="D")  # a Monday; rebalance day
     score = pd.DataFrame([scores], index=idx)
-    w = rank_top_n(score, top_n) * exposure
+    ranks = rank_top_n(score, top_n)
+    gate = pd.Series(exposure, index=idx)
+    w = build_target_weights(ranks, gate, 0, single_name_cap=cap)
     held = w.loc[idx[0]]
     held = held[held > 0]
     return float(held.iloc[0]) if len(held) else 0.0
 
 
+@pytest.mark.parametrize("cap", [None, 0.34])
+@pytest.mark.parametrize("exposure", [0.30, 0.60, 1.00])
 @pytest.mark.parametrize("n_eligible", [1, 2, 3, 4, 5, 8])
-def test_matches_engine_for_any_eligible_count(n_eligible):
-    """Parity with rank_top_n across thin, exact and over-full eligible sets."""
+def test_matches_engine_for_any_eligible_count(n_eligible, exposure, cap):
+    """Parity with the engine across thin/exact/over-full eligible sets, every
+    tier, and both v3.1 (cap None) and v3.2 (cap 0.34). Sweeping the tier matters:
+    the cap only binds when exposure/n_selected exceeds it, so a 30%-tier-only
+    test would never exercise the clip."""
     p = Params()
-    exposure = 0.30
-    # n_eligible names carry a real score; the rest failed the trend filter (NaN).
     scores = {f"C{i}": float(10 - i) for i in range(n_eligible)}
     scores.update({f"X{j}": np.nan for j in range(3)})
 
     n_selected = min(p.rank_top_n, n_eligible)
-    ours = intended_per_coin_weight(exposure, n_selected)
-    theirs = _engine_per_coin_weight(scores, p.rank_top_n, exposure)
+    ours = intended_per_coin_weight(exposure, n_selected, cap)
+    theirs = _engine_per_coin_weight(scores, p.rank_top_n, exposure, cap)
     assert ours == pytest.approx(theirs), (
-        f"{n_eligible} eligible: display {ours:.4f} vs engine {theirs:.4f}")
+        f"{n_eligible} eligible, tier {exposure}, cap {cap}: "
+        f"display {ours:.4f} vs engine {theirs:.4f}")
+
+
+def test_v32_cap_binds_in_the_thin_corner():
+    """The case the cap exists for: 1 name eligible at the 100% tier. v3.1 puts
+    100% of the book in it; v3.2 shows 34% and the rest cash."""
+    assert intended_per_coin_weight(1.00, 1, None) == pytest.approx(1.00)
+    assert intended_per_coin_weight(1.00, 1, 0.34) == pytest.approx(0.34)
+
+
+def test_v32_cap_is_inert_when_already_diversified():
+    """4 names at the 30% tier is 7.5% each — far below the cap, so v3.1 and v3.2
+    must agree exactly. The cap must not touch the ordinary book."""
+    assert (intended_per_coin_weight(0.30, 4, 0.34)
+            == pytest.approx(intended_per_coin_weight(0.30, 4, None)))
 
 
 def test_thin_eligible_set_deploys_full_tier():

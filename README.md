@@ -40,6 +40,13 @@ re-fits — see `scripts/walk_forward_refit.py`.
 - **Sizing:** composite momentum score (risk-adjusted returns over 30, 90 and
   180 d), top-4 equal-weight when on. Adopted in v3.1 after an expand-window
   walk-forward picked this config in all seven annual re-fits (2020 → 2026).
+- **Single-name cap (v3.2, 2026-07-16):** no name may exceed **34 %** of the
+  book; the residual falls to cash. Fewer than four names often qualify (39 of
+  236 risk-on rebalances), and the engine spreads the *full* tier across
+  whichever do — so v3.1 could put 100 % of the book in one coin, and did on
+  five occasions (most recently NEAR, 2026-03-16, at the full 100 % tier: −20 %).
+  The cap binds on 14 of 236 rebalances. It is **insurance, not an edge gain** —
+  see the versioning note below.
 - **Trend entry filter:** a coin can only enter the top-N rank if close > own
   50 d MA AND the MA is rising. Strict — designed to avoid head-fakes.
 - **Trend exit filter:** asymmetric — close < own 50 d MA triggers a forced
@@ -51,7 +58,40 @@ re-fits — see `scripts/walk_forward_refit.py`.
 
 ---
 
+## Engine versions — v3.1 (the review) vs v3.2 (live)
+
+The 2026-07-04 review measured **v3.1**. **Every review figure in this README, in
+`results/` and on the dashboard is a v3.1 figure**, including the −44.8 % max
+drawdown that the −50 % hard-stop and the satellite sizing rest on. Those records
+stand as written and remain reproducible: `build_target_weights` defaults to no
+cap, so the `scripts/research/phase_*.py` harnesses reproduce them bit-for-bit
+(pinned by `tests/test_v31_reproducibility.py`).
+
+**v3.2 (2026-07-16) is what actually trades**: identical to v3.1 plus the 34 %
+single-name cap. It clears PR-1 KEEP (1)–(3) in its own right — DSR 0.9987,
+walk-forward loss +0.085 against a 0.30 tolerance, and a weak-patch book that is
+*bit-identical* to v3.1 because the cap never binds in 2024–25.
+
+| | full Sharpe | MaxDD | walk-forward loss |
+|---|---|---|---|
+| v3.1 (the review record) | 1.349 | −44.8 % | +0.080 |
+| **v3.2 (live)** | **1.359** | **−39.5 %** | **+0.085** |
+
+Do **not** read the drawdown difference as an improved strategy. It rests on ~2
+episodes (one of them the degenerate 2018 three-coin era), and the Sharpe gap is
+roughly one seventh of one standard error. The cap costs 143 pp of cumulative
+return over 8.5 years (~1.2 % of the total) and removes every 100 %-single-name
+book: **cheap insurance against a rare, catastrophic tail — not an edge gain.**
+Records: `results/phase_e_concentration.md`, `results/phase_e_keep2_walkforward.md`.
+
+To reproduce v3.1 exactly, set `Params(single_name_cap=None)`.
+
+---
+
 ## Performance (full sample 2018-01-01 → 2026-05-28)
+
+> Figures below are the **v3.1** record as filed. See the versioning note above
+> for the live v3.2 equivalents.
 
 | series | CAGR | Sharpe | MaxDD |
 |---|---|---|---|

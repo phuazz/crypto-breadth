@@ -68,6 +68,22 @@ class Params:
     rebalance_weekday: int = 0            # 0=Monday
     fee_bps_per_side: float = 10.0
 
+    # v3.2 (adopted 2026-07-16, PR-5 arm E.2): cap any single name at this
+    # fraction of the book; the residual falls to cash. Guards the
+    # auto-concentration property of rank_top_n, which equal-weights
+    # 1/min(n, len(valid)) and so deploys the FULL tier across however many names
+    # are eligible — it has put 100% of the book into one coin five times.
+    #
+    # IMPORTANT — this value is NOT applied unless a caller passes it to
+    # build_target_weights(single_name_cap=...). That is deliberate: the
+    # scripts/research/phase_*.py harnesses do NOT pass it, so they keep
+    # reproducing the FILED v3.1 review records bit-for-bit. Production paths
+    # (backtest.main, pipeline, test_backtest, walk_forward*, sensitivity,
+    # generate_tearsheet) do pass it and therefore run v3.2.
+    # Set to None to reproduce v3.1 exactly. See results/phase_e_concentration.md
+    # and results/phase_e_keep2_walkforward.md.
+    single_name_cap: float | None = 0.34
+
     # Graduated allocation thresholds (breadth % above MA → target exposure).
     tier_thresholds: tuple = (0.30, 0.50, 0.70)   # below/30-50/50-70/above
     tier_exposures: tuple = (0.0, 0.30, 0.60, 1.00)
@@ -246,12 +262,28 @@ def build_target_weights(
     rank_weights: pd.DataFrame,
     target_exposure: pd.Series,
     rebalance_weekday: int,
+    single_name_cap: float | None = None,
 ) -> pd.DataFrame:
     """Combine ranking (per-name) with gating (gross exposure), then restrict
     rebalancing to specified weekday. Between rebalances, weights drift with
-    prices (handled in the backtest loop, not here)."""
+    prices (handled in the backtest loop, not here).
+
+    `single_name_cap` (v3.2, PR-5 arm E.2) caps each name at that fraction of the
+    book, the residual falling to cash. It MUST be applied after the gate multiply
+    — capping the rank weights first would be rescaled straight back up by the
+    tier. It binds only when the tier divided by the number of eligible names
+    exceeds the cap, i.e. exactly the thin-eligibility corner that could otherwise
+    put the whole book in one coin.
+
+    Defaults to None = v3.1 behaviour, bit-for-bit. Every caller that omits it —
+    including all scripts/research/phase_*.py record harnesses — therefore keeps
+    reproducing the filed v3.1 numbers. Do NOT change this default to make
+    production capped; production passes p.single_name_cap explicitly.
+    """
     # Scale each row of ranks by that day's target exposure.
     scaled = rank_weights.mul(target_exposure, axis=0)
+    if single_name_cap is not None:
+        scaled = scaled.clip(upper=single_name_cap)
     # Keep only rebalance days; other days = NaN (will be forward-filled in loop).
     # pandas 3.0 no longer broadcasts a 1D bool against a DataFrame in .where(),
     # so do the mask explicitly via .loc.
@@ -581,7 +613,8 @@ def main() -> int:
     weights_rank = rank_top_n(mom, p.rank_top_n)
 
     print("\nBuilding target weights (weekly rebalance on Mon) ...")
-    target_w = build_target_weights(weights_rank, target_exposure, p.rebalance_weekday)
+    target_w = build_target_weights(weights_rank, target_exposure, p.rebalance_weekday,
+                                    single_name_cap=p.single_name_cap)
 
     # v2: daily-cadence per-coin trend exit (lagged 1 bar inside run_backtest).
     if p.use_daily_trend_exit:
