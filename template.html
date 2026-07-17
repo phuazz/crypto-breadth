@@ -365,6 +365,21 @@ header.top .meta .sep { color: var(--border-strong); margin: 0 8px; }
 .rp-panel { margin-top: 14px; }
 .rp-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; padding: 12px 14px 10px; }
 @media (max-width: 620px) { .rp-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+/* horizon buttons — .period-selector pattern ported from breadth-thrust-etf */
+.period-selector {
+  display: inline-flex; gap: 0; border: 1px solid var(--border);
+  border-radius: 4px; overflow: hidden; background: var(--bg-card);
+}
+.period-selector button {
+  padding: 7px 13px; background: var(--bg-card); border: none;
+  border-right: 1px solid var(--border); cursor: pointer;
+  font-size: 13px; font-weight: 600; color: var(--ink-soft);
+  font-family: inherit;
+}
+.period-selector button:last-child { border-right: none; }
+.period-selector button:hover { background: var(--bg-soft); }
+.period-selector button.active { background: var(--accent); color: white; }
+.chart-period-selector-wrap { display: flex; justify-content: flex-end; padding: 0 14px 8px; }
 
 /* ===== sticky in-page nav ===== */
 nav.tabs {
@@ -1366,6 +1381,15 @@ footer.bottom a:hover { text-decoration: underline; }
       <span class="meta" id="rp-meta">—</span>
     </div>
     <div class="rp-tiles" id="rp-tiles"></div>
+    <div class="chart-period-selector-wrap">
+      <div class="period-selector" id="rp-period">
+        <button data-period="1m">1M</button>
+        <button data-period="3m" class="active">3M</button>
+        <button data-period="ytd">YTD</button>
+        <button data-period="1y">1Y</button>
+        <button data-period="max">MAX</button>
+      </div>
+    </div>
     <div id="chart-recent" style="height:220px"></div>
     <div class="panel-foot"><a href="#performance">Full-sample performance →</a></div>
   </div>
@@ -1843,22 +1867,46 @@ function renderRecentPerf(d) {
   }
   tilesEl.innerHTML = h;
   const meta = document.getElementById("rp-meta");
-  if (meta) meta.textContent = "to " + dates[last] + " close · chart 90 d, indexed to 100";
-  const i90 = anchorIdx(90);
-  const rebased = (arr) => arr.slice(i90).map(v => (v != null && arr[i90] > 0) ? 100 * v / arr[i90] : null);
-  const x = dates.slice(i90);
-  const traces = [
-    { x, y: rebased(e.strategy), type: "scatter", mode: "lines", name: "Strategy (book)",
-      line: { color: "#1a1a18", width: 2 }, hovertemplate: "%{x}<br>Book %{y:.1f}<extra></extra>" },
-    { x, y: rebased(e.btc), type: "scatter", mode: "lines", name: "BTC",
-      line: { color: "#f7931a", width: 1.6 }, hovertemplate: "%{x}<br>BTC %{y:.1f}<extra></extra>" },
-  ];
-  const layout = Object.assign({}, LAYOUT_BASE, {
-    height: 220,
-    margin: { l: 12, r: 44, t: 26, b: 34 },
-    xaxis: DATE_XAXIS,
-  });
-  Plotly.newPlot(chartEl, traces, layout, PLOTLY_CFG);
+  // Horizon-selectable indexed chart (period-selector pattern ported from
+  // breadth-thrust-etf). Each switch REBASES both series to 100 at the new
+  // window start — an indexed comparison is meaningless otherwise. Windows
+  // longer than ~2 years render on a log axis so the ×75 full-sample strategy
+  // line does not flatten BTC into the floor.
+  const drawWindow = (i0, label) => {
+    const rebased = (arr) => arr.slice(i0).map(v => (v != null && arr[i0] > 0) ? 100 * v / arr[i0] : null);
+    const x = dates.slice(i0);
+    const traces = [
+      { x, y: rebased(e.strategy), type: "scatter", mode: "lines", name: "Strategy (book)",
+        line: { color: "#1a1a18", width: 2 }, hovertemplate: "%{x}<br>Book %{y:.1f}<extra></extra>" },
+      { x, y: rebased(e.btc), type: "scatter", mode: "lines", name: "BTC",
+        line: { color: "#f7931a", width: 1.6 }, hovertemplate: "%{x}<br>BTC %{y:.1f}<extra></extra>" },
+    ];
+    const days = (lastMs - ms(dates[i0])) / 86400000;
+    const useLog = days > 750;
+    const layout = Object.assign({}, LAYOUT_BASE, {
+      height: 220,
+      margin: { l: 12, r: 44, t: 26, b: 34 },
+      xaxis: DATE_XAXIS,
+      yaxis: Object.assign({}, LAYOUT_BASE.yaxis, { type: useLog ? "log" : "linear" }),
+    });
+    if (meta) meta.textContent = "to " + dates[last] + " close · chart " + label
+      + ", indexed to 100" + (useLog ? " · log scale" : "");
+    Plotly.react(chartEl, traces, layout, PLOTLY_CFG);
+  };
+  const PERIOD_IDX = {
+    "1m": () => anchorIdx(30), "3m": () => anchorIdx(90), "ytd": () => ytdIdx,
+    "1y": () => anchorIdx(365), "max": () => 0,
+  };
+  const sel = document.getElementById("rp-period");
+  if (sel) {
+    sel.addEventListener("click", (ev) => {
+      const btn = ev.target.closest("button[data-period]");
+      if (!btn || !PERIOD_IDX[btn.dataset.period]) return;
+      sel.querySelectorAll("button").forEach(b => b.classList.toggle("active", b === btn));
+      drawWindow(PERIOD_IDX[btn.dataset.period](), btn.textContent);
+    });
+  }
+  drawWindow(anchorIdx(90), "3M");
 }
 
 function bearRegimeShapes(yref) {
