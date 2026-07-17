@@ -1046,7 +1046,13 @@ def main() -> int:
 
     payload = {
         "meta": {
-            "version": "v3.1",
+            # DERIVED, never hardcoded. Everything else in this payload is
+            # computed under p, so a literal here goes stale the moment the
+            # engine version moves — it did: the page published v3.2 numbers
+            # (Sharpe 1.359, MaxDD -39.5%) under a "v3.1" badge, which is exactly
+            # the confusion the record/live split exists to prevent.
+            "version": "v3.2" if p.single_name_cap is not None else "v3.1",
+            "single_name_cap": p.single_name_cap,
             "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
             "sample_start": str(eq.index[0].date()),
             "sample_end": str(eq.index[-1].date()),

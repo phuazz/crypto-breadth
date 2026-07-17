@@ -238,7 +238,7 @@ def format_email(event: dict, dash: dict) -> tuple[str, str, str]:
 
   <hr style="border: none; border-top: 1px solid #e3e6ea; margin: 22px 0 14px;">
   <div style="font-size: 11px; color: #6b727a; line-height: 1.5;">
-    crypto-breadth v3.1 · sample ends {sample_end} · full Sharpe {full.get('sharpe', 0):.2f} ·
+    crypto-breadth {dash.get('meta', {}).get('version', '?')} · sample ends {sample_end} · full Sharpe {full.get('sharpe', 0):.2f} ·
     This is research output, not financial advice. The strategy is not deployed.
     <a href="{REPO_URL}" style="color: #1351b4;">github.com/phuazz/crypto-breadth</a>
   </div>

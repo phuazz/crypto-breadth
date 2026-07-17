@@ -77,6 +77,37 @@ def test_cap_never_redistributes_to_other_names():
     assert row.sum() == pytest.approx(0.68)   # NOT 1.00
 
 
+def test_production_paths_all_pass_the_cap():
+    """The CONVERSE guard, and the important one.
+
+    build_target_weights defaults to None, which protects the filed records but is
+    FAIL-OPEN for production: a new production path (or a regression dropping the
+    kwarg) silently reverts to v3.1 uncapped — the exact tail the cap exists to
+    close — and no test fails. Verified: removing the kwarg from pipeline.run_v3
+    left all 98 tests green.
+
+    So assert it statically. Every module in scripts/ (not scripts/research/,
+    which is the v3.1 record layer) that calls build_target_weights must pass
+    single_name_cap.
+    """
+    from pathlib import Path
+    scripts = Path(__file__).resolve().parent.parent / "scripts"
+    offenders = []
+    for f in sorted(scripts.glob("*.py")):
+        src = f.read_text(encoding="utf-8")
+        # Only the CALL sites matter, not the def in backtest.py.
+        for i, line in enumerate(src.splitlines(), 1):
+            if "build_target_weights(" not in line or line.lstrip().startswith("def "):
+                continue
+            # The call may wrap; look at the next couple of lines too.
+            window = "\n".join(src.splitlines()[i - 1:i + 2])
+            if "single_name_cap" not in window:
+                offenders.append(f"{f.name}:{i}")
+    assert not offenders, (
+        f"production call site(s) of build_target_weights do not pass "
+        f"single_name_cap and therefore silently trade v3.1 UNCAPPED: {offenders}")
+
+
 def test_research_harnesses_do_not_pass_the_cap():
     """Static guard on the filed record. The phase_* harnesses reproduce the v3.1
     review; if one starts forwarding the cap, its .md record silently stops

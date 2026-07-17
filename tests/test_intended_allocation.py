@@ -162,9 +162,19 @@ def test_nan_score_coin_is_never_shown_as_a_target():
     assert bool(mask.loc[last, "NEW"]) and bool(et.loc[last, "NEW"])
     assert pd.isna(mom.loc[last, "NEW"])
 
-    # Engine truth: rank_top_n drops NEW; note .mul(axis=0) — the engine aligns the
-    # exposure Series on the DATE index, not on columns.
-    engine = rank_top_n(mom, p.rank_top_n).mul(texp, axis=0).loc[last]
+    # Engine truth, via the engine itself: rank_top_n drops NEW, then
+    # build_target_weights scales by the tier and applies p.single_name_cap.
+    # Deriving this by hand as `ranks.mul(texp)` would be a v3.1 (uncapped)
+    # expression compared against a v3.2 walkthrough — it passed only because this
+    # panel yields 3 eligible at the 100% tier (33.3%), clearing the 34% cap by
+    # 0.7pp. Two eligible would give engine 0.50 vs display 0.34 and fail for a
+    # spurious reason. Always ask the engine, never restate it.
+    # Pass `last`'s own weekday so build_target_weights keeps that row (it NaNs
+    # non-rebalance rows, and the walkthrough answers "if rebalanced NOW"
+    # regardless of weekday).
+    engine = build_target_weights(rank_top_n(mom, p.rank_top_n), texp,
+                                  last.weekday(),
+                                  single_name_cap=p.single_name_cap).loc[last]
     engine = engine[engine > 0]
 
     wt = signal_walkthrough(close, volume, breadth, texp, mask, p)

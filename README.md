@@ -12,7 +12,11 @@ Repo slug remains `crypto-breadth` for URL continuity.
 Sharpe distribution and parameter sensitivity. Auto-generated from
 `scripts/pipeline.py`.
 
-Current version: **v3.1**. The strategy, the file layout, and the honest
+Current version: **v3.2** (live) — v3.1 plus a 34 % single-name cap, adopted
+2026-07-16. **The 2026-07-04 review measured v3.1, so every figure in `results/`
+is a v3.1 figure**, including the −44.8 % max drawdown that the −50 % hard-stop
+and the satellite sizing rest on; see [Engine versions](#engine-versions--v31-the-review-vs-v32-live)
+below before quoting any number. The strategy, the file layout, and the honest
 caveats are all below. For the full session history that produced this, see
 the commit log. v3.1 adopted top-4 + (30, 90, 180) momentum lookbacks after
 an expand-window walk-forward picked that config in all seven annual
@@ -40,13 +44,20 @@ re-fits — see `scripts/walk_forward_refit.py`.
 - **Sizing:** composite momentum score (risk-adjusted returns over 30, 90 and
   180 d), top-4 equal-weight when on. Adopted in v3.1 after an expand-window
   walk-forward picked this config in all seven annual re-fits (2020 → 2026).
-- **Single-name cap (v3.2, 2026-07-16):** no name may exceed **34 %** of the
-  book; the residual falls to cash. Fewer than four names often qualify (39 of
-  236 risk-on rebalances), and the engine spreads the *full* tier across
-  whichever do — so v3.1 could put 100 % of the book in one coin, and did on
-  five occasions (most recently NEAR, 2026-03-16, at the full 100 % tier: −20 %).
-  The cap binds on 14 of 236 rebalances. It is **insurance, not an edge gain** —
-  see the versioning note below.
+- **Single-name cap (v3.2, 2026-07-16):** no name is **targeted** above **34 %**
+  of the book at a rebalance; the residual falls to cash. Fewer than four names
+  often qualify (39 of 236 risk-on rebalances), and the engine spreads the *full*
+  tier across whichever do — so v3.1 could put 100 % of the book in one coin, and
+  did on five occasions (most recently NEAR, 2026-03-16, at the full 100 % tier:
+  −20 %). The cap binds on 14 of 236 rebalances.
+  **It is a rebalance-day target, not a standing portfolio constraint.** Weights
+  drift with prices between Mondays and are not re-capped intra-week, so a
+  *realised* weight can run above 34 %: max **41.4 %** over the sample (BNB,
+  2021-02-19; 54 of 3 119 days above 34 %, one above 40 %, none above 50 %).
+  Against v3.1's 100 % that is the material improvement, and continuous
+  re-capping is deliberately **not** done — it would add turnover and break the
+  weekly cadence for no benefit. It is **insurance, not an edge gain** — see the
+  versioning note below.
 - **Trend entry filter:** a coin can only enter the top-N rank if close > own
   50 d MA AND the MA is rising. Strict — designed to avoid head-fakes.
 - **Trend exit filter:** asymmetric — close < own 50 d MA triggers a forced
@@ -88,20 +99,32 @@ To reproduce v3.1 exactly, set `Params(single_name_cap=None)`.
 
 ---
 
-## Performance (full sample 2018-01-01 → 2026-05-28)
+## Performance (full sample 2018-01-01 → 2026-07-16)
 
-> Figures below are the **v3.1** record as filed. See the versioning note above
-> for the live v3.2 equivalents.
+> Re-cut 2026-07-16 from the live build. The previous table was a hand-maintained
+> snapshot at sample end 2026-05-28 (before the June-2026 trough) reading
+> 1.37 / −42.5 %, which by then matched neither the filed v3.1 record (−44.8 %)
+> nor the live engine — a third number wearing a "v3.1" label. Both engines are
+> shown below so that cannot recur. The dashboard is the authority; this table is
+> a convenience copy and will drift as data advances.
 
 | series | CAGR | Sharpe | MaxDD |
 |---|---|---|---|
-| **strategy (v3.1)** | **77.5 %** | **1.37** | **−42.5 %** |
-| BTC HODL | 22.4 % | 0.64 | −81.2 % |
-| equal-weight investable | 17.1 % | 0.60 | −82.8 % |
-| 60/40 BTC/ETH | 23.5 % | 0.66 | −85.5 % |
+| **strategy — v3.2 (LIVE)** | **74.9 %** | **1.359** | **−39.5 %** |
+| strategy — v3.1 (the review record) | 75.2 % | 1.349 | −44.8 % |
+| BTC HODL | 20.1 % | 0.61 | −81.2 % |
+| equal-weight investable | 14.7 % | 0.57 | −82.8 % |
+| 60/40 BTC/ETH | 21.6 % | 0.64 | −85.5 % |
 
-**Out-of-sample (2021-01-01 → today):** strategy CAGR 91.3 %, Sharpe 1.45,
-MaxDD −42.5 %.
+**Out-of-sample (2021-01-01 → 2026-07-16), v3.2:** CAGR 90.3 %, Sharpe 1.456,
+MaxDD −39.5 %.
+
+**Size on the v3.1 number, not the v3.2 one.** The −50 % hard-stop and the
+satellite sizing rest on v3.1's **−44.8 %**. v3.2's −39.5 % removes a tail that
+was armed but never fired during a large drawdown, so v3.2's true forward risk is
+lower than v3.1's by an *unmeasurable* amount — **not** by the measured 5.3 pp.
+Ratcheting the position up because the backtested drawdown improved is the single
+worst inference available here.
 
 **Block-bootstrap 90 % CI on full-sample Sharpe:** [0.82, 1.92].
 P(Sharpe > 0) = 100 %. P(Sharpe > 0.8) = 95.5 %.
