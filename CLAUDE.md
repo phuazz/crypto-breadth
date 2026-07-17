@@ -35,9 +35,20 @@ paths pass `p.single_name_cap`. Reproduce v3.1 with `Params(single_name_cap=None
 Deployment gate history — do not misread this: the original frozen −30% MaxDD ceiling
 made v3.1 **do-not-deploy**, but that ceiling was **removed post-hoc at owner
 instruction** (logged transparently as an equity frame mis-applied to crypto). The
-governance recommendation on record is a principled **−50% crypto hard-stop**, which
+governance recommendation on record is a principled **−50% DEPLOYMENT CEILING**, which
 −44.8% passes. "Do-not-deploy" is retained only under the ORIGINAL −30% rule, for the
 record. The dashboard banner accordingly reads "Review complete", not "under review".
+
+**The −50% is a CEILING, not a stop** (terminology fixed 2026-07-16; "hard-stop" is
+retired — see PR-1 Amendment 2 clarification). It is a screening test on **backtested**
+MaxDD at the research gate, which is why it is engine-invariant and survived v3.1 → v3.2
+untouched. There is **no live drawdown policy** — no reference peak, no measurement
+frequency, no action on breach. Do NOT invent one, and do NOT promote −50% to a
+liquidation trigger: it sits only 5.2pp below the strategy's own backtested worst
+(−44.8%), which is itself a survivorship-optimistic **upper bound**, so it would fire on
+an ordinary bad path and fire near the trough. A live drawdown policy is a **named
+pre-condition of any deployment decision**, to be written and independently justified
+then — not now, against a book that does not exist.
 
 ## Data layer
 
@@ -70,6 +81,19 @@ record. The dashboard banner accordingly reads "Review complete", not "under rev
 - **v3.1 (`scripts/backtest.py`) is the FROZEN review baseline.** No silent
   re-parameterisation. Any parameter change is a named, pre-registered trial in
   `results/trial_registry.jsonl`.
+- **RISK-GUARD ADOPTION RULE (standing, from the v3.2 review — 2026-07-16).**
+  A risk guard (cap / floor / overlay) is adoptable **only on a named structural
+  reason, stated BEFORE the metrics are read, that would stand even if the
+  backtest showed nothing.** "The metrics did not get worse" is **never** a reason
+  to adopt. Rationale: guards are individually near-free, so cheapness as a
+  criterion lets them accumulate until the strategy is quietly refitted to its own
+  history — each step defensible, the sum not. The canonical qualifying reason is
+  **specification conformance**: the engine doing something its own stated spec
+  does not claim. That, not "cheap insurance", is the real justification for v3.2
+  — a "top-4 equal-weight" strategy that can hold 100% of one coin is outside what
+  it says it is; the five historical events show the corner is REACHABLE, they are
+  not themselves the reason. Other structural reasons may qualify; a good backtest
+  never does.
 - No look-ahead: signals observed at close T, traded at close T+1 (the `.shift(1)` in
   `run_backtest`). Every new signal respects this; the tests assert it.
 - Realistic costs always (10 bps/side maker baseline; Phase-B stress adds taker +

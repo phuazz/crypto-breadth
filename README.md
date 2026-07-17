@@ -14,8 +14,8 @@ Sharpe distribution and parameter sensitivity. Auto-generated from
 
 Current version: **v3.2** (live) — v3.1 plus a 34 % single-name cap, adopted
 2026-07-16. **The 2026-07-04 review measured v3.1, so every figure in `results/`
-is a v3.1 figure**, including the −44.8 % max drawdown that the −50 % hard-stop
-and the satellite sizing rest on; see [Engine versions](#engine-versions--v31-the-review-vs-v32-live)
+is a v3.1 figure**, including the −44.8 % max drawdown that the −50 % deployment
+ceiling and the satellite sizing rest on; see [Engine versions](#engine-versions--v31-the-review-vs-v32-live)
 below before quoting any number. The strategy, the file layout, and the honest
 caveats are all below. For the full session history that produced this, see
 the commit log. v3.1 adopted top-4 + (30, 90, 180) momentum lookbacks after
@@ -73,7 +73,7 @@ re-fits — see `scripts/walk_forward_refit.py`.
 
 The 2026-07-04 review measured **v3.1**. **Every review figure in this README, in
 `results/` and on the dashboard is a v3.1 figure**, including the −44.8 % max
-drawdown that the −50 % hard-stop and the satellite sizing rest on. Those records
+drawdown that the −50 % deployment ceiling and the satellite sizing rest on. Those records
 stand as written and remain reproducible: `build_target_weights` defaults to no
 cap, so the `scripts/research/phase_*.py` harnesses reproduce them bit-for-bit
 (pinned by `tests/test_v31_reproducibility.py`).
@@ -119,15 +119,23 @@ To reproduce v3.1 exactly, set `Params(single_name_cap=None)`.
 **Out-of-sample (2021-01-01 → 2026-07-16), v3.2:** CAGR 90.3 %, Sharpe 1.456,
 MaxDD −39.5 %.
 
-**Size on the v3.1 number, not the v3.2 one.** The −50 % hard-stop and the
+**Size on the v3.1 number, not the v3.2 one.** The −50 % deployment ceiling and the
 satellite sizing rest on v3.1's **−44.8 %**. v3.2's −39.5 % removes a tail that
 was armed but never fired during a large drawdown, so v3.2's true forward risk is
 lower than v3.1's by an *unmeasurable* amount — **not** by the measured 5.3 pp.
 Ratcheting the position up because the backtested drawdown improved is the single
 worst inference available here.
 
-**Block-bootstrap 90 % CI on full-sample Sharpe:** [0.82, 1.92].
-P(Sharpe > 0) = 100 %. P(Sharpe > 0.8) = 95.5 %.
+**Year-block bootstrap 90 % CI on full-sample Sharpe: [0.37, 2.14]**
+(p05 / p50 / p95 = 0.37 / **1.31** / 2.14, n = 5 000). P(Sharpe > 0) = 99 %;
+**P(Sharpe > BTC's 0.61) = 88 % only** — roughly a 1-in-8 chance it is no better
+than simply holding Bitcoin over a future run.
+
+> Corrected 2026-07-16. This README previously quoted **[0.82, 1.92]**, which the
+> Phase-D follow-up found **overconfident**: short blocks understate uncertainty
+> when one year drives the result (2021 is 62 % of log-growth). Resampling whole
+> calendar years is the honest construction. The dashboard was corrected at the
+> time; this file was missed. See `results/phase_d_followups.md` §2.
 
 **Parameter sensitivity (IS only, OAT ±50 %):** 6 of 7 parameters ROBUST or
 MILDLY SENSITIVE. The 7th (`per_coin_trend_window`) is fragile in IS but
@@ -157,7 +165,7 @@ above will mislead anyone who skips them:
    config matched the production default in all seven annual re-fits, which
    is unusually clean — but the post-2021 dataset has been *looked at* as
    part of the validation. The headline OOS Sharpe and the 90 % bootstrap
-   CI [0.82, 1.92] are therefore **post-selection** and assume regime
+   CI [0.37, 2.14] are therefore **post-selection** and assume regime
    stationarity. Truly untouched out-of-sample begins **2027-01-01**.
 
 ---

@@ -75,6 +75,39 @@ verdict is downgraded to **MARGINAL** (Phase-D follow-up: bull-levered edge, hon
 year-block CI [0.37, 2.14], not a diversifier) — a tiny return-seeking satellite at
 most, not a hedge.
 
+**AMENDMENT 2 — TERMINOLOGY CLARIFICATION (2026-07-16). No change of substance.**
+"Hard-stop" is a **misnomer** and is retired as a term. What Amendment 2 created, and
+what all subsequent use has meant, is a **−50% DEPLOYMENT CEILING**: a screening test on
+**backtested** MaxDD, applied at the research gate ("v3.1's −44.8% passes"). It is
+engine-invariant by construction — that is exactly why it survived the v3.1 → v3.2 move
+untouched, and why a principled ceiling was the right fix for the outcome-motivated
+removal it replaced. The ceiling stands as written.
+
+The word "hard-stop", however, promises a **live execution rule that does not exist**:
+there is no reference peak, no measurement frequency, no defined action on breach, and
+no statement of whether it binds the sleeve or the portfolio. That gap is now named
+rather than papered over.
+
+**The −50% ceiling must NOT be promoted into a live liquidation trigger.** Doing so
+would be actively harmful, not merely premature:
+- v3.1's backtested MaxDD is −44.8%, so a −50% trigger sits **5.2pp below the
+  strategy's own historical worst**. A merely normal-bad path breaches it — and
+  breaches it **near the trough**, which is the worst moment to liquidate.
+- The headline is **survivorship-optimistic and an explicit upper bound** (Phase 2), so
+  the true forward drawdown distribution is *worse* than −44.8% and a breach is more
+  likely than the record implies.
+- −50% was chosen as a **screening threshold against passive crypto** (BTC −81%, 60/40
+  −85%). That logic does not transfer to a liquidation trigger, which is a different
+  decision needing a different level and its own justification.
+
+**DEPLOYMENT PRE-CONDITION (named, open).** A live drawdown policy — reference peak,
+measurement frequency, action on breach, sleeve vs portfolio scope — **does not exist
+and is deliberately not being invented now**, because no capital is deployed and
+specifying an execution rule against a book that does not exist is speculation. It is
+recorded here as a **pre-condition of any deployment decision**: capital must not be
+committed until that policy is written and its level independently justified. Do not
+assume −50% is that level.
+
 ### PR-2. C.2 vol-target overlay transfer (registered arm inside Phase B)
 
 Transfer the `risk-overlay-lab` round-1 winner (EWMA-class estimator, band ≥ 0.10,
@@ -233,11 +266,36 @@ clears PR-1 KEEP (1), (2) and (3).
   refresh landed between). Both arms shift +0.0002 Sharpe; nothing turns on it, but the
   two records are not bit-comparable. Vintage is now pinned in the JSON.
 
-**Status: ELIGIBLE, NOT ADOPTED.** Adoption is an engine change (v3.1 → v3.2) whose
-consequences reach the public dashboard (headline MaxDD −44.8% → −39.5%, a figure every
-filed v3.1 record and the banner still quote). It needs explicit sign-off plus a
-versioning plan that keeps the filed v3.1 records reproducible. **v3.1 remains the
-production baseline** until then.
+**ADOPTED 2026-07-16 at owner instruction — v3.2 is live.** Versioned so the filed v3.1
+records stay reproducible: `build_target_weights(single_name_cap=None)` is the default
+and is v3.1 bit-for-bit (every `scripts/research/phase_*.py` harness omits it),
+`Params.single_name_cap = 0.34` and the production paths forward it explicitly. Pinned
+by `tests/test_v31_reproducibility.py`, which guards BOTH directions — no record harness
+may pass the cap, and no production path may omit it (the second guard was added after a
+review proved the design was fail-open: deleting the kwarg from `pipeline.run_v3` left
+the whole suite green while silently trading v3.1 uncapped).
+
+**RATIONALE CORRECTED (2026-07-16, post-adoption three-lens review).** The record above
+justifies the cap as *"cheap insurance, not an edge gain"*. The metrics in that framing
+are right and stand, but **the reasoning was wrong, and "cheap" is not why this was
+adopted**. The modern base rate is n=1 (four of the five events are the degenerate
+2018–19 three-coin era), so an insurance argument resting on a once-in-six-years
+frequency is weak — and worse, "it costs nothing, so take it" is a corrosive principle:
+guards are individually near-free, so cheapness as a criterion accumulates them until
+the strategy is quietly refit to its own history.
+
+The correct justification is **specification conformance**, and it is independent of all
+five events: the strategy documents itself as *"top-4 equal-weight"*, and a
+100%-single-name book is **outside what the strategy claims to be**. `rank_top_n`
+equal-weights `1/min(n, len(valid))` and the tier then scales it, so the engine *is*
+armed to put the whole book in one alt whenever breadth is high and eligibility is thin
+— a corner that is live in the modern universe (NEAR 2026-03-16, breadth 100%, 9-coin
+median). The universe also contains two names that fell −100% and −75% in a day (LUNA,
+FTT): the single-name book and the tail event have each occurred; they simply never
+coincided. The five events are evidence the corner is REACHABLE, not the reason to close
+it. This is now a standing rule in `CLAUDE.md` (Engine discipline → risk-guard adoption
+rule): **a guard is adoptable only on a named structural reason stated before the
+metrics are read; "the metrics did not get worse" is never a reason.**
 
 **Errors in this pre-registration, logged not silently fixed:** (a) the frozen "N=104"
 cross-contaminates the pools — the v3.1 pool is B+C2+C3a+C4=79, so the correct figure is
