@@ -47,8 +47,8 @@ body {
 
 .container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
 
-/* ===== under-review banner (added in the Phase-1 uplift; removed in Phase 6
-   for numbers that survive the robustness review) ===== */
+/* ===== review card (compacted 2026-07-17: verdict line + caveat chips on top;
+   the full governance note is preserved verbatim inside the <details>) ===== */
 .review-banner {
   margin: 20px 0 2px;
   padding: 13px 18px;
@@ -63,6 +63,25 @@ body {
 .review-banner b { color: var(--warn); text-transform: uppercase; letter-spacing: 0.04em; }
 .review-banner a { color: var(--accent); text-decoration: none; }
 .review-banner a:hover { text-decoration: underline; }
+.caveat-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 9px 0 1px; }
+.chip.caveat {
+  background: #fff; color: var(--warn);
+  border: 1px solid rgba(183, 110, 0, 0.35);
+  border-radius: 999px; padding: 3px 11px;
+  font-size: 11.5px; font-weight: 600; letter-spacing: 0.01em;
+  text-transform: none; cursor: default;
+}
+.chip.caveat.engine { color: var(--accent); border-color: rgba(19, 81, 180, 0.35); }
+.review-banner details { margin-top: 9px; }
+.review-banner summary {
+  cursor: pointer; font-size: 11.5px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.05em; color: var(--warn);
+  user-select: none;
+}
+.review-banner summary:hover { text-decoration: underline; }
+.review-banner details[open] summary { margin-bottom: 8px; }
+.review-banner details p { margin: 0 0 10px; }
+.review-banner details p:last-child { margin-bottom: 0; }
 
 /* ----- plain-English explainer (investor clarity; pattern from breadth-thrust-etf) ----- */
 .plain-box {
@@ -265,6 +284,32 @@ header.top .meta .sep { color: var(--border-strong); margin: 0 8px; }
 .verdict p { margin: 0 0 10px 0; font-size: 15px; line-height: 1.65; color: var(--ink); }
 .verdict p:last-child { margin-bottom: 0; }
 .verdict strong { color: var(--accent); font-weight: 600; }
+/* year-by-year scorecard: values as text, winner tint + arrow + pp gap
+   (never colour alone); proportional bars would lie against 2021's +1873% */
+.verdict .year-score { display: grid; grid-template-columns: repeat(9, minmax(0, 1fr)); gap: 6px; margin: 2px 0 8px; }
+.ys-tile { border-radius: 8px; padding: 8px 4px 7px; text-align: center; border: 1px solid var(--border); background: #fff; }
+.ys-tile.win { background: var(--good-soft); border-color: rgba(29, 122, 58, 0.28); }
+.ys-tile.lag { background: var(--warn-soft); border-color: rgba(183, 110, 0, 0.32); }
+.ys-tile .yr { font-size: 10.5px; font-weight: 700; letter-spacing: 0.05em; color: var(--ink-faint); }
+.ys-tile .sv { font-family: "JetBrains Mono", monospace; font-variant-numeric: tabular-nums; font-size: 14px; font-weight: 700; color: var(--ink); margin-top: 3px; }
+.ys-tile .bv { font-size: 10.5px; color: var(--ink-soft); margin-top: 1px; font-variant-numeric: tabular-nums; }
+.ys-tile .ex { font-size: 10.5px; font-weight: 700; margin-top: 3px; }
+.ys-tile.win .ex { color: var(--good); }
+.ys-tile.lag .ex { color: var(--warn); }
+.ys-note { font-size: 11.5px; color: var(--ink-faint); margin: 0 0 12px; }
+.ys-note .ys-key.win { color: var(--good); font-weight: 700; }
+.ys-note .ys-key.lag { color: var(--warn); font-weight: 700; }
+.ys-note a { color: var(--accent); text-decoration: none; }
+.verdict .v-line { margin: 0 0 10px; font-size: 14px; line-height: 1.6; }
+.verdict details summary {
+  cursor: pointer; font-size: 11.5px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.05em; color: var(--accent);
+  user-select: none;
+}
+.verdict details summary:hover { text-decoration: underline; }
+.verdict details[open] summary { margin-bottom: 8px; }
+@media (max-width: 900px) { .verdict .year-score { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+@media (max-width: 620px) { .verdict .year-score { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 
 /* ===== sticky in-page nav ===== */
 nav.tabs {
@@ -1112,7 +1157,7 @@ footer.bottom a:hover { text-decoration: underline; }
     <div class="title-row">
       <div class="title-left">
         <h1>Crypto Breadth &amp; Momentum <span class="version-tag" id="title-version">v3.1</span></h1>
-        <p class="sub">Cross-sectional momentum on crypto majors, gated by breadth and per-coin trend filters. <strong>Diversifier, not a BTC replacement.</strong> Binance USDT spot, 25-coin rolling-liquidity universe, daily exit overlay. Research-grade — not deployed, no live track record.</p>
+        <p class="sub">Cross-sectional momentum on crypto majors, gated by breadth and per-coin trend filters. <strong>A small return-seeking satellite — not a hedge, not a core.</strong> Binance USDT spot, 25-coin rolling-liquidity universe, daily exit overlay. Research-grade — not deployed, no live track record.</p>
       </div>
       <div class="title-right">
         <div class="meta-tag">Personal research dashboard · USDT-quoted</div>
@@ -1121,12 +1166,23 @@ footer.bottom a:hover { text-decoration: underline; }
         <div class="meta-built">Built <span class="mono" id="meta-generated">—</span></div>
         <div class="meta-built">Sample <span class="mono" id="meta-range">—</span></div>
         <div class="meta-built" id="meta-provenance" title="Data provenance — commit hash, parquet vintage, and per-coin freshness check">Provenance <span class="mono" id="meta-provenance-text">—</span></div>
+        <div class="meta-built" id="meta-state" title="Book = what is actually held (weekly rebalance, daily exits). Gate = what the breadth tier targets at the latest close. The gate is read at Monday's close and trades the next bar, so book and gate legitimately diverge mid-week.">Today <span class="mono" id="meta-state-text">—</span></div>
       </div>
     </div>
 
     <div class="review-banner">
-      <b>Review complete — a real but modest active-crypto edge; a small satellite, not a hedge.</b> The pre-registered 2026-07-04 review (with a four-lens follow-up) found a <strong>genuine edge over passive crypto</strong>: on a like-for-like basis (same years stripped from each) the strategy's risk-adjusted return beats Bitcoin and 60/40 in <strong>every</strong> window — and by the widest margin in the bear years, where its breadth gate goes to cash while Bitcoin takes the full −70%. Two things keep it small: the edge is <strong>uncertain</strong> (honest year-block Sharpe CI [0.37, 2.14]; an ~1-in-8 chance it is no better than Bitcoin over a future run), and it is <strong>not a diversifier</strong> — it moves with equities (beta ≈ 1) and its correlation <em>rises</em> in stress. The headline is also survivorship-optimistic. <strong>A tiny return-seeking satellite for active crypto exposure — not a hedge, not a core.</strong> Full records in <a href="https://github.com/phuazz/crypto-breadth/tree/main/results">results/</a> and <a href="https://github.com/phuazz/crypto-breadth/blob/main/RESEARCH_MEMO.md">RESEARCH_MEMO.md</a>.
-      <br><br><b>Engine v3.2 (2026-07-16) — read the numbers on this page carefully.</b> <b>The stat tiles, charts and tables here are computed under the LIVE v3.2 engine</b> (Sharpe 1.36, MaxDD <b>−39.5%</b>). The 2026-07-04 <b>review measured v3.1</b> (Sharpe 1.349, MaxDD <b>−44.8%</b>), and it is those filed figures — <em>not</em> the ones on this page — that the −50% deployment ceiling and the satellite sizing rest on. v3.2 is identical to v3.1 plus a <b>34% single-name cap</b> (PR-5 arm E.2), added because v3.1 could deploy the whole book into one coin and did so five times. It clears the same KEEP criteria (walk-forward loss +0.085 vs +0.080; the weak patch is bit-identical), and the drawdown difference rests on ~2 episodes — one of them the degenerate 2018 three-coin era — while the Sharpe gap is ~1/7 of one standard error. So it is <b>insurance, not an edge gain</b>. <b>The cap removes a tail; it does not license a larger position — do not size up on −39.5%.</b> Record: <a href="https://github.com/phuazz/crypto-breadth/blob/main/results/phase_e_keep2_walkforward.md">phase_e_keep2_walkforward.md</a>.
+      <b>Review complete — a real but modest active-crypto edge; a small satellite, not a hedge.</b>
+      <div class="caveat-chips">
+        <span class="chip caveat" title="The 25-coin universe is hindsight-selected (survivorship audit, results/survivorship_audit.md): every headline figure on this page is an upper bound.">Upper bound — survivorship-optimistic</span>
+        <span class="chip caveat" title="Honest year-block Sharpe CI [0.37, 2.14] on the v3.1 review record; an ~1-in-8 chance it is no better than Bitcoin over a future run.">Uncertain — Sharpe CI [0.37, 2.14]</span>
+        <span class="chip caveat" title="Beta ≈ 1 to equities and correlation rises in stress — it amplifies risk-off, it does not hedge it. Not a diversifier.">Not a hedge — β ≈ 1, correlation rises in stress</span>
+        <span class="chip caveat engine" title="This page computes under the live v3.2 engine (34% single-name cap; MaxDD −39.5%). The review measured v3.1 (−44.8%) and the −50% deployment ceiling and satellite sizing rest on those filed figures. The cap removes a tail; it does not license a larger position.">v3.2 live — size on the v3.1 record, not on −39.5%</span>
+      </div>
+      <details>
+        <summary>Full review note — verdict, v3.1 → v3.2 engine change, sizing basis, records</summary>
+        <p><b>Review complete — a real but modest active-crypto edge; a small satellite, not a hedge.</b> The pre-registered 2026-07-04 review (with a four-lens follow-up) found a <strong>genuine edge over passive crypto</strong>: on a like-for-like basis (same years stripped from each) the strategy's risk-adjusted return beats Bitcoin and 60/40 in <strong>every</strong> window — and by the widest margin in the bear years, where its breadth gate goes to cash while Bitcoin takes the full −70%. Two things keep it small: the edge is <strong>uncertain</strong> (honest year-block Sharpe CI [0.37, 2.14]; an ~1-in-8 chance it is no better than Bitcoin over a future run), and it is <strong>not a diversifier</strong> — it moves with equities (beta ≈ 1) and its correlation <em>rises</em> in stress. The headline is also survivorship-optimistic. <strong>A tiny return-seeking satellite for active crypto exposure — not a hedge, not a core.</strong> Full records in <a href="https://github.com/phuazz/crypto-breadth/tree/main/results">results/</a> and <a href="https://github.com/phuazz/crypto-breadth/blob/main/RESEARCH_MEMO.md">RESEARCH_MEMO.md</a>.</p>
+        <p><b>Engine v3.2 (2026-07-16) — read the numbers on this page carefully.</b> <b>The stat tiles, charts and tables here are computed under the LIVE v3.2 engine</b> (Sharpe 1.36, MaxDD <b>−39.5%</b>). The 2026-07-04 <b>review measured v3.1</b> (Sharpe 1.349, MaxDD <b>−44.8%</b>), and it is those filed figures — <em>not</em> the ones on this page — that the −50% deployment ceiling and the satellite sizing rest on. v3.2 is identical to v3.1 plus a <b>34% single-name cap</b> (PR-5 arm E.2), added because v3.1 could deploy the whole book into one coin and did so five times. It clears the same KEEP criteria (walk-forward loss +0.085 vs +0.080; the weak patch is bit-identical), and the drawdown difference rests on ~2 episodes — one of them the degenerate 2018 three-coin era — while the Sharpe gap is ~1/7 of one standard error. So it is <b>insurance, not an edge gain</b>. <b>The cap removes a tail; it does not license a larger position — do not size up on −39.5%.</b> Record: <a href="https://github.com/phuazz/crypto-breadth/blob/main/results/phase_e_keep2_walkforward.md">phase_e_keep2_walkforward.md</a>.</p>
+      </details>
     </div>
 
     <div class="hero-strip">
@@ -1165,10 +1221,16 @@ footer.bottom a:hover { text-decoration: underline; }
     </div>
 
     <div class="verdict">
-      <h2>Verdict</h2>
-      <p><strong>What this is:</strong> a momentum-on-crypto-majors <em>diversifier</em>, not a BTC replacement. It wins in bears (2018, 2022) and breakout altcoin years (2019, 2021) by 30–50 pp. It lags BTC by 20–80 pp in BTC-led bull years (2020, 2023, 2024). Position accordingly.</p>
-      <p><strong>Numbers:</strong> rolling 25-coin Binance universe, gated by breadth and asymmetric per-coin trend filters. The honest <strong>year-block</strong> Sharpe CI is <strong id="v-ci">[—, —]</strong>, with <strong id="v-p">—</strong> of resamples above Sharpe 0.8. On a like-for-like basis (same years stripped from each) it beats Bitcoin and 60/40 in every window — the edge is real, if uncertain; the reason to size it small is that it does not hedge equities (see the review note above).</p>
-      <p><strong>Caveat:</strong> the strategy underperforms BTC in pure BTC-led bull years (2020, 2023, 2024) and has been lagging BTC since early 2024. It is a different risk profile, not a strict BTC-improvement. <strong>Capacity:</strong> 10 bps/side fee model is retail; at 50 bps/side (realistic mid-size execution) full-sample Sharpe drops from 1.19 to 1.07 (still positive but capacity-bounded).</p>
+      <h2>Verdict — year by year vs BTC</h2>
+      <div class="year-score" id="year-score"></div>
+      <div class="ys-note">Calendar-year total return, strategy vs BTC (final year YTD). <span class="ys-key win">▲ strategy ahead</span> · <span class="ys-key lag">▼ BTC ahead</span> · gap in percentage points. Full table in <a href="#returns">Returns</a>.</div>
+      <p class="v-line">Wins bears (2018, 2022) and broad altcoin years (2019, 2021); lags when Bitcoin alone leads (2020, 2023–24, and since early 2024). A small return-seeking satellite — not a hedge, not a core. Year-block Sharpe CI <strong id="v-ci">[—, —]</strong> with <strong id="v-p">—</strong> of resamples above 0.8; size for ~45% swings.</p>
+      <details>
+        <summary>Full verdict — what this is, numbers, caveats &amp; capacity</summary>
+        <p><strong>What this is:</strong> a momentum-on-crypto-majors return-seeking <em>satellite</em>, not a BTC replacement and not a hedge. It wins in bears (2018, 2022) and breakout altcoin years (2019, 2021) by 30–50 pp. It lags BTC by 20–80 pp in BTC-led bull years (2020, 2023, 2024). Position accordingly.</p>
+        <p><strong>Numbers:</strong> rolling 25-coin Binance universe, gated by breadth and asymmetric per-coin trend filters. The honest <strong>year-block</strong> Sharpe CI is <strong id="v-ci-full">[—, —]</strong>, with <strong id="v-p-full">—</strong> of resamples above Sharpe 0.8. On a like-for-like basis (same years stripped from each) it beats Bitcoin and 60/40 in every window — the edge is real, if uncertain; the reason to size it small is that it does not hedge equities (see the review note above).</p>
+        <p><strong>Caveat:</strong> the strategy underperforms BTC in pure BTC-led bull years (2020, 2023, 2024) and has been lagging BTC since early 2024. It is a different risk profile, not a strict BTC-improvement. <strong>Capacity:</strong> 10 bps/side fee model is retail; at 50 bps/side (realistic mid-size execution) full-sample Sharpe drops from 1.19 to 1.07 (still positive but capacity-bounded).</p>
+      </details>
     </div>
   </div>
 </header>
@@ -1201,7 +1263,7 @@ footer.bottom a:hover { text-decoration: underline; }
     <div class="step"><div class="step-n">1</div><div class="step-body"><strong>Pick the strongest coins.</strong> Each week it ranks ~25 large Binance coins by risk-adjusted momentum (recent return per unit of choppiness, over 1, 3 and 6 months) and holds the top 4, equally weighted.</div></div>
     <div class="step"><div class="step-n">2</div><div class="step-body"><strong>Invest only when the market is healthy — the safety valve.</strong> It measures how many coins are in uptrends ("breadth"). Weak breadth → it sits mostly in cash; strong breadth → fully invested (0 / 30 / 60 / 100 %). This gate is the single most important part: without it the return roughly halves and the worst loss doubles.</div></div>
     <div class="step"><div class="step-n">3</div><div class="step-body"><strong>Buy confirmed uptrends, cut losers fast.</strong> A coin enters only if it is above its own rising trend line, and it is sold the next day if it breaks that line — strict on the way in, quick on the way out.</div></div>
-    <div class="step"><div class="step-n">4</div><div class="step-body"><strong>When it wins, and when it lags.</strong> It shines in broad altcoin rallies (2019, 2021) and cushions bear markets (2018, 2022, where the cash valve protects). It lags when Bitcoin alone leads (2020, 2023, 2024) — it is a diversifier, not a Bitcoin replacement.</div></div>
+    <div class="step"><div class="step-n">4</div><div class="step-body"><strong>When it wins, and when it lags.</strong> It shines in broad altcoin rallies (2019, 2021) and cushions bear markets (2018, 2022, where the cash valve protects). It lags when Bitcoin alone leads (2020, 2023, 2024) — it is a different risk profile, not a Bitcoin replacement.</div></div>
     <div class="bottom-line"><strong>Bottom line (2026-07-04 review + follow-up):</strong> a <strong>real but modest</strong> edge — on a like-for-like basis it beats simply holding Bitcoin in every period, and by the widest margin in the bad years, where its cash gate protects. Two catches keep it small: the edge is <strong>uncertain</strong> (a genuine chance it is no better than Bitcoin over a future run), and it is <strong>not a hedge</strong> — it moves with equities and falls with them in a sell-off. Treat it as a <strong>tiny return-seeking satellite sized for ~45% swings</strong>, not a diversifier and not a core holding.</div>
   </div>
 </section>
@@ -1551,6 +1613,23 @@ function renderHero(d) {
     provWrap.style.display = "none";
   }
 
+  // "Today" line: BOOK (what is actually held) vs GATE (what the breadth tier
+  // targets). They legitimately diverge mid-week — the gate is read at Monday's
+  // close and trades the next bar — so the two labels must never be conflated.
+  const mst = d.monitor;
+  const mstEl = document.getElementById("meta-state-text");
+  const mstWrap = document.getElementById("meta-state");
+  if (mst && mstEl) {
+    const book = (mst.cash_weight != null && mst.cash_weight >= 0.995)
+      ? "book 100% cash"
+      : "book " + ((mst.holdings || []).length) + " names · "
+        + pct(1 - mst.cash_weight, 0) + " invested";
+    mstEl.textContent = book + " · gate " + (mst.tier_label || "—")
+      + " · breadth " + pct(mst.breadth, 0);
+  } else if (mstWrap) {
+    mstWrap.style.display = "none";
+  }
+
   document.getElementById("hero-sharpe").textContent = num(s.full.sharpe);
   document.getElementById("hero-sharpe-sub").textContent =
     "vs 60/40 " + num(bm.bm_6040.sharpe) + " · vs BTC " + num(bm.btc.sharpe);
@@ -1593,9 +1672,14 @@ function renderHero(d) {
   document.getElementById("hero-ci-sub").textContent =
     "median " + num(ci.p50) + " · P(>0.8) = " + pct(ci.p_gt_0p8, 0);
 
-  // Verdict callout inline values
+  // Verdict callout inline values — the visible one-line read plus the same
+  // figures inside the collapsed full-verdict text (ids must differ)
   document.getElementById("v-ci").textContent = "[" + num(ci.p05) + ", " + num(ci.p95) + "]";
   document.getElementById("v-p").textContent = pct(ci.p_gt_0p8, 0);
+  const vciFull = document.getElementById("v-ci-full");
+  if (vciFull) vciFull.textContent = "[" + num(ci.p05) + ", " + num(ci.p95) + "]";
+  const vpFull = document.getElementById("v-p-full");
+  if (vpFull) vpFull.textContent = pct(ci.p_gt_0p8, 0);
 
   // Version stamp — title pill, footer, and meta lines all driven by payload
   const tv = document.getElementById("title-version");
@@ -1606,6 +1690,39 @@ function renderHero(d) {
   if (fg) fg.textContent = d.meta.generated_at || "—";
   const fs = document.getElementById("footer-sample-end");
   if (fs) fs.textContent = d.meta.sample_end || "—";
+}
+
+// Verdict year-by-year scorecard, rendered from the injected yearly_returns —
+// values as text, because 2021 (+1873% vs +58%) makes proportional bars a lie.
+// Winner is encoded three ways (tint, arrow, signed pp gap), never colour alone.
+function renderYearScore(d) {
+  const el = document.getElementById("year-score");
+  const yr = d.yearly_returns;
+  if (!el) return;
+  if (!yr || !yr.years || !yr.strategy || !yr.btc) { el.style.display = "none"; return; }
+  // Returns ≥ ×10 render as wealth multiples so the tile stays readable
+  const fmtR = (x) => {
+    if (x == null || isNaN(x)) return "—";
+    if (x >= 9.95) return "×" + (1 + x).toFixed(1);
+    const p = x * 100;
+    return (p >= 0 ? "+" : "−") + Math.abs(p).toFixed(0) + "%";
+  };
+  const lastIdx = yr.years.length - 1;
+  let h = "";
+  for (let i = 0; i < yr.years.length; i++) {
+    const s = yr.strategy[i], b = yr.btc[i];
+    if (s == null || b == null) continue;
+    const ex = (s - b) * 100;
+    const win = ex >= 0;
+    const ytd = i === lastIdx ? " YTD" : "";
+    h += `<div class="ys-tile ${win ? "win" : "lag"}" title="${yr.years[i]}${ytd}: strategy ${fmtR(s)}, BTC ${fmtR(b)} — ${win ? "strategy ahead" : "BTC ahead"} by ${Math.abs(ex).toFixed(0)} pp">`
+      + `<div class="yr">${yr.years[i]}${ytd}</div>`
+      + `<div class="sv">${fmtR(s)}</div>`
+      + `<div class="bv">BTC ${fmtR(b)}</div>`
+      + `<div class="ex">${win ? "▲" : "▼"} ${Math.abs(ex).toFixed(0)} pp</div>`
+      + `</div>`;
+  }
+  el.innerHTML = h;
 }
 
 function bearRegimeShapes(yref) {
@@ -2995,6 +3112,7 @@ function setupActiveNav() {
 loadData()
   .then(d => {
     renderHero(d);
+    renderYearScore(d);
     renderEquity(d);
     renderExposure(d);
     renderDrawdown(d);
