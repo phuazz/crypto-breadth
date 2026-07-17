@@ -310,6 +310,10 @@ header.top .meta .sep { color: var(--border-strong); margin: 0 8px; }
 .verdict details[open] summary { margin-bottom: 8px; }
 @media (max-width: 900px) { .verdict .year-score { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
 @media (max-width: 620px) { .verdict .year-score { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+/* recent-performance strip (monitor) — reuses the .ys-tile scorecard pattern */
+.rp-panel { margin-top: 14px; }
+.rp-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; padding: 12px 14px 10px; }
+@media (max-width: 620px) { .rp-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
 /* ===== sticky in-page nav ===== */
 nav.tabs {
@@ -1237,8 +1241,8 @@ footer.bottom a:hover { text-decoration: underline; }
 
 <nav class="tabs">
   <div class="container">
-    <a href="#overview" class="nav-link" data-target="overview">Start here</a>
     <a href="#monitor" class="nav-link" data-target="monitor">Monitor</a>
+    <a href="#overview" class="nav-link" data-target="overview">What is this?</a>
     <a href="#signal" class="nav-link" data-target="signal">Why this allocation</a>
     <a href="#explorer" class="nav-link" data-target="explorer">Signal explorer</a>
     <a href="#how" class="nav-link" data-target="how">How it works</a>
@@ -1256,20 +1260,8 @@ footer.bottom a:hover { text-decoration: underline; }
 
 <div class="container">
 
-<section id="overview">
-  <div class="plain-box">
-    <h3>How this strategy works — in plain English</h3>
-    <p class="lead">It owns a rotating handful of the strongest large crypto coins — but only as much as the market's overall health allows, and it drops any coin that breaks its trend. The aim is to capture crypto's big up-moves while sidestepping the worst of its crashes.</p>
-    <div class="step"><div class="step-n">1</div><div class="step-body"><strong>Pick the strongest coins.</strong> Each week it ranks ~25 large Binance coins by risk-adjusted momentum (recent return per unit of choppiness, over 1, 3 and 6 months) and holds the top 4, equally weighted.</div></div>
-    <div class="step"><div class="step-n">2</div><div class="step-body"><strong>Invest only when the market is healthy — the safety valve.</strong> It measures how many coins are in uptrends ("breadth"). Weak breadth → it sits mostly in cash; strong breadth → fully invested (0 / 30 / 60 / 100 %). This gate is the single most important part: without it the return roughly halves and the worst loss doubles.</div></div>
-    <div class="step"><div class="step-n">3</div><div class="step-body"><strong>Buy confirmed uptrends, cut losers fast.</strong> A coin enters only if it is above its own rising trend line, and it is sold the next day if it breaks that line — strict on the way in, quick on the way out.</div></div>
-    <div class="step"><div class="step-n">4</div><div class="step-body"><strong>When it wins, and when it lags.</strong> It shines in broad altcoin rallies (2019, 2021) and cushions bear markets (2018, 2022, where the cash valve protects). It lags when Bitcoin alone leads (2020, 2023, 2024) — it is a different risk profile, not a Bitcoin replacement.</div></div>
-    <div class="bottom-line"><strong>Bottom line (2026-07-04 review + follow-up):</strong> a <strong>real but modest</strong> edge — on a like-for-like basis it beats simply holding Bitcoin in every period, and by the widest margin in the bad years, where its cash gate protects. Two catches keep it small: the edge is <strong>uncertain</strong> (a genuine chance it is no better than Bitcoin over a future run), and it is <strong>not a hedge</strong> — it moves with equities and falls with them in a sell-off. Treat it as a <strong>tiny return-seeking satellite sized for ~45% swings</strong>, not a diversifier and not a core holding.</div>
-  </div>
-</section>
-
 <section id="monitor">
-  <h2><span class="sec-no">1</span>Latest signal</h2>
+  <h2><span class="sec-no">1</span>Latest signal &amp; recent performance</h2>
   <p class="section-sub">What the strategy would have you holding right now, based on the most recent close. This is research output, not a deployed portfolio — if the backtest data fetch has not run today, the timestamp will lag. The strategy reads breadth → tier → rank, then daily-exits any name that has broken its own trend.</p>
 
   <div class="monitor-grid">
@@ -1312,6 +1304,28 @@ footer.bottom a:hover { text-decoration: underline; }
       <table class="holdings" id="changes-table"></table>
       <div class="panel-foot"><a href="#trades">Full rebalance ledger →</a></div>
     </div>
+  </div>
+
+  <div class="monitor-panel rp-panel">
+    <div class="panel-head">
+      <span class="title">Recent performance — backtest book vs BTC</span>
+      <span class="meta" id="rp-meta">—</span>
+    </div>
+    <div class="rp-tiles" id="rp-tiles"></div>
+    <div id="chart-recent" style="height:220px"></div>
+    <div class="panel-foot"><a href="#performance">Full-sample performance →</a></div>
+  </div>
+</section>
+
+<section id="overview">
+  <div class="plain-box">
+    <h3>How this strategy works — in plain English</h3>
+    <p class="lead">It owns a rotating handful of the strongest large crypto coins — but only as much as the market's overall health allows, and it drops any coin that breaks its trend. The aim is to capture crypto's big up-moves while sidestepping the worst of its crashes.</p>
+    <div class="step"><div class="step-n">1</div><div class="step-body"><strong>Pick the strongest coins.</strong> Each week it ranks ~25 large Binance coins by risk-adjusted momentum (recent return per unit of choppiness, over 1, 3 and 6 months) and holds the top 4, equally weighted.</div></div>
+    <div class="step"><div class="step-n">2</div><div class="step-body"><strong>Invest only when the market is healthy — the safety valve.</strong> It measures how many coins are in uptrends ("breadth"). Weak breadth → it sits mostly in cash; strong breadth → fully invested (0 / 30 / 60 / 100 %). This gate is the single most important part: without it the return roughly halves and the worst loss doubles.</div></div>
+    <div class="step"><div class="step-n">3</div><div class="step-body"><strong>Buy confirmed uptrends, cut losers fast.</strong> A coin enters only if it is above its own rising trend line, and it is sold the next day if it breaks that line — strict on the way in, quick on the way out.</div></div>
+    <div class="step"><div class="step-n">4</div><div class="step-body"><strong>When it wins, and when it lags.</strong> It shines in broad altcoin rallies (2019, 2021) and cushions bear markets (2018, 2022, where the cash valve protects). It lags when Bitcoin alone leads (2020, 2023, 2024) — it is a different risk profile, not a Bitcoin replacement.</div></div>
+    <div class="bottom-line"><strong>Bottom line (2026-07-04 review + follow-up):</strong> a <strong>real but modest</strong> edge — on a like-for-like basis it beats simply holding Bitcoin in every period, and by the widest margin in the bad years, where its cash gate protects. Two catches keep it small: the edge is <strong>uncertain</strong> (a genuine chance it is no better than Bitcoin over a future run), and it is <strong>not a hedge</strong> — it moves with equities and falls with them in a sell-off. Treat it as a <strong>tiny return-seeking satellite sized for ~45% swings</strong>, not a diversifier and not a core holding.</div>
   </div>
 </section>
 
@@ -1723,6 +1737,66 @@ function renderYearScore(d) {
       + `</div>`;
   }
   el.innerHTML = h;
+}
+
+// Monitor recent-performance strip: short-window returns plus a 90-day indexed
+// chart, computed from the injected daily equity — the BOOK (backtest, net of
+// costs), so a cash week honestly shows +0.0%. UTC calendar; anchors are the
+// latest close at least N days back (ms arithmetic, no weekday assumptions).
+function renderRecentPerf(d) {
+  const e = d.equity;
+  const tilesEl = document.getElementById("rp-tiles");
+  const chartEl = document.getElementById("chart-recent");
+  if (!e || !e.dates || !e.dates.length || !tilesEl || !chartEl) return;
+  const dates = e.dates, last = dates.length - 1;
+  const ms = (s) => Date.parse(s + "T00:00:00Z");
+  const lastMs = ms(dates[last]);
+  const anchorIdx = (days) => {
+    const cutMs = lastMs - days * 86400000;
+    for (let i = last; i >= 0; i--) { if (ms(dates[i]) <= cutMs) return i; }
+    return 0;
+  };
+  // YTD anchor = final close of the prior calendar year (string year compare)
+  const year = dates[last].slice(0, 4);
+  let ytdIdx = 0;
+  for (let i = last; i >= 0; i--) { if (dates[i].slice(0, 4) < year) { ytdIdx = i; break; } }
+  const windows = [
+    { label: "7 d", idx: anchorIdx(7) },
+    { label: "30 d", idx: anchorIdx(30) },
+    { label: "90 d", idx: anchorIdx(90) },
+    { label: "YTD", idx: ytdIdx },
+  ];
+  const ret = (arr, i0) => (arr[i0] != null && arr[i0] > 0 && arr[last] != null)
+    ? arr[last] / arr[i0] - 1 : null;
+  let h = "";
+  for (const w of windows) {
+    const rs = ret(e.strategy, w.idx), rb = ret(e.btc, w.idx);
+    if (rs == null || rb == null) continue;
+    const ex = (rs - rb) * 100, win = ex >= 0;
+    h += `<div class="ys-tile ${win ? "win" : "lag"}" title="${w.label} from close ${dates[w.idx]}: book ${signed(rs)}, BTC ${signed(rb)} — ${win ? "book ahead" : "BTC ahead"} by ${Math.abs(ex).toFixed(1)} pp">`
+      + `<div class="yr">${w.label}</div>`
+      + `<div class="sv">${signed(rs)}</div>`
+      + `<div class="bv">BTC ${signed(rb)}</div>`
+      + `<div class="ex">${win ? "▲" : "▼"} ${Math.abs(ex).toFixed(1)} pp</div>`
+      + `</div>`;
+  }
+  tilesEl.innerHTML = h;
+  const meta = document.getElementById("rp-meta");
+  if (meta) meta.textContent = "to " + dates[last] + " close · chart 90 d, indexed to 100";
+  const i90 = anchorIdx(90);
+  const rebased = (arr) => arr.slice(i90).map(v => (v != null && arr[i90] > 0) ? 100 * v / arr[i90] : null);
+  const x = dates.slice(i90);
+  const traces = [
+    { x, y: rebased(e.strategy), type: "scatter", mode: "lines", name: "Strategy (book)",
+      line: { color: "#111418", width: 2 }, hovertemplate: "%{x}<br>Book %{y:.1f}<extra></extra>" },
+    { x, y: rebased(e.btc), type: "scatter", mode: "lines", name: "BTC",
+      line: { color: "#f7931a", width: 1.6 }, hovertemplate: "%{x}<br>BTC %{y:.1f}<extra></extra>" },
+  ];
+  const layout = Object.assign({}, LAYOUT_BASE, {
+    height: 220,
+    margin: { l: 44, r: 12, t: 26, b: 34 },
+  });
+  Plotly.newPlot(chartEl, traces, layout, PLOTLY_CFG);
 }
 
 function bearRegimeShapes(yref) {
@@ -3124,6 +3198,7 @@ loadData()
     renderRegimes(d);
     renderAttribution(d);
     renderMonitor(d);
+    renderRecentPerf(d);
     renderWalkthrough(d);
     renderExplorerButtons(d);
     // Default to BTC selection so the chart is populated on first load
