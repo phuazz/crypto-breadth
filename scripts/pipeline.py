@@ -89,9 +89,18 @@ def _build_provenance(close: pd.DataFrame) -> dict:
             last_dates[sym] = str(pd.Timestamp(last_idx).date())
 
     today = pd.Timestamp(datetime.now(timezone.utc).date())
+    # Deliberately-frozen tickers (rebrands / ticker reassignments — the
+    # fetch script hard-skips them) are exempt from staleness: their gap
+    # grows forever by design and would otherwise drown the freshness
+    # signal for the live coins. They are surfaced separately instead.
+    from fetch_daily_update import DELISTED_ON_BINANCE as FROZEN_TICKERS
     stale_symbols: list[dict] = []
+    frozen_symbols: list[dict] = []
     for sym, last_iso in last_dates.items():
         gap = (today - pd.Timestamp(last_iso)).days
+        if sym in FROZEN_TICKERS:
+            frozen_symbols.append({"symbol": sym, "last_date": last_iso})
+            continue
         if gap > STALE_DAYS:
             stale_symbols.append({"symbol": sym, "last_date": last_iso, "gap_days": int(gap)})
 
@@ -116,6 +125,8 @@ def _build_provenance(close: pd.DataFrame) -> dict:
         "stale_symbols": stale_symbols,
         "n_stale": len(stale_symbols),
         "stale_threshold_days": STALE_DAYS,
+        "frozen_symbols": frozen_symbols,
+        "n_frozen": len(frozen_symbols),
         "last_fetch": last_fetch,
     }
     print(f"  provenance: commit {sha or '?'}, data through "

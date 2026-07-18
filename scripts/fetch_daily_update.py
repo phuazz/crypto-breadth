@@ -77,11 +77,19 @@ UNIVERSE: list[str] = [
 
 # Pairs delisted / rebranded on Binance spot — their legacy SYMBOLUSDT pair
 # returns no candles. All are OUTSIDE the current investable set, so a frozen
-# tail here does not perturb the live signal. Returning no data for these is
-# EXPECTED and does not trip the fail-loud exit.
-#   MATIC -> POL   (rebrand, Sep 2024)
-#   EOS   -> A     (Vaulta rebrand, 2025)
-DELISTED_ON_BINANCE: set[str] = {"EOS", "MATIC"}
+# tail here does not perturb the live signal. These tickers are deliberately
+# FROZEN — skipped before any request — and never trip the fail-loud exit.
+# Two distinct reasons for freezing:
+#   MATIC -> POL   (rebrand, Sep 2024 — legacy pair returns no data)
+#   EOS   -> A     (Vaulta rebrand, 2025 — legacy pair returns no data)
+#   LUNA           (ticker REASSIGNED: Terra Classic died 2022-05-13; Binance
+#                   serves Terra 2.0 — a different asset — under LUNAUSDT, so
+#                   this pair is live and MUST be hard-skipped, not merely
+#                   tolerated-when-empty. Frozen 2026-07-18; the 2.0 rows were
+#                   purged from the parquet the same day, measured
+#                   outcome-neutral — see results/survivorship_audit.md
+#                   addendum.)
+DELISTED_ON_BINANCE: set[str] = {"EOS", "MATIC", "LUNA"}
 
 # Binance market-data mirror — not geo-restricted (unlike api.binance.com).
 KLINES_ENDPOINT = "https://data-api.binance.vision/api/v3/klines"
@@ -154,6 +162,12 @@ def main() -> int:
     skipped: list[dict] = []
 
     for sym in UNIVERSE:
+        # Hard-skip frozen tickers BEFORE any request. Necessary, not just
+        # polite: LUNAUSDT trades live (Terra 2.0), so the old
+        # tolerate-when-empty path would happily append a different asset.
+        if sym in DELISTED_ON_BINANCE:
+            skipped.append({"symbol": sym, "reason": "delisted_frozen"})
+            continue
         last = last_dates.get(sym)
         if last is None:
             skipped.append({"symbol": sym, "reason": "not_in_parquet"})
@@ -185,13 +199,10 @@ def main() -> int:
             df = df[df["date"] > last]
 
         if df.empty:
-            if sym in DELISTED_ON_BINANCE:
-                # Expected: legacy pair no longer trades. Not a failure.
-                print(f"    delisted/rebranded on Binance — frozen (non-investable)")
-                skipped.append({"symbol": sym, "reason": "delisted_frozen"})
-            else:
-                print(f"    no rows returned")
-                skipped.append({"symbol": sym, "reason": "no_data"})
+            # Frozen tickers never reach here (hard-skipped above), so an
+            # empty result on a live pair is always a real anomaly.
+            print(f"    no rows returned")
+            skipped.append({"symbol": sym, "reason": "no_data"})
             continue
 
         df = df.assign(symbol=sym)

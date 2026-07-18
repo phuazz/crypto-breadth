@@ -30,8 +30,9 @@ halt the review; it attaches a standing caveat that the Phase-B verdict must car
 
 3. **The two deaths that ARE included are honest, not fabricated.** LUNA craters
    from ~$82 to ~$0.0003 (worst 1-day −100%) on 2022-05-12 then trades residually to
-   today; FTT falls ~$22 → ~$2.3 over the FTX collapse (worst 1-day −75%), residual
-   ~$0.23. Both `collapse_captured = True`. So the strategy IS stress-tested against
+   today *(corrected 2026-07-18 — the "residual" rows were a reassigned-ticker
+   splice, since purged; see addendum)*; FTT falls ~$22 → ~$2.3 over the FTX
+   collapse (worst 1-day −75%), residual ~$0.23. Both `collapse_captured = True`. So the strategy IS stress-tested against
    the two most violent majors' deaths (mitigant), and the residual near-zero prices
    are kept out of the book by the $25 M ADV liquidity gate most of the time.
 
@@ -62,3 +63,47 @@ the deflated-Sharpe and walk-forward evidence.
 - README survivorship claims corrected (two locations) to match this audit.
 - Standing caveat carried into the Phase-B verdict (PR-1).
 - No data purchased, no series altered (no-new-vendor rule honoured).
+
+---
+
+## Addendum 2026-07-18 — LUNA ticker reassignment: found, measured, purged
+
+**Discovery.** An owner question ("is LUNA still alive?") exposed that the LUNA
+column was a three-identity chimera, worse than the nuance recorded in
+`DATA_INTEGRITY_POLICY.md` §4 at review time:
+
+1. **Terra Classic**, 2020-08-21 → 2022-05-13 — the genuine death ($77 →
+   $0.00005). The strategy's 37 LUNA trades all pre-date it; the last exit was
+   2022-04-12, a month before the collapse.
+2. **Terra 2.0** from the 2022-05-31 Binance relist — a different asset under the
+   same pair, a +177,399% pseudo-return across the 18-day halt gap.
+3. The **June-2026 vendor handover** flipped the column back to LUNC-level prices
+   (~$0.00006), and the Binance mirror flipped it to 2.0 again on **2026-07-05**
+   (+76,222% in one day) — two further identity flips inside live lookback
+   windows. This audit's splice test (≥6-coin same-day clusters, BTC continuity)
+   is blind to single-coin identity flips **by construction** — a recorded
+   limitation of the method.
+
+**Materiality — measured, not argued.** The chimera sat in the investability mask
+for 229 days after the death (and 4 days in 2026), so it could touch breadth. A
+full counterfactual (post-death LUNA rows removed) versus baseline, run before any
+surgery: the tier changed on **5 days in 8.5 years, none a rebalance Monday**, and
+the equity curve was **bit-identical (max |diff| = 0.0)** under both v3.1
+(`single_name_cap=None`; sanity: Sharpe 1.3483, MaxDD −44.78%) and v3.2 (1.3590,
+−39.49%). No filed or displayed number depends on the impostor rows.
+
+**Action (owner-approved 2026-07-18).** The 1,509 post-death LUNA rows were purged
+from `data/prices.parquet`; the ticker is hard-frozen in
+`scripts/fetch_daily_update.py` (skip-before-request — the pair trades live, so
+the tolerate-when-empty freeze used for EOS/MATIC would not have held);
+`scripts/test_backtest.py` pins the three frozen last-dates in the daily CI
+(LUNA 2022-05-13, EOS/MATIC 2026-07-04); the pipeline exempts frozen tickers from
+the staleness badge and surfaces them separately. Post-purge equity re-verified
+bit-identical to the pre-purge baseline in-memory on both engines.
+
+**Classification.** Not a registered trial: no parameter changed and the result is
+outcome-invariant data hygiene. The "no series altered" line above was true as of
+2026-07-04; this addendum records the first deliberate series alteration —
+removal of foreign-asset rows, no new vendor involved, measured neutral before
+execution. The LUNA column now honestly reads as what it always was economically:
+a major that died, and stayed dead.

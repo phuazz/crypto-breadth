@@ -41,11 +41,24 @@ from contaminating each other.
   CryptoCompare, and (b) there is no level discontinuity at that splice. If it has
   contaminated pre-2026 history, treat it as a failure mode and quarantine the
   CryptoCompare rows from the review substrate.
-- **Known token-migration nuances carried by the tail (Phase-2 audit items):** the
-  CryptoCompare path mapped LUNA→LUNC (dead pre-crash chain); the Binance mirror serves
-  LUNA 2.0 under `LUNAUSDT`. EOS (→A/Vaulta) and MATIC (→POL) rebranded and are frozen.
-  All three are non-investable, so none affects the live signal, but the LUNA column
-  now changes token at the 2026-07-14 boundary — document in the survivorship audit.
+- **Frozen tickers (rebrands / ticker reassignments) — LUNA resolved 2026-07-18:**
+  EOS (→A/Vaulta) and MATIC (→POL) rebranded; their legacy pairs return no data and
+  froze at 2026-07-04. LUNA was the sharp case: the ticker was REASSIGNED — Terra
+  Classic died 2022-05-13, and Binance serves Terra 2.0 (a different asset) under
+  `LUNAUSDT` — so the column had absorbed three identity flips (Classic → 2.0 at the
+  2022-05-31 relist, a +177,399% pseudo-return; back to LUNC-level prices at the
+  June-2026 vendor handover; to 2.0 again on 2026-07-05, +76,222% in a day). On
+  2026-07-18 the 1,509 post-death rows were purged and the ticker hard-frozen in the
+  fetch script (skip-before-request — the pair trades live, so tolerate-when-empty
+  is not a freeze). Counterfactual measured before surgery: the chimera was in the
+  investability mask 229 days post-death but was never held and never top-4; the
+  tier differed on 5 non-rebalance days only; equity bit-identical (max |diff| 0.0)
+  under both v3.1 and v3.2. Not a registered trial — outcome-invariant data hygiene.
+  Guard: `scripts/test_backtest.py` pins all three frozen last-dates
+  (LUNA 2022-05-13, EOS / MATIC 2026-07-04) in the daily CI. Frozen tickers are
+  exempt from the staleness badge and surfaced separately as "frozen". Full record:
+  `results/survivorship_audit.md`, 2026-07-18 addendum. The EOS / MATIC successor-
+  pair remap (POLUSDT / AUSDT) remains the open Phase-2 item.
 
 ## 5. Calendar & boundaries
 

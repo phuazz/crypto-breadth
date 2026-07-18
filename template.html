@@ -277,6 +277,19 @@ header.top .title-right .stale-badge {
   color: var(--bad);
   border: 1px solid rgba(192, 57, 43, 0.25);
 }
+header.top .title-right .frozen-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 7px;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  border-radius: 9px;
+  background: var(--bg-soft);
+  color: var(--ink-faint);
+  border: 1px solid var(--border);
+}
 header.top .title-right .fresh-badge {
   display: inline-block;
   margin-left: 6px;
@@ -1880,8 +1893,16 @@ function renderHero(d) {
     } else {
       badge = `<span class="fresh-badge" title="All ${nSym} symbols current as of ${prov.today_utc}">✓ fresh</span>`;
     }
+    // Deliberately-frozen tickers (rebrand / ticker reassignment) are shown
+    // as a muted count, separate from the red staleness alarm.
+    let frozenBadge = "";
+    if (prov.n_frozen) {
+      const fz = (prov.frozen_symbols || [])
+        .map(f => `${f.symbol} (frozen at ${f.last_date})`).join(", ");
+      frozenBadge = `<span class="frozen-badge" title="Deliberately frozen — rebranded or ticker reassigned, excluded from freshness checks: ${fz}">${prov.n_frozen} frozen</span>`;
+    }
     provEl.innerHTML =
-      `commit ${shortSha} · ${nSym} symbols · data ${prov.sample_end}${badge}`;
+      `commit ${shortSha} · ${nSym} symbols · data ${prov.sample_end}${badge}${frozenBadge}`;
     // Collapsed-masthead summary: the freshness pill is the one provenance
     // fact the daily reader needs without a click.
     const miniEl = document.getElementById("meta-mini");

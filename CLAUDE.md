@@ -70,11 +70,16 @@ then — not now, against a book that does not exist.
   the set ever dies. The bias is material, one-directional and optimistic, so **every
   headline figure is an UPPER BOUND** and must carry that caveat. LUNA/FTT deaths are
   honestly captured; the historical splice tested clean.
-- EOS and MATIC were rebranded on Binance (→ Vaulta / POL), so their legacy `*USDT`
-  pairs return no data and are frozen (`DELISTED_ON_BINANCE` in the fetch script).
-  Both sit outside the investable set, so the live signal is unaffected. Whether to
-  remap them, and the fact that LUNA now draws Binance's LUNA 2.0 rather than
-  CryptoCompare's LUNC, are open Phase-2 items.
+- Three tickers are deliberately FROZEN (`DELISTED_ON_BINANCE` in the fetch script,
+  hard-skipped BEFORE any request; last dates pinned by the frozen-ticker guard in
+  `scripts/test_backtest.py`, wired into daily CI): EOS / MATIC (rebranded →
+  Vaulta / POL; frozen 2026-07-04) and LUNA (ticker REASSIGNED — Terra Classic died
+  2022-05-13; Binance's live `LUNAUSDT` is Terra 2.0, a different asset). LUNA's
+  1,509 post-death rows were purged 2026-07-18 after a counterfactual measured the
+  change bit-identical (max |diff| 0.0) on both engines — full record in
+  `results/survivorship_audit.md` (2026-07-18 addendum). Frozen tickers are exempt
+  from the staleness badge (surfaced as "frozen" instead). The only remaining open
+  Phase-2 item here: whether to remap EOS / MATIC to their successor pairs.
 
 ## Engine discipline
 

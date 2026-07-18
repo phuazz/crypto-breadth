@@ -74,6 +74,25 @@ def main() -> int:
     print(f"  shape {close.shape}, dates {close.index.min().date()} -> "
           f"{close.index.max().date()}")
 
+    # Frozen-ticker guard: these series must never grow again. LUNA is the
+    # sharp one — Binance serves Terra 2.0 (a different asset) under the
+    # same pair, so any new row means the fetch-script freeze failed and a
+    # foreign asset is being spliced onto a dead coin's history.
+    FROZEN_LAST = {"LUNA": "2022-05-13", "EOS": "2026-07-04", "MATIC": "2026-07-04"}
+    print("Frozen-ticker guard ...")
+    for sym, want in FROZEN_LAST.items():
+        if sym not in close.columns:
+            FAILURES.append(f"frozen ticker {sym} missing from parquet")
+            continue
+        got = str(close[sym].dropna().index.max().date())
+        if got != want:
+            FAILURES.append(
+                f"frozen ticker {sym} last date {got} != {want} — "
+                f"the freeze has been breached (foreign-asset splice risk)"
+            )
+        else:
+            print(f"  OK   {sym} frozen at {want}")
+
     p = Params()
     print("Running v3.2 backtest (single_name_cap=%s) ..." % p.single_name_cap)
     mask = investability_mask_liquidity(
