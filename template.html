@@ -1699,6 +1699,26 @@ function periodRangeIso(datesArr, period) {
   return [startIso < datesArr[0] ? datesArr[0] : startIso, lastStr];
 }
 
+// Next gate read/trade dates. The engine reads breadth at the close of its
+// rebalance weekday and trades the NEXT daily close (24/7 calendar, UTC —
+// no weekend/holiday gaps in crypto). pyWeekday uses the Python
+// date.weekday() convention from the payload (0 = Monday); JavaScript
+// getUTCDay() has Sunday = 0, hence the +1 conversion. If today IS the read
+// day (UTC), the upcoming read is today's close. Date.UTC months are
+// 0-indexed.
+function nextRebalanceDates(pyWeekday, nowUtcMs) {
+  const jsTarget = (((pyWeekday == null ? 0 : pyWeekday) + 1) % 7);
+  const now = new Date(nowUtcMs);
+  const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const days = (jsTarget - d.getUTCDay() + 7) % 7;
+  d.setUTCDate(d.getUTCDate() + days);
+  const trade = new Date(d);
+  trade.setUTCDate(trade.getUTCDate() + 1);
+  const iso = (x) => x.toISOString().slice(0, 10);
+  const wd = (x) => ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][x.getUTCDay()];
+  return { readIso: iso(d), readWd: wd(d), tradeIso: iso(trade), tradeWd: wd(trade) };
+}
+
 // Auto-injects a period-selector button row immediately before the given
 // chart div and wires clicks to renderFn(period). Ported from
 // breadth-thrust-etf, with one divergence: renderFn is re-bound on every
@@ -3167,8 +3187,12 @@ function renderMonitor(d) {
   const NOTIONAL = 100_000;  // $ on $100K for "$ ON $100K" column
 
   document.getElementById("mon-asof").textContent = m.as_of;
+  // Next read computed from the viewer's clock, not the data vintage, so a
+  // stale fetch cannot show a rebalance date in the past.
+  const nr = nextRebalanceDates(m.rebalance_weekday, Date.now());
   document.getElementById("mon-asof-sub").textContent =
-    m.investable_today + " coins investable today";
+    m.investable_today + " coins investable · next signal read: " +
+    nr.readWd + " " + nr.readIso + " close";
 
   document.getElementById("mon-breadth").textContent = pct(m.breadth, 0);
   document.getElementById("mon-breadth-sub").textContent = m.tier_label;
@@ -3178,8 +3202,12 @@ function renderMonitor(d) {
   if (m.exposure >= 0.99) expEl.classList.add("good");
   else if (m.exposure < 0.01) expEl.classList.add("bad");
   const heldGross = 1 - m.cash_weight;
+  // Gate vs book, spelled out: the tier is a READING, executed only at the
+  // weekly read into names that pass the entry filter — it is not the book.
   document.getElementById("mon-exposure-sub").textContent =
-    "Currently held " + pct(heldGross, 0) + " · cash " + pct(m.cash_weight, 0);
+    "what the gate would deploy at the " + nr.readWd + " " + nr.readIso +
+    " close read (trades " + nr.tradeWd + "), into names passing the entry filter" +
+    " — book today: " + pct(heldGross, 0) + " invested · " + pct(m.cash_weight, 0) + " cash";
 
   // Activity card
   const dr = m.days_since_rebal;
@@ -3204,7 +3232,7 @@ function renderMonitor(d) {
     <th>allocation</th>
   </tr></thead><tbody>`;
   if (m.holdings.length === 0) {
-    h += `<tr><td colspan="4" style="text-align:center;color:var(--ink-faint);padding:18px">All cash — the last rebalance took no positions. The gate's current reading is shown above; it applies at the next rebalance.</td></tr>`;
+    h += `<tr><td colspan="4" style="text-align:center;color:var(--ink-faint);padding:18px">All cash — the last rebalance took no positions. The gate's current reading is shown above; it applies at the next read (${nr.readWd} ${nr.readIso} close, trading ${nr.tradeWd} ${nr.tradeIso}).</td></tr>`;
   } else {
     m.holdings.forEach(p => {
       const w = p.weight;

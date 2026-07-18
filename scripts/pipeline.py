@@ -787,6 +787,10 @@ def current_state(
         "days_since_exit": int((last_date - last_exit).days) if last_exit is not None else None,
         "n_rebal_days": int(len(trade_days)),
         "n_exit_days": int(len(exit_days)),
+        # 0 = Monday (Python date.weekday() convention; the JS layer converts
+        # to getUTCDay(), where Sunday = 0). Sourced from Params so the
+        # dashboard can never silently disagree with the engine's cadence.
+        "rebalance_weekday": int(p.rebalance_weekday),
     }
 
 
