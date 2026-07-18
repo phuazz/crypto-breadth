@@ -680,6 +680,17 @@ table.holdings tbody tr:last-child td { border-bottom: none; }
   border-radius: 6px;
   padding: 12px 14px;
 }
+.window-strip .cell.lead {
+  border-left: 3px solid var(--accent);
+  background: var(--accent-soft);
+}
+/* section header row: h2 left, period selector right (perf-header pattern
+   from breadth-thrust-etf) */
+.sec-head-row {
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 10px; margin-bottom: 6px;
+}
+.sec-head-row h2 { margin: 0; }
 .window-strip .cell .v {
   font-size: 22px;
   font-weight: 700;
@@ -1445,16 +1456,18 @@ footer.bottom a:hover { text-decoration: underline; }
 </section>
 
 <section id="performance">
-  <h2><span class="sec-no">4</span>Equity curve vs benchmarks</h2>
-  <p class="section-sub">Strategy versus passive benchmarks. The chart rebases to <strong>0 %</strong> at the start of the selected period, so when you change the time window via the buttons in the top-right, the lines re-anchor at zero — you see relative performance within that window, not absolute wealth multiples. The stats strip immediately above the chart re-computes from the same visible window: week-to-date, period return, annualised, in-window Sharpe, in-window MaxDD.</p>
+  <div class="sec-head-row">
+    <h2><span class="sec-no">4</span>Equity curve vs benchmarks</h2>
+    <span id="equity-period-mount"></span>
+  </div>
+  <p class="section-sub">Cumulative return for the strategy and the passive benchmarks, anchored at <strong>0% at the start of the selected period</strong> — change the window with the buttons and the lines re-anchor at zero. The stat strip recomputes live from the same window: week-to-date, period return, annualised, in-window Sharpe and MaxDD. Default YTD. <strong style="color:var(--warn);">Amber-shaded bands</strong> mark the two crypto bear regimes (2018, 2022) — where the breadth gate does its work — and the dashed vertical line is the IS / OOS split (2021-01-01).</p>
   <div class="window-strip" id="perf-strip">
-    <div class="cell"><div class="v" id="ps-wtd">—</div><div class="l">Week-to-date</div><div class="sub" id="ps-wtd-sub">—</div></div>
+    <div class="cell lead"><div class="v" id="ps-wtd">—</div><div class="l">Week-to-date</div><div class="sub" id="ps-wtd-sub">—</div></div>
     <div class="cell"><div class="v" id="ps-period">—</div><div class="l">Period return</div><div class="sub" id="ps-period-sub">—</div></div>
     <div class="cell"><div class="v" id="ps-cagr">—</div><div class="l">Annualised</div><div class="sub">CAGR-equivalent over the window</div></div>
     <div class="cell"><div class="v" id="ps-sharpe">—</div><div class="l">Sharpe (in window)</div><div class="sub">daily, rf = 0</div></div>
     <div class="cell"><div class="v" id="ps-dd">—</div><div class="l">Max DD in window</div><div class="sub">peak-to-trough</div></div>
   </div>
-  <p class="section-sub">All series rebased to 1.0 on the strategy's first day. Log scale. The vertical line marks the IS / OOS split (2021-01-01). The amber shaded bands flag the two notable crypto bear regimes — these are where the strategy is structurally weakest.</p>
   <div class="chart chart-tall" id="chart-equity"></div>
 
   <h2>Strategy drawdown</h2>
@@ -1669,14 +1682,19 @@ function periodRangeIso(datesArr, period) {
     const jan1 = lastStr.slice(0, 4) + "-01-01";
     return [jan1 < datesArr[0] ? datesArr[0] : jan1, lastStr];
   }
-  const steps = { "1m": [1, "m"], "3m": [3, "m"], "1y": [1, "y"], "3y": [3, "y"], "5y": [5, "y"] };
+  const steps = { "1d": [1, "d"], "1w": [7, "d"], "1m": [1, "m"], "3m": [3, "m"],
+                  "1y": [1, "y"], "3y": [3, "y"], "5y": [5, "y"] };
   const s = steps[period];
   if (!s) return null;
   const start = new Date(lastStr + "T00:00:00Z");
-  const dom = start.getUTCDate();
-  if (s[1] === "m") start.setUTCMonth(start.getUTCMonth() - s[0]);
-  else start.setUTCFullYear(start.getUTCFullYear() - s[0]);
-  if (start.getUTCDate() !== dom) start.setUTCDate(0);
+  if (s[1] === "d") {
+    start.setUTCDate(start.getUTCDate() - s[0]);
+  } else {
+    const dom = start.getUTCDate();
+    if (s[1] === "m") start.setUTCMonth(start.getUTCMonth() - s[0]);
+    else start.setUTCFullYear(start.getUTCFullYear() - s[0]);
+    if (start.getUTCDate() !== dom) start.setUTCDate(0);
+  }
   const startIso = start.toISOString().slice(0, 10);
   return [startIso < datesArr[0] ? datesArr[0] : startIso, lastStr];
 }
@@ -1687,7 +1705,9 @@ function periodRangeIso(datesArr, period) {
 // call (stored on the element) because the signal explorer re-renders per
 // coin and the click listener must not close over a stale coin's data.
 // Idempotent; the chosen window survives re-renders via dataset.currentPeriod.
-function _initPeriodSelectorForChart(chartId, defaultPeriod, renderFn, windows) {
+// Optional mountId: render the selector into that container (e.g. a section
+// header row) instead of injecting a right-aligned wrap above the chart.
+function _initPeriodSelectorForChart(chartId, defaultPeriod, renderFn, windows, mountId) {
   const chartEl = document.getElementById(chartId);
   if (!chartEl) return;
   const selectorId = chartId + "-period";
@@ -1699,10 +1719,15 @@ function _initPeriodSelectorForChart(chartId, defaultPeriod, renderFn, windows) 
     selector.innerHTML = windows
       .map(p => `<button data-period="${p}"${p === defaultPeriod ? ' class="active"' : ""}>${p.toUpperCase()}</button>`)
       .join("");
-    const wrap = document.createElement("div");
-    wrap.className = "chart-period-selector-wrap";
-    wrap.appendChild(selector);
-    chartEl.parentNode.insertBefore(wrap, chartEl);
+    const mount = mountId ? document.getElementById(mountId) : null;
+    if (mount) {
+      mount.appendChild(selector);
+    } else {
+      const wrap = document.createElement("div");
+      wrap.className = "chart-period-selector-wrap";
+      wrap.appendChild(selector);
+      chartEl.parentNode.insertBefore(wrap, chartEl);
+    }
     selector.dataset.currentPeriod = defaultPeriod;
     selector.addEventListener("click", (ev) => {
       const btn = ev.target.closest("button[data-period]");
@@ -2007,7 +2032,7 @@ function renderEquity(d) {
   // strategy too — these dollar amounts are unitless wealth multiples).
   function windowStats(arr, x0Ms, x1Ms) {
     const out = { period: null, cagr: null, sharpe: null, maxDD: null, wtd: null,
-                  startDate: null, endDate: null };
+                  wtdStart: null, wtdEnd: null, startDate: null, endDate: null };
     const idxs = [];
     for (let i = 0; i < dateMs.length; i++) {
       if (dateMs[i] >= x0Ms && dateMs[i] <= x1Ms && arr[i] != null) idxs.push(i);
@@ -2019,7 +2044,9 @@ function renderEquity(d) {
     const v0 = arr[i0], v1 = arr[i1];
     out.period = v1 / v0 - 1.0;
     const days = (dateMs[i1] - dateMs[i0]) / 86400000;
-    out.cagr = days > 0 ? Math.pow(v1 / v0, 365.25 / days) - 1.0 : null;
+    // Annualising a window under a month presents noise as information
+    // (a single +2% day would print as +137,000% annualised) — show "—".
+    out.cagr = days >= 30 ? Math.pow(v1 / v0, 365.25 / days) - 1.0 : null;
     // daily returns within the window
     const rets = [];
     for (let k = 1; k < idxs.length; k++) {
@@ -2049,6 +2076,8 @@ function renderEquity(d) {
     }
     if (wtdIdx !== i1 && arr[wtdIdx]) {
       out.wtd = arr[i1] / arr[wtdIdx] - 1.0;
+      out.wtdStart = dates[wtdIdx];
+      out.wtdEnd = dates[i1];
     }
     return out;
   }
@@ -2074,7 +2103,9 @@ function renderEquity(d) {
 
     const subWtd = document.getElementById("ps-wtd-sub");
     if (subWtd) subWtd.textContent =
-      stats.wtd != null ? "last 7 days" : "needs >= 7 days of window";
+      stats.wtd != null && stats.wtdStart
+        ? `${stats.wtdStart} → ${stats.wtdEnd}`
+        : "needs >= 7 days of window";
     const subPer = document.getElementById("ps-period-sub");
     if (subPer) subPer.textContent =
       stats.startDate && stats.endDate
@@ -2091,13 +2122,13 @@ function renderEquity(d) {
     };
   }
 
-  // Initial range: 1 year back from last data point (the period-selector's
-  // "1Y" default). The buttons drive Plotly.relayout, so they enter the same
-  // relayout hook below as drag-zoom and double-click reset.
+  // Initial range: YTD (the period-selector default, matching the
+  // breadth-thrust-etf Performance section). The buttons drive
+  // Plotly.relayout, so they enter the same relayout hook below as
+  // drag-zoom and double-click reset. periodRangeIso clamps to history.
   const lastIdx = dates.length - 1;
-  const last = new Date(dates[lastIdx]);
-  const oneYearAgo = new Date(last); oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-  const x0Ms0 = Math.max(dateMs[0], oneYearAgo.getTime());
+  const initRange = periodRangeIso(dates, "ytd");
+  const x0Ms0 = new Date(initRange[0] + "T00:00:00Z").getTime();
   const x1Ms0 = dateMs[lastIdx];
   const rebased0 = rebaseAllAndPaint(x0Ms0, x1Ms0);
   paintStats(windowStats(series.strategy, x0Ms0, x1Ms0));
@@ -2136,6 +2167,10 @@ function renderEquity(d) {
       tickformat: ".0%",
       title: { text: "Cumulative return (0% at period start)", font: { size: 11 } }
     }),
+    // Legend below the chart, as in the breadth-thrust-etf Performance
+    // section; extra bottom margin makes room for it under the date ticks.
+    legend: { orientation: "h", x: 0, y: -0.14, yanchor: "top", font: { size: 11 } },
+    margin: Object.assign({}, LAYOUT_BASE.margin, { b: 74 }),
     shapes: shapes, annotations: annotations,
     xaxis: Object.assign({}, DATE_XAXIS, {
       range: [new Date(x0Ms0).toISOString().slice(0, 10),
@@ -2170,11 +2205,11 @@ function renderEquity(d) {
     paintStats(windowStats(series.strategy, x0Ms, x1Ms));
   });
 
-  _initPeriodSelectorForChart("chart-equity", "1y", (p) => {
+  _initPeriodSelectorForChart("chart-equity", "ytd", (p) => {
     const r = periodRangeIso(dates, p);
     if (r) Plotly.relayout(plotEl, { "xaxis.range": r, "xaxis.autorange": false });
     else Plotly.relayout(plotEl, { "xaxis.autorange": true });
-  }, ["1m", "3m", "ytd", "1y", "3y", "5y", "max"]);
+  }, ["1d", "1w", "1m", "ytd", "1y", "3y", "5y", "max"], "equity-period-mount");
 }
 
 // Stable palette so the same coin gets the same colour across runs.
