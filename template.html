@@ -2923,6 +2923,12 @@ function statusLine(latest, coin, c) {
     }
   }
 
+  if (c && c.frozen) {
+    return `<strong>${coin}</strong> <span class="badge not-inv">Frozen</span><br>` +
+           `<span class="stat-line muted">No longer tracked — the ticker was delisted or reassigned on Binance. ` +
+           `The series ends ${c.last_date} and is kept for the historical record.</span>` +
+           lastActionLine;
+  }
   if (!latest.investable) {
     return `<strong>${coin}</strong> <span class="badge not-inv">Not investable</span><br>` +
            `<span class="stat-line muted">Below the rolling liquidity gate today. Excluded from ranking.</span>` +

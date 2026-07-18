@@ -410,11 +410,24 @@ def coin_signal_history(
         if first_inv_idx is None:
             continue
         df = df.loc[first_inv_idx:]
+        # Truncate at the coin's LAST REAL OBSERVATION. Frozen / dead
+        # tickers (LUNA, EOS, MATIC) otherwise trail years of null rows:
+        # the explorer draws the real line and then a long void, and its
+        # default window — anchored to the series end — lands in the
+        # nothingness. After truncation the `latest` block describes the
+        # final real state and `frozen` tells the UI why the series stops
+        # before the panel does.
+        last_obs = df["close"].last_valid_index()
+        if last_obs is None:
+            continue
+        df = df.loc[:last_obs]
+        frozen = bool(last_obs < close.index[-1])
         # Hybrid resolution: daily for the last 365 days (so intra-week
         # exit triggers are visible — e.g. a Thursday dip below the 50d
         # MA that triggered Friday's sell), weekly for older history
-        # (keeps payload bounded). Concatenate the two pieces and drop
-        # the boundary duplicate.
+        # (keeps payload bounded). For a frozen coin this means daily
+        # resolution over its final year of life. Concatenate the two
+        # pieces and drop the boundary duplicate.
         last_date = df.index[-1]
         cutoff = last_date - pd.Timedelta(days=365)
         df_recent = df.loc[df.index >= cutoff]
@@ -456,6 +469,7 @@ def coin_signal_history(
             "investable":[bool(v) for v in weekly["investable"].values],
             "first_date": str(weekly.index.min().date()),
             "last_date":  str(weekly.index.max().date()),
+            "frozen": frozen,
             "latest": {
                 "close": last_close,
                 "ma": last_ma,
