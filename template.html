@@ -1648,7 +1648,7 @@ const cls = (v) => v >= 0 ? "good" : "bad";
 const PLOTLY_CFG = { displayModeBar: false, responsive: true };
 const FONT_STACK = "DM Sans, -apple-system, sans-serif";
 const LAYOUT_BASE = {
-  font: { family: FONT_STACK, size: 10, color: "#5c5c56" },
+  font: { family: FONT_STACK, size: 11, color: "#5c5c56" },
   margin: { l: 16, r: 52, t: 16, b: 40 },
   paper_bgcolor: "transparent",
   plot_bgcolor: "transparent",
@@ -1656,15 +1656,15 @@ const LAYOUT_BASE = {
   hoverlabel: {
     bgcolor: "#ffffff",
     bordercolor: "#d5d3ca",
-    font: { family: FONT_STACK, size: 10, color: "#1a1a18" }
+    font: { family: FONT_STACK, size: 11, color: "#1a1a18" }
   },
-  legend: { orientation: "h", x: 0, y: 1.10, font: { size: 9 }, bgcolor: "transparent" },
+  legend: { orientation: "h", x: 0, y: 1.10, font: { size: 11 }, bgcolor: "transparent" },
   xaxis: { showgrid: false, linecolor: "#d5d3ca", linewidth: 1, color: "#5c5c56",
-           zeroline: false, tickfont: { size: 9 } },
+           zeroline: false, tickfont: { size: 11 } },
   yaxis: { gridcolor: "#f0f0ea", linecolor: "#d5d3ca", linewidth: 1, color: "#5c5c56",
            side: "right", zeroline: true,
            zerolinecolor: "#c0beb5", zerolinewidth: 1,
-           tickfont: { size: 9, family: "JetBrains Mono" } },
+           tickfont: { size: 11, family: "JetBrains Mono" } },
 };
 // Date-axis variant for time-series charts (equity, exposure, drawdown, rolling,
 // walk-forward, recent) — y-axis right is finance convention per design.md.
@@ -1944,39 +1944,38 @@ function renderRecentPerf(d) {
   }
   tilesEl.innerHTML = h;
   const meta = document.getElementById("rp-meta");
-  // Horizon-selectable indexed chart (period-selector pattern ported from
-  // breadth-thrust-etf). Each switch REBASES both series to 100 at the new
-  // window start — an indexed comparison is meaningless otherwise. Windows
-  // longer than ~2 years render on a log axis so the ×75 full-sample strategy
-  // line does not flatten BTC into the floor.
+  // Horizon-selectable chart (period-selector pattern ported from
+  // breadth-thrust-etf). Each switch REBASES both series to 0% at the new
+  // window start — matching the Performance chart's convention. No MAX
+  // window here: on 8.5 years the ×119 strategy line needs a log axis,
+  // which cannot host a 0% rebase — the panel-foot link to #performance
+  // covers the full sample instead.
   const drawWindow = (i0, label) => {
-    const rebased = (arr) => arr.slice(i0).map(v => (v != null && arr[i0] > 0) ? 100 * v / arr[i0] : null);
+    const rebased = (arr) => arr.slice(i0).map(v => (v != null && arr[i0] > 0) ? v / arr[i0] - 1 : null);
     const x = dates.slice(i0);
     const traces = [
       { x, y: rebased(e.strategy), type: "scatter", mode: "lines", name: "Strategy (book)",
-        line: { color: "#1a1a18", width: 2 }, hovertemplate: "%{x}<br>Book %{y:.1f}<extra></extra>" },
+        line: { color: "#1a1a18", width: 3 }, hovertemplate: "%{x}<br>Book %{y:+.1%}<extra></extra>" },
       { x, y: rebased(e.btc), type: "scatter", mode: "lines", name: "BTC",
-        line: { color: "#f7931a", width: 1.6 }, hovertemplate: "%{x}<br>BTC %{y:.1f}<extra></extra>" },
+        line: { color: "#f7931a", width: 1.3 }, hovertemplate: "%{x}<br>BTC %{y:+.1%}<extra></extra>" },
     ];
-    const days = (lastMs - ms(dates[i0])) / 86400000;
-    const useLog = days > 750;
     const layout = Object.assign({}, LAYOUT_BASE, {
       height: 220,
-      margin: { l: 12, r: 44, t: 26, b: 34 },
+      margin: { l: 12, r: 52, t: 26, b: 34 },
       xaxis: DATE_XAXIS,
-      yaxis: Object.assign({}, LAYOUT_BASE.yaxis, { type: useLog ? "log" : "linear" }),
+      yaxis: Object.assign({}, LAYOUT_BASE.yaxis, { tickformat: ".0%" }),
     });
     if (meta) meta.textContent = "to " + dates[last] + " close · chart " + label
-      + ", indexed to 100" + (useLog ? " · log scale" : "");
+      + ", rebased to 0%";
     Plotly.react(chartEl, traces, layout, PLOTLY_CFG);
   };
   const PERIOD_IDX = {
     "1m": () => anchorIdx(30), "3m": () => anchorIdx(90), "ytd": () => ytdIdx,
-    "1y": () => anchorIdx(365), "max": () => 0,
+    "1y": () => anchorIdx(365),
   };
   _initPeriodSelectorForChart("chart-recent", "3m", (p) => {
     drawWindow(PERIOD_IDX[p](), p.toUpperCase());
-  }, ["1m", "3m", "ytd", "1y", "max"]);
+  }, ["1m", "3m", "ytd", "1y"]);
 }
 
 function bearRegimeShapes(yref) {
@@ -2135,16 +2134,16 @@ function renderEquity(d) {
 
   const traces = [
     { x: dates, y: rebased0.strategy, name: "Strategy v3.1", type: "scatter", mode: "lines",
-      line: { color: "#1a1a18", width: 2.4 },
+      line: { color: "#1a1a18", width: 3.5 },
       hovertemplate: "Strategy: %{y:+.2%}<extra></extra>" },
     { x: dates, y: rebased0.btc, name: "BTC HODL", type: "scatter", mode: "lines",
-      line: { color: "#f7931a", width: 1.2 },
+      line: { color: "#f7931a", width: 1.3 },
       hovertemplate: "BTC: %{y:+.2%}<extra></extra>" },
     { x: dates, y: rebased0.ew, name: "Equal-weight investable", type: "scatter", mode: "lines",
-      line: { color: "#1a8754", width: 1.2 },
+      line: { color: "#1a8754", width: 1.3 },
       hovertemplate: "EW: %{y:+.2%}<extra></extra>" },
     { x: dates, y: rebased0["6040"], name: "60/40 BTC/ETH", type: "scatter", mode: "lines",
-      line: { color: "#2563eb", width: 1.2 },
+      line: { color: "#2563eb", width: 1.3 },
       hovertemplate: "60/40: %{y:+.2%}<extra></extra>" },
   ];
   const shapes = bearRegimeShapes("paper").concat([{
@@ -2258,7 +2257,7 @@ function renderExposure(d) {
     shapes: shapes,
     annotations: annotations,
     xaxis: DATE_XAXIS,
-    legend: { orientation: "h", y: -0.18, font: { size: 9 }, bgcolor: "transparent" },
+    legend: { orientation: "h", y: -0.18, font: { size: 11 }, bgcolor: "transparent" },
     hovermode: "x unified"
   });
   Plotly.newPlot("chart-exposure", traces, layout, PLOTLY_CFG);
@@ -2937,7 +2936,7 @@ async function renderExplorerChart(coin) {
   const initialYRanges = computeYRanges(defaultRange[0], defaultRange[1]);
 
   const layout = {
-    font: { family: FONT_STACK, size: 10, color: "#5c5c56" },
+    font: { family: FONT_STACK, size: 11, color: "#5c5c56" },
     margin: { l: 16, r: 56, t: 50, b: 40 },
     paper_bgcolor: "transparent",
     plot_bgcolor: "transparent",
@@ -2945,25 +2944,25 @@ async function renderExplorerChart(coin) {
     hoverlabel: {
       bgcolor: "#ffffff",
       bordercolor: "#d5d3ca",
-      font: { family: FONT_STACK, size: 10, color: "#1a1a18" }
+      font: { family: FONT_STACK, size: 11, color: "#1a1a18" }
     },
     showlegend: true,
-    legend: { orientation: "h", x: 0, y: 1.14, font: { size: 9 }, bgcolor: "transparent" },
+    legend: { orientation: "h", x: 0, y: 1.14, font: { size: 11 }, bgcolor: "transparent" },
     grid: { rows: 2, columns: 1, pattern: "independent", roworder: "top to bottom" },
     xaxis:  { domain: [0, 1], anchor: "y", showgrid: false, linecolor: "#d5d3ca", linewidth: 1,
-              zeroline: false, tickfont: { size: 9 }, tickformat: "%b '%y",
+              zeroline: false, tickfont: { size: 11 }, tickformat: "%b '%y",
               range: defaultRange },
     yaxis:  { domain: [0.35, 1], anchor: "x", gridcolor: "#f0f0ea", linecolor: "#d5d3ca",
               side: "right", type: "log",
               title: { text: "price (USDT, log)", font: { size: 11 } },
-              tickfont: { size: 9, family: "JetBrains Mono" },
+              tickfont: { size: 11, family: "JetBrains Mono" },
               range: initialYRanges.priceRange, autorange: false },
     xaxis2: { domain: [0, 1], anchor: "y2", showgrid: false, linecolor: "#d5d3ca", linewidth: 1,
-              zeroline: false, tickfont: { size: 9 }, tickformat: "%b '%y", matches: "x" },
+              zeroline: false, tickfont: { size: 11 }, tickformat: "%b '%y", matches: "x" },
     yaxis2: { domain: [0, 0.28], anchor: "x2", gridcolor: "#f0f0ea", linecolor: "#d5d3ca",
               side: "right", zeroline: false,
               title: { text: "momentum score", font: { size: 11 } },
-              tickfont: { size: 9, family: "JetBrains Mono" },
+              tickfont: { size: 11, family: "JetBrains Mono" },
               range: initialYRanges.momRange, autorange: false },
     shapes: allShapes,
   };
