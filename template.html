@@ -154,6 +154,27 @@ body {
 .review-banner details p:last-child { margin-bottom: 0; }
 
 /* ----- plain-English explainer (investor clarity; pattern from breadth-thrust-etf) ----- */
+/* plain-English daily status (monitor) — accent-tinted so it reads as
+   "today", distinct from the amber governance band; every figure in it is
+   payload-driven */
+.plain-status {
+  margin: 0 0 14px;
+  padding: 13px 16px;
+  background: var(--accent-soft);
+  border: 1px solid rgba(19, 81, 180, 0.18);
+  border-left: 3px solid var(--accent);
+  border-radius: 9px;
+}
+.plain-status .ps-label {
+  font-size: 10.5px; font-weight: 700; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--accent); margin-bottom: 6px;
+}
+.plain-status p { margin: 0 0 8px; font-size: 14.5px; line-height: 1.6; color: var(--ink); }
+.plain-status p:last-child { margin-bottom: 0; }
+.plain-status strong { font-variant-numeric: tabular-nums; }
+/* keep the as-of date on one line at any card width */
+.m-card .v.date { white-space: nowrap; font-size: clamp(18px, 5vw, 26px); }
+
 .plain-box {
   margin: 24px 0 6px; padding: 22px 26px;
   background: var(--warn-soft); border: 1px solid #efe5cb;
@@ -415,6 +436,12 @@ nav.tabs {
   margin-top: 8px;
 }
 nav.tabs .container { display: flex; gap: 2px; flex-wrap: wrap; }
+/* mobile: one scrollable row (design.md tabs pattern) instead of a
+   four-row link wall */
+@media (max-width: 720px) {
+  nav.tabs .container { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  nav.tabs .container::-webkit-scrollbar { display: none; }
+}
 nav.tabs a {
   background: none;
   border: none;
@@ -1265,10 +1292,11 @@ footer.bottom a:hover { text-decoration: underline; }
     <div class="title-row">
       <div class="title-left">
         <h1>Crypto Breadth &amp; Momentum <span class="version-tag" id="title-version">v3.1</span></h1>
-        <p class="sub">Cross-sectional momentum on crypto majors, gated by breadth and per-coin trend filters. <strong>A small return-seeking satellite — not a hedge, not a core.</strong> Binance USDT spot, 25-coin rolling-liquidity universe, daily exit overlay. Research-grade — not deployed, no live track record.</p>
+        <p class="sub">Owns a rotating handful of the strongest large cryptocurrencies — but only when the broader crypto market is healthy; otherwise it sits in cash. <strong>A small return-seeking satellite — not a hedge, not a core.</strong> Research-grade — not deployed, no live track record.</p>
       </div>
       <div class="title-right">
         <div class="meta-tag">Personal research dashboard · USDT-quoted</div>
+        <div class="meta-tag">Cross-sectional momentum · breadth-gated · daily exit overlay · 25-coin Binance universe</div>
         <a class="meta-link" href="https://github.com/phuazz/crypto-breadth">↗ GitHub repository</a>
         <a class="meta-link" href="https://github.com/phuazz/crypto-breadth/blob/main/README.md">↗ README &amp; methodology</a>
         <div class="meta-built">Built <span class="mono" id="meta-generated">—</span></div>
@@ -1372,12 +1400,17 @@ footer.bottom a:hover { text-decoration: underline; }
 
 <section id="monitor">
   <h2><span class="sec-no">1</span>Latest signal &amp; recent performance</h2>
-  <p class="section-sub">What the strategy would have you holding right now, based on the most recent close. This is research output, not a deployed portfolio — if the backtest data fetch has not run today, the timestamp will lag. The strategy reads breadth → tier → rank, then daily-exits any name that has broken its own trend.</p>
+  <p class="section-sub">What the strategy would have you holding right now, based on the most recent close. Research output, not a deployed portfolio.</p>
+
+  <div class="plain-status">
+    <div class="ps-label">Right now — in plain English</div>
+    <div id="plain-status-body">—</div>
+  </div>
 
   <div class="monitor-grid">
-    <div class="m-card alert">
+    <div class="m-card alert" title="If the daily data fetch has not run yet, this date lags by a day — the strategy itself is unaffected.">
       <div class="lbl">As of</div>
-      <div class="v" id="mon-asof">—</div>
+      <div class="v date" id="mon-asof">—</div>
       <div class="sub" id="mon-asof-sub">—</div>
     </div>
     <div class="m-card">
@@ -2025,6 +2058,53 @@ function renderRecentPerf(d) {
   _initPeriodSelectorForChart("chart-recent", "3m", (p) => {
     drawWindow(PERIOD_IDX[p](), p.toUpperCase());
   }, ["1m", "3m", "ytd", "1y"]);
+}
+
+// Plain-English daily status for readers who do not follow the project
+// technically. Every figure is payload-driven; the wording branches on
+// state (in cash vs invested, tier level, ahead vs behind BTC). YTD uses
+// the prior year's final close as anchor, matching the monitor tiles.
+function renderPlainStatus(d) {
+  const el = document.getElementById("plain-status-body");
+  if (!el || !d.monitor) return;
+  const m = d.monitor;
+  const nr = nextRebalanceDates(m.rebalance_weekday, Date.now());
+  const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  // "Mon 20 Jul" from an ISO date — the ISO month is 1-based, the array 0-based
+  const nice = (iso, wd) => wd + " " + parseInt(iso.slice(8, 10), 10) + " " + MONTHS[parseInt(iso.slice(5, 7), 10) - 1];
+  const held = 1 - m.cash_weight;
+  const nHeld = (m.holdings || []).length;
+  let s1;
+  if (m.cash_weight >= 0.995) {
+    s1 = "<strong>Fully in cash.</strong> The last weekly check found no coin worth buying.";
+  } else {
+    s1 = "<strong>" + pct(held, 0) + " invested</strong> across " + nHeld
+      + " coin" + (nHeld === 1 ? "" : "s") + "; the rest sits in cash.";
+  }
+  const allow = m.exposure >= 0.99 ? "a full position"
+    : m.exposure <= 0.01 ? "no position — cash only"
+    : "at most a " + pct(m.exposure, 0) + " position";
+  const s2 = "Market health: <strong>" + pct(m.breadth, 0)
+    + "</strong> of tracked coins are in uptrends — that allows " + allow + ".";
+  const s3 = "Next decision: <strong>" + nice(nr.readIso, nr.readWd)
+    + "</strong>, after the close (UTC). Any buying or selling happens the following day.";
+  let s4 = "";
+  const e = d.equity;
+  if (e && e.dates && e.dates.length) {
+    const last = e.dates.length - 1;
+    const yr = e.dates[last].slice(0, 4);
+    let i0 = 0;
+    for (let i = last; i >= 0; i--) { if (e.dates[i].slice(0, 4) < yr) { i0 = i; break; } }
+    if (e.strategy[i0] > 0 && e.btc[i0] > 0) {
+      const rs = e.strategy[last] / e.strategy[i0] - 1;
+      const rb = e.btc[last] / e.btc[i0] - 1;
+      const gap = (rs - rb) * 100;
+      s4 = "So far this year: <strong>" + signed(rs) + "</strong> vs Bitcoin " + signed(rb)
+        + " — <strong>" + Math.abs(gap).toFixed(1) + " points "
+        + (gap >= 0 ? "ahead" : "behind") + "</strong>.";
+    }
+  }
+  el.innerHTML = "<p>" + s1 + " " + s2 + "</p><p>" + s3 + "</p>" + (s4 ? "<p>" + s4 + "</p>" : "");
 }
 
 function bearRegimeShapes(yref) {
@@ -3224,28 +3304,34 @@ function renderMonitor(d) {
     nr.readWd + " " + nr.readIso + " close";
 
   document.getElementById("mon-breadth").textContent = pct(m.breadth, 0);
-  document.getElementById("mon-breadth-sub").textContent = m.tier_label;
+  document.getElementById("mon-breadth-sub").textContent =
+    "of coins in uptrends → " + m.tier_label;
 
   const expEl = document.getElementById("mon-exposure");
   expEl.textContent = pct(m.exposure, 0);
   if (m.exposure >= 0.99) expEl.classList.add("good");
   else if (m.exposure < 0.01) expEl.classList.add("bad");
   const heldGross = 1 - m.cash_weight;
-  // Gate vs book, spelled out: the tier is a READING, executed only at the
-  // weekly read into names that pass the entry filter — it is not the book.
-  document.getElementById("mon-exposure-sub").textContent =
-    "what the gate would deploy at the " + nr.readWd + " " + nr.readIso +
-    " close read (trades " + nr.tradeWd + "), into names passing the entry filter" +
-    " — book today: " + pct(heldGross, 0) + " invested · " + pct(m.cash_weight, 0) + " cash";
+  // Gate vs book: short sub on the card, full mechanics in the tooltip —
+  // the plain-status box above carries the human-readable version.
+  const expSub = document.getElementById("mon-exposure-sub");
+  expSub.textContent =
+    "gate reading — applies at the " + nr.readWd + " close read · book: "
+    + pct(heldGross, 0) + " invested · " + pct(m.cash_weight, 0) + " cash";
+  expSub.title =
+    "What the gate would deploy at the " + nr.readWd + " " + nr.readIso
+    + " close read (trades " + nr.tradeWd + " " + nr.tradeIso + "), and only into names"
+    + " passing the per-coin entry filter. The tier is a reading, not the book.";
 
   // Activity card
   const dr = m.days_since_rebal;
   const de = m.days_since_exit;
   document.getElementById("mon-activity").textContent =
     (dr == null ? "—" : (dr + "d")) + " / " + (de == null ? "—" : (de + "d"));
-  document.getElementById("mon-activity-sub").textContent =
-    "since last rebal / daily exit (" +
-    m.n_rebal_days + " rebals, " + m.n_exit_days + " exit days total)";
+  const actSub = document.getElementById("mon-activity-sub");
+  actSub.textContent = "days since last trade / last forced exit";
+  actSub.title = m.n_rebal_days + " rebalance days and " + m.n_exit_days
+    + " daily-exit days over the full sample";
 
   // Panel head meta lines
   document.getElementById("holdings-meta").textContent = "as of " + m.as_of;
@@ -3445,6 +3531,7 @@ loadData()
     renderRegimes(d);
     renderAttribution(d);
     renderMonitor(d);
+    renderPlainStatus(d);
     renderRecentPerf(d);
     renderWalkthrough(d);
     renderExplorerButtons(d);
