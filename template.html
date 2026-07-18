@@ -126,6 +126,29 @@ body {
   user-select: none;
 }
 .review-banner summary:hover { text-decoration: underline; }
+/* collapsible wrap around the whole review band: expanded on the first
+   visit, collapsed automatically afterwards (localStorage) so the daily
+   monitor/performance view surfaces without re-reading the record */
+.review-wrap { margin: 20px 0 2px; }
+.review-wrap > summary {
+  list-style: none; cursor: pointer; user-select: none;
+  display: flex; align-items: baseline; gap: 10px; justify-content: space-between;
+  padding: 10px 16px;
+  background: var(--warn-soft);
+  border: 1px solid rgba(183, 110, 0, 0.28);
+  border-left: 4px solid var(--warn);
+  border-radius: 9px;
+}
+.review-wrap > summary::-webkit-details-marker { display: none; }
+.review-wrap > summary:hover .rw-hint { text-decoration: underline; }
+.rw-title {
+  font-size: 12px; font-weight: 700; color: var(--warn);
+  text-transform: uppercase; letter-spacing: 0.04em; line-height: 1.5;
+}
+.rw-hint { font-size: 11.5px; color: var(--accent); white-space: nowrap; flex-shrink: 0; font-weight: 600; }
+.rw-hint::after { content: " ▸"; }
+.review-wrap[open] .rw-hint::after { content: " ▾"; }
+.review-wrap .review-banner { margin: 8px 0 2px; }
 .review-banner details[open] summary { margin-bottom: 8px; }
 .review-banner details p { margin: 0 0 10px; }
 .review-banner details p:last-child { margin-bottom: 0; }
@@ -1255,6 +1278,11 @@ footer.bottom a:hover { text-decoration: underline; }
       </div>
     </div>
 
+    <details class="review-wrap" id="review-wrap">
+      <summary>
+        <span class="rw-title">Review complete — a real but modest active-crypto edge; a small satellite, not a hedge</span>
+        <span class="rw-hint">stats &amp; verdict</span>
+      </summary>
     <div class="review-banner">
       <b>Review complete — a real but modest active-crypto edge; a small satellite, not a hedge.</b>
       <div class="caveat-chips">
@@ -1317,6 +1345,7 @@ footer.bottom a:hover { text-decoration: underline; }
         <p><strong>Caveat:</strong> the strategy underperforms BTC in pure BTC-led bull years (2020, 2023, 2024) and has been lagging BTC since early 2024. It is a different risk profile, not a strict BTC-improvement. <strong>Capacity:</strong> 10 bps/side fee model is retail; at 50 bps/side (realistic mid-size execution) full-sample Sharpe drops from 1.19 to 1.07 (still positive but capacity-bounded).</p>
       </details>
     </div>
+    </details>
   </div>
 </header>
 
@@ -3382,6 +3411,23 @@ function setupActiveNav() {
   document.addEventListener("scroll", onScroll, { passive: true });
   onScroll();
 }
+
+// Review band visibility: expanded on the very first visit, collapsed on
+// every later one — the record stays one click away while the daily job
+// (monitor + performance) surfaces first. Session toggles are deliberately
+// not persisted: a glance re-collapses on the next visit.
+(function () {
+  const rw = document.getElementById("review-wrap");
+  if (!rw) return;
+  try {
+    if (!localStorage.getItem("cb_review_seen")) {
+      rw.open = true;
+      localStorage.setItem("cb_review_seen", "1");
+    }
+  } catch (e) {
+    rw.open = true;  // storage unavailable (e.g. file:// dev) — always show
+  }
+})();
 
 // ===== boot =====
 loadData()
