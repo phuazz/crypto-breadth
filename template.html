@@ -244,6 +244,20 @@ header.top .title-right a.meta-link {
   line-height: 1.7;
 }
 header.top .title-right a.meta-link:hover { text-decoration: underline; }
+/* collapsed-by-default provenance: the daily reader needs only the
+   freshness pill (summary) and the Today line; everything else is one
+   click deep. Keeps the mobile masthead to ~3 rows. */
+.meta-more > summary {
+  list-style: none; cursor: pointer; user-select: none;
+  display: inline-flex; align-items: baseline; gap: 8px;
+  font-size: 12px; color: var(--ink-soft);
+}
+.meta-more > summary::-webkit-details-marker { display: none; }
+.meta-more .mm-hint { font-size: 11px; color: var(--accent); font-weight: 600; white-space: nowrap; }
+.meta-more .mm-hint::after { content: " ▸"; }
+.meta-more[open] .mm-hint::after { content: " ▾"; }
+.meta-more[open] > summary { margin-bottom: 6px; }
+header.top .title-left h1 { font-size: clamp(24px, 6.8vw, 32px); }
 header.top .title-right .meta-built {
   font-size: 12px;
   color: var(--ink-faint);
@@ -1292,16 +1306,20 @@ footer.bottom a:hover { text-decoration: underline; }
     <div class="title-row">
       <div class="title-left">
         <h1>Crypto Breadth &amp; Momentum <span class="version-tag" id="title-version">v3.1</span></h1>
-        <p class="sub">Owns a rotating handful of the strongest large cryptocurrencies — but only when the broader crypto market is healthy; otherwise it sits in cash. <strong>A small return-seeking satellite — not a hedge, not a core.</strong> Research-grade — not deployed, no live track record.</p>
+        <p class="sub"><strong>A small return-seeking satellite — not a hedge, not a core.</strong> Research-grade — not deployed, no live track record.</p>
       </div>
       <div class="title-right">
-        <div class="meta-tag">Personal research dashboard · USDT-quoted</div>
-        <div class="meta-tag">Cross-sectional momentum · breadth-gated · daily exit overlay · 25-coin Binance universe</div>
-        <a class="meta-link" href="https://github.com/phuazz/crypto-breadth">↗ GitHub repository</a>
-        <a class="meta-link" href="https://github.com/phuazz/crypto-breadth/blob/main/README.md">↗ README &amp; methodology</a>
-        <div class="meta-built">Built <span class="mono" id="meta-generated">—</span></div>
-        <div class="meta-built">Sample <span class="mono" id="meta-range">—</span></div>
-        <div class="meta-built" id="meta-provenance" title="Data provenance — commit hash, parquet vintage, and per-coin freshness check">Provenance <span class="mono" id="meta-provenance-text">—</span></div>
+        <details class="meta-more">
+          <summary><span class="mono" id="meta-mini">—</span><span class="mm-hint">about &amp; provenance</span></summary>
+          <div class="meta-tag">Personal research dashboard · USDT-quoted</div>
+          <div class="meta-tag">Owns a rotating handful of the strongest large cryptocurrencies, only while broad crypto is healthy — otherwise cash</div>
+          <div class="meta-tag">Cross-sectional momentum · breadth-gated · daily exit overlay · 25-coin Binance universe</div>
+          <a class="meta-link" href="https://github.com/phuazz/crypto-breadth">↗ GitHub repository</a>
+          <a class="meta-link" href="https://github.com/phuazz/crypto-breadth/blob/main/README.md">↗ README &amp; methodology</a>
+          <div class="meta-built">Built <span class="mono" id="meta-generated">—</span></div>
+          <div class="meta-built">Sample <span class="mono" id="meta-range">—</span></div>
+          <div class="meta-built" id="meta-provenance" title="Data provenance — commit hash, parquet vintage, and per-coin freshness check">Provenance <span class="mono" id="meta-provenance-text">—</span></div>
+        </details>
         <div class="meta-built" id="meta-state" title="Book = what is actually held (weekly rebalance, daily exits). Gate = what the breadth tier targets at the latest close. The gate is read at Monday's close and trades the next bar, so book and gate legitimately diverge mid-week.">Today <span class="mono" id="meta-state-text">—</span></div>
       </div>
     </div>
@@ -1400,8 +1418,6 @@ footer.bottom a:hover { text-decoration: underline; }
 
 <section id="monitor">
   <h2><span class="sec-no">1</span>Latest signal &amp; recent performance</h2>
-  <p class="section-sub">What the strategy would have you holding right now, based on the most recent close. Research output, not a deployed portfolio.</p>
-
   <div class="plain-status">
     <div class="ps-label">Right now — in plain English</div>
     <div id="plain-status-body">—</div>
@@ -1866,6 +1882,10 @@ function renderHero(d) {
     }
     provEl.innerHTML =
       `commit ${shortSha} · ${nSym} symbols · data ${prov.sample_end}${badge}`;
+    // Collapsed-masthead summary: the freshness pill is the one provenance
+    // fact the daily reader needs without a click.
+    const miniEl = document.getElementById("meta-mini");
+    if (miniEl) miniEl.innerHTML = `data ${prov.sample_end}${badge}`;
   } else if (provWrap) {
     // Older payload without provenance — hide the row rather than show "—".
     provWrap.style.display = "none";
