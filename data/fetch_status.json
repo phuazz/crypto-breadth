@@ -1,117 +1,117 @@
 {
-  "generated_at": "2026-07-23T03:58:43Z",
-  "today_utc": "2026-07-23",
+  "generated_at": "2026-07-24T03:57:57Z",
+  "today_utc": "2026-07-24",
   "source": "binance_data_vision",
   "updated": [
     {
       "symbol": "BTC",
       "n_appended": 1,
-      "new_last_date": "2026-07-22"
+      "new_last_date": "2026-07-23"
     },
     {
       "symbol": "ETH",
       "n_appended": 1,
-      "new_last_date": "2026-07-22"
+      "new_last_date": "2026-07-23"
     },
     {
       "symbol": "BNB",
       "n_appended": 1,
-      "new_last_date": "2026-07-22"
+      "new_last_date": "2026-07-23"
     },
     {
       "symbol": "SOL",
       "n_appended": 1,
-      "new_last_date": "2026-07-22"
+      "new_last_date": "2026-07-23"
     },
     {
       "symbol": "XRP",
       "n_appended": 1,
-      "new_last_date": "2026-07-22"
+      "new_last_date": "2026-07-23"
     },
     {
       "symbol": "ADA",
       "n_appended": 1,
-      "new_last_date": "2026-07-22"
+      "new_last_date": "2026-07-23"
     },
     {
       "symbol": "DOGE",
       "n_appended": 1,
-      "new_last_date": "2026-07-22"
+      "new_last_date": "2026-07-23"
     },
     {
       "symbol": "AVAX",
       "n_appended": 1,
-      "new_last_date": "2026-07-22"
+      "new_last_date": "2026-07-23"
     },
     {
       "symbol": "DOT",
       "n_appended": 1,
-      "new_last_date": "2026-07-22"
+      "new_last_date": "2026-07-23"
     },
     {
       "symbol": "LINK",
       "n_appended": 1,
-      "new_last_date": "2026-07-22"
+      "new_last_date": "2026-07-23"
     },
     {
       "symbol": "LTC",
       "n_appended": 1,
-      "new_last_date": "2026-07-22"
+      "new_last_date": "2026-07-23"
     },
     {
       "symbol": "BCH",
       "n_appended": 1,
-      "new_last_date": "2026-07-22"
+      "new_last_date": "2026-07-23"
     },
     {
       "symbol": "TRX",
       "n_appended": 1,
-      "new_last_date": "2026-07-22"
+      "new_last_date": "2026-07-23"
     },
     {
       "symbol": "ETC",
       "n_appended": 1,
-      "new_last_date": "2026-07-22"
+      "new_last_date": "2026-07-23"
     },
     {
       "symbol": "XLM",
       "n_appended": 1,
-      "new_last_date": "2026-07-22"
+      "new_last_date": "2026-07-23"
     },
     {
       "symbol": "ATOM",
       "n_appended": 1,
-      "new_last_date": "2026-07-22"
+      "new_last_date": "2026-07-23"
     },
     {
       "symbol": "UNI",
       "n_appended": 1,
-      "new_last_date": "2026-07-22"
+      "new_last_date": "2026-07-23"
     },
     {
       "symbol": "AAVE",
       "n_appended": 1,
-      "new_last_date": "2026-07-22"
+      "new_last_date": "2026-07-23"
     },
     {
       "symbol": "NEAR",
       "n_appended": 1,
-      "new_last_date": "2026-07-22"
+      "new_last_date": "2026-07-23"
     },
     {
       "symbol": "ALGO",
       "n_appended": 1,
-      "new_last_date": "2026-07-22"
+      "new_last_date": "2026-07-23"
     },
     {
       "symbol": "FIL",
       "n_appended": 1,
-      "new_last_date": "2026-07-22"
+      "new_last_date": "2026-07-23"
     },
     {
       "symbol": "FTT",
       "n_appended": 1,
-      "new_last_date": "2026-07-22"
+      "new_last_date": "2026-07-23"
     }
   ],
   "skipped": [
