@@ -98,6 +98,20 @@ meaningful signal. E.1 k=2 is the surgical alternative (it acts only on the trul
 degenerate one-name case and is otherwise inert), but it still permits a 50%
 single-name position at the 100% tier, which is a weaker guarantee.
 
+The genuine reason to prefer **E.2 over E.3** — the arm that actually rivals it, being
+also continuous, also always-on, and giving a *tighter* guarantee (25% max name) — is
+NOT the double-counting objection PR-5 raised (that objection did not materialise as a
+cost). It is that **E.3 rescales gross exposure**: `gross = tier × (n_eligible/top_n)`
+reaches into the breadth gate, which Phase 5 (`phase_c4_gate.md`) established as the
+single most load-bearing component of the strategy (+0.61 Sharpe / +38pp MaxDD vs no
+gate). E.2 leaves the gate untouched and acts only on the *distribution within* a given
+gross level — and KEEP-2 confirms this empirically (`phase_e_keep2_walkforward.md`): the
+cap does not move config selection or the walk-forward, i.e. "it does not reach back into
+the signal". A guard that modifies the validated gate is a larger, riskier change than
+one that only caps concentration at a fixed gross; that asymmetry, not the metrics, is
+why E.2 is the right choice over E.3. (Recorded 2026-07-16, correcting the original
+recommendation, which argued only against E.1.)
+
 **Adoption is conditional and NOT complete.** Any variant is a MODIFY of v3.1 under
 PR-1, so the chosen arm must clear PR-1 KEEP (1)–(3) in full. PR-5 ran KEEP-1 (DSR,
 above) but **did NOT run KEEP-2**, the full-config expand-window walk-forward, on

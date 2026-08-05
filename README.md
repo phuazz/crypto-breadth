@@ -137,10 +137,14 @@ than simply holding Bitcoin over a future run.
 > calendar years is the honest construction. The dashboard was corrected at the
 > time; this file was missed. See `results/phase_d_followups.md` §2.
 
-**Parameter sensitivity (IS only, OAT ±50 %):** 6 of 7 parameters ROBUST or
-MILDLY SENSITIVE. The 7th (`per_coin_trend_window`) is fragile in IS but
-stable in OOS. No parameter's default sits at the IS peak — no evidence of
-implicit IS-tuning.
+**Parameter sensitivity (IS only, OAT ±50 %):** 6 of 7 signal parameters
+ROBUST or MILDLY SENSITIVE. The 7th (`per_coin_trend_window`) is fragile in IS
+but stable in OOS. No parameter's default sits at the IS peak — no evidence of
+implicit IS-tuning. The v3.2 `single_name_cap` is an 8th parameter but not in
+this OAT grid (it is a risk guard, not a signal input); its robustness was
+established separately and more thoroughly by PR-5, which tested c ∈ {0.34, 0.50}
+against three structurally different alternatives — all five tied within noise
+(`results/phase_e_concentration.md`).
 
 ---
 
