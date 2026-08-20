@@ -27,9 +27,12 @@ Strategy:
      bootstrapped locally via scripts/fetch_data.py).
   2. For each coin, find the most-recent observed date.
   3. Fetch only the gap from the mirror's klines endpoint. Keep only
-     CLOSED daily candles (the current UTC day is still forming at the
-     00:45 UTC cron and must not be ingested — drop_duplicates(keep="first")
-     would otherwise lock in a partial candle permanently).
+     CLOSED daily candles — the current UTC day is still forming whenever the
+     cron fires (00:07 UTC since 2026-08-20) and must not be ingested, because
+     drop_duplicates(keep="first") would lock a partial candle in permanently.
+     The filter is `close_ms < now_ms` in fetch_binance_daily; it is what makes
+     the cron time irrelevant to data integrity, and it is pinned by
+     tests/test_fetch_daily_update.py rather than merely asserted here.
   4. Append the new rows, drop duplicates, save.
 
 Delisted / rebranded pairs: EOS and MATIC were rebranded on Binance
