@@ -232,6 +232,14 @@ python scripts/pipeline.py
 npx serve docs                       # then open http://localhost:3000
 ```
 
+The nav strip is a **tab UI** (2026-08-20): one section is mounted at a
+time, `#section` deep links and the back button both work, and with
+JavaScript off nothing is hidden — the page degrades to the old single
+scroll. Two charts that used to exist only in the digest email now also
+sit on the page, driven by the same payload: breadth against the
+deployment-gate tiers (Monitor) and each investable coin's distance from
+its own 50-day MA (step 2 of the signal walkthrough).
+
 Or open `template.html` directly — it falls back to fetching
 `data/dashboard_data.json` so it works standalone for development.
 

@@ -135,9 +135,17 @@ then — not now, against a book that does not exist.
 
 ## Dashboard
 
-- **NEVER open `docs/index.html` (~893KB, >500KB rule).** Edit `template.html` (~129KB)
+- **NEVER open `docs/index.html` (~961KB, >500KB rule).** Edit `template.html` (~181KB)
   via grep anchors; regenerate with `python scripts/pipeline.py`. Never hand-edit the
   built output. Re-check both sizes with `wc -c` rather than trusting these figures.
+- **The nav strip is a real tab UI (2026-08-20), not a scrollspy.** `setupTabs()` adds
+  `.tabs-on` to `<body>` and `.tab-panel` to each navigable section, so ONE section is
+  mounted at a time. Three consequences for future edits: (1) it runs LAST in boot,
+  because Plotly cannot size a plot inside `display:none` — any chart drawn later must
+  be drawn while its panel is visible, or resized on show; (2) any new in-page `#anchor`
+  link is handled by the delegated click handler, which switches tabs — do not add a
+  competing handler; (3) the hiding is applied by JS on purpose, so with JS off the page
+  degrades to the old long scroll rather than to a blank page.
 - **Book vs gate.** The dashboard and the email digest must never conflate what is
   HELD with what the breadth gate TARGETS. They legitimately diverge: the gate is read
   at Monday's close and executes the next bar, so a mid-week crossing is not yet

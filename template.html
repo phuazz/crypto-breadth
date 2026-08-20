@@ -434,6 +434,13 @@ header.top .meta .sep { color: var(--border-strong); margin: 0 8px; }
 @media (max-width: 620px) { .verdict .year-score { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 /* recent-performance strip (monitor) — reuses the .ys-tile scorecard pattern */
 .rp-panel { margin-top: 14px; }
+/* breadth-vs-gate panel (monitor) — sits directly under the tier tiles it
+   expands, so the reading and its three-month trajectory read together */
+.bg-panel { margin: 14px 0 0; }
+.bg-panel .panel-body { padding: 4px 4px 0; }
+.bg-panel .panel-note {
+  padding: 0 16px 10px; font-size: 12px; color: var(--ink-faint); line-height: 1.5;
+}
 .rp-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; padding: 12px 14px 10px; }
 @media (max-width: 620px) { .rp-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 /* horizon buttons — .period-selector pattern ported from breadth-thrust-etf */
@@ -491,6 +498,20 @@ nav.tabs a.active {
 }
 @media (pointer: coarse) {
   nav.tabs a { min-height: 44px; display: inline-flex; align-items: center; }
+}
+
+/* ===== real tab panels =====
+   setupTabs() adds .tabs-on to <body> and .tab-panel to each navigable
+   section, so ONE panel shows at a time instead of a 14-section scroll.
+   The class is applied by JS on purpose: with JS off (or a data-load
+   failure) nothing is hidden and the page degrades to the old long page.
+   Print restores every panel — a printed dashboard should be complete. */
+body.tabs-on section.tab-panel { display: none; }
+body.tabs-on section.tab-panel.is-active { display: block; }
+body.tabs-on section.tab-panel:focus { outline: none; }
+@media print {
+  body.tabs-on section.tab-panel { display: block; }
+  nav.tabs { display: none; }
 }
 
 /* ===== sections ===== */
@@ -968,6 +989,15 @@ table.holdings tbody tr:last-child td { border-bottom: none; }
   font-weight: 700;
   margin: 12px 0 6px;
 }
+/* distance-from-50d-MA bars inside step 2 */
+#chart-deviation-wrap {
+  margin: 14px 0 2px;
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+.dev-note {
+  font-size: 12px; color: var(--ink-faint); line-height: 1.5; margin: 2px 0 0;
+}
 
 /* coin chips */
 .coin-chip {
@@ -1007,6 +1037,13 @@ table.holdings tbody tr:last-child td { border-bottom: none; }
 }
 .chip-cluster { line-height: 2.0; }
 .coin-chip .small { font-size: 10.5px; opacity: 0.75; font-weight: 500; }
+
+/* wide tables scroll inside their own container, never the page.
+   Measured at 390px before this: the momentum rank table pushed the page to
+   399, IS/OOS to 510, regimes to 606 and walk-forward to 702 — four instances
+   of one pattern, so the wrapper is applied by wrapWideTables() to all of them. */
+.table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.table-scroll > table.rank { min-width: 400px; }
 
 /* rank table for momentum */
 table.rank {
@@ -1459,6 +1496,16 @@ footer.bottom a:hover { text-decoration: underline; }
     </div>
   </div>
 
+  <div class="monitor-panel bg-panel">
+    <div class="panel-head">
+      <span class="title">Breadth vs the deployment gate</span>
+      <span class="meta" id="bg-meta">—</span>
+    </div>
+    <div class="panel-body"><div id="chart-breadth-gate" style="height:250px"></div></div>
+    <div class="panel-note" id="bg-note">—</div>
+    <div class="panel-foot"><a href="#exposure">Exposure history since 2018 →</a></div>
+  </div>
+
   <div class="monitor-cols">
     <div class="monitor-panel">
       <div class="panel-head">
@@ -1758,8 +1805,21 @@ const LAYOUT_BASE = {
            tickfont: { size: 11, family: "JetBrains Mono" } },
 };
 // Date-axis variant for time-series charts (equity, exposure, drawdown, rolling,
-// walk-forward, recent) — y-axis right is finance convention per design.md.
-const DATE_XAXIS = Object.assign({}, LAYOUT_BASE.xaxis, { tickformat: "%b '%y" });
+// walk-forward, recent, breadth-gate) — y-axis right is finance convention per
+// design.md.
+// Duplicate-label guard: on any window shorter than ~6 months Plotly puts two
+// ticks inside one month, and a flat "%b '%y" prints the SAME label twice (the
+// 3M default on recent + explorer drew "Jun '26" and "Jul '26" twice each).
+// tickformatstops switches the format by tick RESOLUTION rather than pinning
+// dtick — the pin is the thing design.md's DNA deliberately omits here, because
+// the 8.5-year charts would then draw ~50 ticks. It also fixes drag-zoom for
+// free, which a per-window dtick would not. tickformat is dropped because it
+// takes precedence over the stops.
+const DATE_TICKSTOPS = [
+  { dtickrange: [null, 86400000 * 20], value: "%d %b" },   // sub-3-week spacing
+  { dtickrange: [86400000 * 20, null], value: "%b '%y" },  // monthly and coarser
+];
+const DATE_XAXIS = Object.assign({}, LAYOUT_BASE.xaxis, { tickformatstops: DATE_TICKSTOPS });
 
 // Calendar window -> [x0, x1] ISO range over an ascending date-string array,
 // clamped to available history; null for "max" (caller switches to autorange).
@@ -2099,6 +2159,100 @@ function renderRecentPerf(d) {
   _initPeriodSelectorForChart("chart-recent", "3m", (p) => {
     drawWindow(PERIOD_IDX[p](), p.toUpperCase());
   }, ["1m", "3m", "ytd", "1y"]);
+}
+
+// ===== breadth vs the deployment gate (monitor) =====
+// Ported from the digest email's render_breadth_chart (scripts/notify.py), so
+// the page and the mail tell the same story from the same payload. Reads
+// indicator_history — built by pipeline.py and, until now, consumed only by
+// the mail. Bands are the gate tiers from backtest.Params.tier_thresholds /
+// tier_exposures (0.30 / 0.50 / 0.70 -> 0 / 30 / 60 / 100 %); the exposure
+// series is NOT plotted alongside because it is a deterministic function of
+// breadth, i.e. exactly the band the line sits in — one encoding, not two.
+const GATE_BANDS = [
+  // [lo, hi, fill, tier label] — fills are design.md's -bg tints
+  [0.00, 0.30, "rgba(192,57,43,0.07)", "0%"],
+  [0.30, 0.50, "rgba(180,83,9,0.07)", "30%"],
+  [0.50, 0.70, "rgba(37,99,235,0.06)", "60%"],
+  [0.70, 1.00, "rgba(26,135,84,0.07)", "100%"],
+];
+function renderBreadthGate(d) {
+  const el = document.getElementById("chart-breadth-gate");
+  const ih = d.indicator_history;
+  if (!el || !ih || !ih.dates || ih.dates.length < 5) {
+    const panel = el && el.closest(".bg-panel");
+    if (panel) panel.style.display = "none";
+    return;
+  }
+  const pts = ih.dates.map((dt, i) => [dt, ih.breadth[i]]).filter(p => p[1] != null);
+  if (pts.length < 5) return;
+  const x = pts.map(p => p[0]), y = pts.map(p => p[1]);
+  const lastX = x[x.length - 1], lastY = y[y.length - 1];
+
+  const shapes = [], annotations = [];
+  GATE_BANDS.forEach(([lo, hi, fill, lab]) => {
+    shapes.push({ type: "rect", xref: "paper", x0: 0, x1: 1, yref: "y", y0: lo, y1: hi,
+                  fillcolor: fill, line: { width: 0 }, layer: "below" });
+    // 11px / --t3-text, not the 10px used by older annotations on this page:
+    // sub-11px chart labels are a MOBILE_CHECK warning and Plotly does not
+    // scale them up on a phone.
+    annotations.push({ xref: "paper", x: 0.008, xanchor: "left", y: hi, yanchor: "top",
+                       text: "deploy " + lab, showarrow: false,
+                       font: { size: 11, color: "#66665e" } });
+  });
+  [0.30, 0.50, 0.70].forEach(t => {
+    shapes.push({ type: "line", xref: "paper", x0: 0, x1: 1, yref: "y", y0: t, y1: t,
+                  line: { color: "#d5d3ca", width: 1, dash: "dot" }, layer: "below" });
+  });
+  annotations.push({ x: lastX, y: lastY, xanchor: "right", yanchor: "bottom",
+                     text: (lastY * 100).toFixed(0) + "% ", showarrow: false,
+                     font: { size: 12, color: "#1d4ed8", family: "JetBrains Mono" } });
+
+  const traces = [
+    { x, y, type: "scatter", mode: "lines", name: "Breadth",
+      line: { color: "#1a1a18", width: 2.4 },
+      hovertemplate: "%{x}<br>Breadth %{y:.0%}<extra></extra>" },
+    { x: [lastX], y: [lastY], type: "scatter", mode: "markers", name: "Latest",
+      marker: { size: 9, color: "#1d4ed8", line: { color: "#ffffff", width: 1.5 } },
+      hoverinfo: "skip", showlegend: false },
+  ];
+  const layout = Object.assign({}, LAYOUT_BASE, {
+    height: 250,
+    margin: { l: 12, r: 52, t: 14, b: 34 },
+    showlegend: false,
+    shapes, annotations,
+    xaxis: DATE_XAXIS,
+    yaxis: Object.assign({}, LAYOUT_BASE.yaxis, {
+      range: [0, 1], zeroline: false,
+      tickvals: [0, 0.3, 0.5, 0.7, 1],
+      ticktext: ["0%", "30%", "50%", "70%", "100%"],
+    }),
+  });
+  Plotly.react(el, traces, layout, PLOTLY_CFG);
+
+  const meta = document.getElementById("bg-meta");
+  const nInv = ih.n_investable ? ih.n_investable[ih.n_investable.length - 1] : null;
+  if (meta) meta.textContent = "to " + lastX + " close · " + pts.length + "d window"
+    + (nInv != null ? " · " + nInv + " investable" : "");
+  const note = document.getElementById("bg-note");
+  if (note) {
+    // Distance to the nearest band edge, in breadth points — "how close is the
+    // gate to moving", which is the whole reason to look at the trajectory.
+    const bi = GATE_BANDS.findIndex(b => lastY >= b[0] && (lastY < b[1] || b[1] === 1));
+    const band = GATE_BANDS[bi];
+    const up = bi < GATE_BANDS.length - 1 ? (band[1] - lastY) * 100 : null;
+    const dn = bi > 0 ? (lastY - band[0]) * 100 : null;
+    let s = "Share of the investable universe above its own 50-day MA, daily. Breadth "
+          + (lastY * 100).toFixed(0) + "% sits in the " + band[3] + " tier";
+    const moves = [];
+    if (up != null) moves.push(up.toFixed(0) + " points more would step it up to "
+      + GATE_BANDS[bi + 1][3]);
+    if (dn != null) moves.push(dn.toFixed(0) + " points less would step it down to "
+      + GATE_BANDS[bi - 1][3]);
+    if (moves.length) s += " — " + moves.join(", ");
+    note.textContent = s + ". The gate is read at Monday's close and trades the next day, "
+      + "so a mid-week crossing is not yet actionable.";
+  }
 }
 
 // Plain-English daily status for readers who do not follow the project
@@ -3126,7 +3280,7 @@ async function renderExplorerChart(coin) {
     legend: { orientation: "h", x: 0, y: 1.14, font: { size: 11 }, bgcolor: "transparent" },
     grid: { rows: 2, columns: 1, pattern: "independent", roworder: "top to bottom" },
     xaxis:  { domain: [0, 1], anchor: "y", showgrid: false, linecolor: "#d5d3ca", linewidth: 1,
-              zeroline: false, tickfont: { size: 11 }, tickformat: "%b '%y",
+              zeroline: false, tickfont: { size: 11 }, tickformatstops: DATE_TICKSTOPS,
               range: defaultRange },
     yaxis:  { domain: [0.35, 1], anchor: "x", gridcolor: "#f0f0ea", linecolor: "#d5d3ca",
               side: "right", type: "log",
@@ -3134,7 +3288,7 @@ async function renderExplorerChart(coin) {
               tickfont: { size: 11, family: "JetBrains Mono" },
               range: initialYRanges.priceRange, autorange: false },
     xaxis2: { domain: [0, 1], anchor: "y2", showgrid: false, linecolor: "#d5d3ca", linewidth: 1,
-              zeroline: false, tickfont: { size: 11 }, tickformat: "%b '%y", matches: "x" },
+              zeroline: false, tickfont: { size: 11 }, tickformatstops: DATE_TICKSTOPS, matches: "x" },
     yaxis2: { domain: [0, 0.28], anchor: "x2", gridcolor: "#f0f0ea", linecolor: "#d5d3ca",
               side: "right", zeroline: false,
               title: { text: "momentum score", font: { size: 11 } },
@@ -3184,6 +3338,66 @@ async function renderExplorerChart(coin) {
     if (r) Plotly.relayout(plotEl, { "xaxis.range": r, "xaxis.autorange": false });
     else Plotly.relayout(plotEl, { "xaxis.autorange": true });
   }, ["1m", "3m", "ytd", "1y", "3y", "5y", "max"]);
+}
+
+// Horizontal bars: each investable coin's distance from its own 50d MA.
+// Colour keys off the SIGN, not off step 2's pass flag — entry also needs the
+// MA to be rising, so a coin can sit above the line and still fail. The count
+// of non-negative bars is the breadth numerator by construction (both use the
+// 50-day window: Params.breadth_ma_window == Params.per_coin_trend_window).
+function drawDeviationChart(candidates) {
+  const el = document.getElementById("chart-deviation");
+  if (!el) return;
+  const rows = (candidates || [])
+    .filter(c => c.close && c.ma)
+    .map(c => ({ coin: c.coin, dev: (c.close / c.ma - 1) * 100, pass: !!c.pass, reason: c.reason }))
+    .sort((a, b) => a.dev - b.dev);   // ascending -> largest at the top of a barh
+  const wrap = document.getElementById("chart-deviation-wrap");
+  if (rows.length === 0) { if (wrap) wrap.style.display = "none"; return; }
+  const vals = rows.map(r => r.dev);
+  const lo = Math.min(0, ...vals), hi = Math.max(0, ...vals);
+  const pad = Math.max(5, (hi - lo) * 0.22);
+  const trace = {
+    type: "bar", orientation: "h",
+    x: vals, y: rows.map(r => r.coin),
+    marker: { color: rows.map(r => r.dev >= 0 ? "#1a8754" : "#c0392b") },
+    text: vals.map(v => (v >= 0 ? "+" : "") + v.toFixed(1) + "%"),
+    textposition: "outside", cliponaxis: false,
+    textfont: { size: 11, family: "JetBrains Mono", color: "#5c5c56" },
+    customdata: rows.map(r => r.pass ? "trend-eligible" : (r.reason || "not eligible")),
+    hovertemplate: "%{y}  %{x:+.1f}% vs 50d MA<br>%{customdata}<extra></extra>",
+  };
+  const layout = Object.assign({}, LAYOUT_BASE, {
+    height: Math.max(180, 34 * rows.length + 62),
+    margin: { l: 12, r: 24, t: 10, b: 40 },
+    hovermode: "closest",
+    showlegend: false,
+    // Categorical y-axis stays on the LEFT — the documented deviation from
+    // design.md's right-axis rule, same as sensitivity and attribution: the
+    // coin labels are the reading order.
+    yaxis: Object.assign({}, LAYOUT_BASE.yaxis, {
+      side: "left", automargin: true, showgrid: false, zeroline: false,
+      tickfont: { size: 11, family: FONT_STACK },
+    }),
+    xaxis: Object.assign({}, LAYOUT_BASE.xaxis, {
+      range: [lo - pad, hi + pad], ticksuffix: "%",
+      zeroline: true, zerolinecolor: "#c0beb5", zerolinewidth: 1,
+      title: { text: "distance from own 50-day moving average", font: { size: 11 } },
+    }),
+  });
+  Plotly.react(el, [trace], layout, PLOTLY_CFG);
+  const note = document.getElementById("chart-deviation-note");
+  if (note) {
+    const nAbove = rows.filter(r => r.dev >= 0).length;
+    const eligible = rows.filter(r => r.pass).length;
+    let s = `${nAbove} of ${rows.length} investable coins are above their own 50-day line — `
+          + `that ratio is the breadth reading (${(nAbove / rows.length * 100).toFixed(0)}%) `
+          + `that sets the gate in step 5.`;
+    if (eligible < nAbove) {
+      s += ` ${nAbove - eligible} of them still fail entry because the MA itself is not rising.`;
+    }
+    note.textContent = s;
+  }
 }
 
 function renderWalkthrough(d) {
@@ -3241,8 +3455,15 @@ function renderWalkthrough(d) {
     });
     s2 += `</div>`;
   }
+  // Cross-sectional make-up behind the single breadth number — ported from the
+  // digest email's render_deviation_chart (scripts/notify.py). Charts every
+  // investable coin (step 2's input set), not just the passers, because the
+  // point is who is above the line and who is on the cusp.
+  s2 += `<div id="chart-deviation-wrap"><div id="chart-deviation"></div>`
+      + `<p class="dev-note" id="chart-deviation-note"></p></div>`;
   s2 += `</div>`;
   document.getElementById("signal-step2").innerHTML = s2;
+  drawDeviationChart(w.step2.candidates);
 
   // ----- step 3: momentum ranking -----
   let s3 = stepHeader("3", w.step3.title.replace(/^\d+\.\s*/, ""), w.step3.rule,
@@ -3252,7 +3473,7 @@ function renderWalkthrough(d) {
   if (w.step3.rows.length === 0) {
     s3 += `<p class="muted" style="text-align:center;padding:14px">No coins survived the trend filter — nothing to rank.</p>`;
   } else {
-    s3 += `<table class="rank"><thead><tr>
+    s3 += `<div class="table-scroll"><table class="rank"><thead><tr>
       <th>rank</th><th>coin</th><th>score</th>`;
     // Component columns based on first row's lookbacks
     const lookbacks = w.step3.rows[0].components.map(c => c.lookback_d);
@@ -3269,7 +3490,7 @@ function renderWalkthrough(d) {
       });
       s3 += `</tr>`;
     });
-    s3 += `</tbody></table>`;
+    s3 += `</tbody></table></div>`;
   }
   s3 += `</div>`;
   document.getElementById("signal-step3").innerHTML = s3;
@@ -3529,20 +3750,154 @@ function renderLedger(d) {
   apply();
 }
 
-// ===== sticky-nav active-section highlighter =====
-function setupActiveNav() {
-  const links = document.querySelectorAll("nav.tabs a.nav-link");
-  const targets = Array.from(links).map(a => document.getElementById(a.dataset.target)).filter(Boolean);
-  function onScroll() {
-    const offset = 80;
-    let active = targets[0];
-    for (const t of targets) {
-      if (t.getBoundingClientRect().top <= offset) active = t;
+// Wide tables scroll inside their own container so the PAGE never scrolls
+// sideways on a phone (MOBILE_CHECK). Runs after every renderer: these tables
+// are filled by setting innerHTML on the table element itself, so moving the
+// element into a wrapper leaves ids and later re-renders intact.
+function wrapWideTables() {
+  document.querySelectorAll("table.simple, table.rank").forEach(t => {
+    if (!t.parentElement || t.parentElement.classList.contains("table-scroll")) return;
+    const wrap = document.createElement("div");
+    wrap.className = "table-scroll";
+    t.parentNode.insertBefore(wrap, t);
+    wrap.appendChild(t);
+  });
+}
+
+// ===== tab navigation =====
+// The strip used to be a scrollspy over one ~14-section page; it now switches
+// real panels, so only one section is mounted at a time. Runs LAST in boot,
+// after every chart has been drawn while its container was still visible —
+// Plotly cannot size a plot inside display:none, so lazy-drawing would need a
+// per-chart redraw hook. Panels are re-measured on show anyway, which covers a
+// window resize that happened while a panel was hidden.
+function setupTabs() {
+  const nav = document.querySelector("nav.tabs");
+  const list = nav && nav.querySelector(".container");
+  if (!nav || !list) return;
+  // A link hidden by a renderer (renderWalkForward, when there is no
+  // walk-forward payload) is not a tab — skip it rather than offer an empty panel.
+  const links = Array.from(list.querySelectorAll("a.nav-link"))
+    .filter(a => a.style.display !== "none" && document.getElementById(a.dataset.target));
+  if (links.length === 0) return;
+
+  const panels = new Map();
+  list.setAttribute("role", "tablist");
+  links.forEach(a => {
+    const el = document.getElementById(a.dataset.target);
+    el.classList.add("tab-panel");
+    el.setAttribute("role", "tabpanel");
+    el.setAttribute("aria-labelledby", "tab-" + a.dataset.target);
+    el.setAttribute("tabindex", "-1");
+    a.id = "tab-" + a.dataset.target;
+    a.setAttribute("role", "tab");
+    panels.set(a.dataset.target, el);
+  });
+  document.body.classList.add("tabs-on");
+
+  let current = null;
+
+  function show(id, opts) {
+    const o = opts || {};
+    if (!panels.has(id)) return false;
+    if (id !== current) {
+      current = id;
+      panels.forEach((el, key) => el.classList.toggle("is-active", key === id));
+      links.forEach(a => {
+        const on = a.dataset.target === id;
+        a.classList.toggle("active", on);
+        a.setAttribute("aria-selected", on ? "true" : "false");
+        a.setAttribute("tabindex", on ? "0" : "-1");   // roving tabindex
+      });
+      // Keep the active tab visible in the mobile scroll strip WITHOUT
+      // scrollIntoView, which would also move the page vertically.
+      const active = links.find(a => a.dataset.target === id);
+      if (active && list.scrollWidth > list.clientWidth) {
+        list.scrollLeft = active.offsetLeft - (list.clientWidth - active.offsetWidth) / 2;
+      }
+      // Charts drawn before this panel was last hidden may be stale in width.
+      const panel = panels.get(id);
+      if (window.Plotly) {
+        panel.querySelectorAll(".js-plotly-plot").forEach(el => {
+          try { Plotly.Plots.resize(el); } catch (e) {}
+        });
+      }
     }
-    links.forEach(l => l.classList.toggle("active", l.dataset.target === active.id));
+    if (o.hash !== false) {
+      const url = "#" + id;
+      try {
+        if (o.push) history.pushState({ tab: id }, "", url);
+        else history.replaceState({ tab: id }, "", url);
+      } catch (e) { /* file:// dev — history API may refuse */ }
+    }
+    if (o.scroll) {
+      // Land with the tab strip pinned at the top of the viewport, so the
+      // panel starts immediately below it.
+      window.scrollTo({ top: nav.offsetTop, behavior: o.smooth ? "smooth" : "auto" });
+    }
+    if (o.focus) panels.get(id).focus({ preventScroll: true });
+    return true;
   }
-  document.addEventListener("scroll", onScroll, { passive: true });
-  onScroll();
+
+  // Which panel owns an id? Either a panel itself, or an element inside one.
+  function panelFor(id) {
+    if (panels.has(id)) return id;
+    const el = document.getElementById(id);
+    const sec = el && el.closest("section.tab-panel");
+    return sec && panels.has(sec.id) ? sec.id : null;
+  }
+
+  links.forEach(a => {
+    a.addEventListener("click", ev => {
+      ev.preventDefault();
+      show(a.dataset.target, { push: true, scroll: true, focus: true });
+    });
+  });
+
+  // In-page cross links ("Full trade ledger →", "Exposure history since 2018 →")
+  // must switch tabs, not scroll into a hidden panel.
+  document.addEventListener("click", ev => {
+    const a = ev.target.closest && ev.target.closest('a[href^="#"]');
+    if (!a || a.classList.contains("nav-link")) return;
+    const raw = a.getAttribute("href").slice(1);
+    if (!raw) return;
+    const owner = panelFor(raw);
+    if (!owner) return;
+    ev.preventDefault();
+    show(owner, { push: true, scroll: owner === raw });
+    if (owner !== raw) {
+      const t = document.getElementById(raw);
+      if (t) t.scrollIntoView({ block: "start" });
+    }
+  });
+
+  // Left/right (and Home/End) move between tabs, per the ARIA tabs pattern.
+  list.addEventListener("keydown", ev => {
+    const i = links.findIndex(a => a === document.activeElement);
+    if (i < 0) return;
+    let j = null;
+    if (ev.key === "ArrowRight") j = (i + 1) % links.length;
+    else if (ev.key === "ArrowLeft") j = (i - 1 + links.length) % links.length;
+    else if (ev.key === "Home") j = 0;
+    else if (ev.key === "End") j = links.length - 1;
+    if (j === null) return;
+    ev.preventDefault();
+    links[j].focus();
+    show(links[j].dataset.target, { push: true, scroll: true });
+  });
+
+  const fromHash = () => panelFor(decodeURIComponent((location.hash || "").slice(1)));
+  window.addEventListener("popstate", () => show(fromHash() || links[0].dataset.target,
+                                                 { hash: false, scroll: true }));
+  window.addEventListener("hashchange", () => {
+    const id = fromHash();
+    if (id && id !== current) show(id, { hash: false, scroll: true });
+  });
+
+  // First paint: honour a deep link (and scroll to it); otherwise open Monitor
+  // and leave the masthead in view — the landing is the verdict, not a jump.
+  const deep = fromHash();
+  show(deep || links[0].dataset.target, { hash: !!deep, scroll: !!deep });
 }
 
 // Review band visibility: expanded on the very first visit, collapsed on
@@ -3580,6 +3935,7 @@ loadData()
     renderMonitor(d);
     renderPlainStatus(d);
     renderRecentPerf(d);
+    renderBreadthGate(d);
     renderWalkthrough(d);
     renderExplorerButtons(d);
     // Default to BTC selection so the chart is populated on first load
@@ -3591,7 +3947,8 @@ loadData()
     }
     renderLedger(d);
     renderWalkForward(d);
-    setupActiveNav();
+    wrapWideTables();
+    setupTabs();   // last: every chart is sized while its panel is still visible
   })
   .catch(e => {
     console.error(e);
