@@ -2,8 +2,29 @@ name: Daily signal check
 
 on:
   schedule:
-    # Daily at 00:45 UTC (after Binance's daily candle closes at 00:00 UTC).
-    - cron: "45 0 * * *"
+    # Daily at 00:07 UTC — 7 minutes after Binance's daily candle closes at
+    # 00:00 UTC. Moved from 00:45 on 2026-08-20.
+    #
+    # The cron time is NOT the binding constraint: GitHub queues scheduled runs
+    # and over the 14 runs to 2026-08-20 this workflow started 78 to 173 min
+    # after its nominal time (median ~125), i.e. 10:03-11:38 SGT. Two reasons
+    # for the new value. (1) It is 38 min earlier, which moves the whole
+    # distribution earlier by that much. (2) :07 is an unpopular minute —
+    # :00/:15/:30/:45 are the congested slots, and the old value sat on one.
+    # Effect (2) is a heuristic, so MEASURE the start times before assuming it
+    # worked; revert to "45 0" if a week shows no gain.
+    #
+    # Earlier than this is not useful: the candle does not exist before 00:00
+    # UTC, and the observed queue floor of 78 min puts the earliest realistic
+    # arrival around 09:25 SGT whatever the cron says. 08:30 SGT is not
+    # reachable on GitHub cron.
+    #
+    # Running too early is SAFE, not silent: fetch_daily_update.py records a
+    # live pair returning no rows as reason "no_data", which counts as a hard
+    # fail (exit 1), so the "Fail if fetch broke" gate turns the run red and the
+    # digest goes out with its staleness banner. It fetches the live klines
+    # endpoint, not data.vision's archived daily ZIPs, which publish hours late.
+    - cron: "07 0 * * *"
   workflow_dispatch:  # manual trigger button in the Actions tab
     inputs:
       send_digest_now:
@@ -82,8 +103,9 @@ jobs:
           # change-alerts. Change cadence here: weekly (default) | daily | monthly | off.
           # DIGEST_WEEKDAY: 0=Mon … 6=Sun (weekly only). Set to 1 (Tuesday) because the
           # weekly rebalance uses the Monday close and executes on the Tuesday bar — the
-          # cron at 00:45 UTC (= 08:45 SGT) Tuesday is the earliest a fresh weekly signal
-          # exists. (Daily trend-exits fire any day and are covered by the instant alerts.)
+          # cron at 00:07 UTC (= 08:07 SGT) Tuesday is the earliest a fresh weekly signal
+          # exists, since Monday's candle closes at 00:00 UTC Tuesday. (Daily trend-exits
+          # fire any day and are covered by the instant alerts.)
           DIGEST_CADENCE: weekly
           DIGEST_WEEKDAY: "1"
           # The manual "send digest now" button forces delivery even if a scheduled
