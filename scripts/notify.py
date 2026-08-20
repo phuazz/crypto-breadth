@@ -389,6 +389,11 @@ def render_breadth_chart(ih: dict) -> bytes | None:
     pts = [(datetime.strptime(d, "%Y-%m-%d"), b)
            for d, b in zip(ih.get("dates", []), ih.get("breadth", []))
            if isinstance(b, (int, float))]
+    # indicator_history carries the FULL sample since 2026-08-20 (the dashboard
+    # chart has a horizon selector). The email chart is titled "last 3 months"
+    # and must stay that way, so it slices its own window here rather than
+    # plotting whatever length the payload happens to hold.
+    pts = pts[-CHART_WINDOW_DAYS:]
     if len(pts) < 5:
         return None
     xs, ys = zip(*pts)

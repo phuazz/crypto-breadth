@@ -2216,24 +2216,42 @@ function renderBreadthGate(d) {
       marker: { size: 9, color: "#1d4ed8", line: { color: "#ffffff", width: 1.5 } },
       hoverinfo: "skip", showlegend: false },
   ];
-  const layout = Object.assign({}, LAYOUT_BASE, {
-    height: 250,
-    margin: { l: 12, r: 52, t: 14, b: 34 },
-    showlegend: false,
-    shapes, annotations,
-    xaxis: DATE_XAXIS,
-    yaxis: Object.assign({}, LAYOUT_BASE.yaxis, {
-      range: [0, 1], zeroline: false,
-      tickvals: [0, 0.3, 0.5, 0.7, 1],
-      ticktext: ["0%", "30%", "50%", "70%", "100%"],
-    }),
-  });
-  Plotly.react(el, traces, layout, PLOTLY_CFG);
-
+  // Horizon selector. The window is applied as an x-RANGE, not by slicing the
+  // series: the gate bands and their labels are xref:"paper", so they span
+  // whatever is shown, and the y-axis is pinned to [0,1] — so unlike the
+  // explorer there is no y-refit to chase on a range change.
   const meta = document.getElementById("bg-meta");
   const nInv = ih.n_investable ? ih.n_investable[ih.n_investable.length - 1] : null;
-  if (meta) meta.textContent = "to " + lastX + " close · " + pts.length + "d window"
-    + (nInv != null ? " · " + nInv + " investable" : "");
+  const drawWindow = (period) => {
+    // periodRangeIso returns null for "max"; pin that to the sample rather than
+    // letting Plotly autorange, which pads ~6 months past the last close and
+    // draws a tick year we have no data for.
+    const r = periodRangeIso(x, period) || [x[0], lastX];
+    const layout = Object.assign({}, LAYOUT_BASE, {
+      height: 250,
+      margin: { l: 12, r: 52, t: 14, b: 34 },
+      showlegend: false,
+      shapes, annotations,
+      xaxis: Object.assign({}, DATE_XAXIS, { range: r, autorange: false }),
+      yaxis: Object.assign({}, LAYOUT_BASE.yaxis, {
+        range: [0, 1], zeroline: false,
+        tickvals: [0, 0.3, 0.5, 0.7, 1],
+        ticktext: ["0%", "30%", "50%", "70%", "100%"],
+      }),
+    });
+    Plotly.react(el, traces, layout, PLOTLY_CFG);
+    if (meta) {
+      // Count the points actually inside the window, so the label describes
+      // what is drawn rather than what was shipped.
+      const shown = x.filter(dt => dt >= r[0] && dt <= r[1]).length;
+      meta.textContent = "to " + lastX + " close · " + period.toUpperCase()
+        + " (" + shown.toLocaleString() + " days)"
+        + (nInv != null ? " · " + nInv + " investable" : "");
+    }
+  };
+  _initPeriodSelectorForChart("chart-breadth-gate", "3m", drawWindow,
+                              ["3m", "ytd", "1y", "3y", "max"]);
+
   const note = document.getElementById("bg-note");
   if (note) {
     // Distance to the nearest band edge, in breadth points — "how close is the

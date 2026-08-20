@@ -135,9 +135,13 @@ then — not now, against a book that does not exist.
 
 ## Dashboard
 
-- **NEVER open `docs/index.html` (~961KB, >500KB rule).** Edit `template.html` (~181KB)
+- **NEVER open `docs/index.html` (~1,020KB, >500KB rule).** Edit `template.html` (~178KB)
   via grep anchors; regenerate with `python scripts/pipeline.py`. Never hand-edit the
   built output. Re-check both sizes with `wc -c` rather than trusting these figures.
+  The built page crossed 1MB on 2026-08-20 when `indicator_history` was widened to the
+  full sample for the Monitor breadth chart's horizon selector (+~80KB of payload). It
+  gzips to ~247KB, which is what a phone actually downloads — but the raw figure is what
+  the >500KB read rule keys off, so it stays firmly out of bounds.
 - **The nav strip is a real tab UI (2026-08-20), not a scrollspy.** `setupTabs()` adds
   `.tabs-on` to `<body>` and `.tab-panel` to each navigable section, so ONE section is
   mounted at a time. Three consequences for future edits: (1) it runs LAST in boot,

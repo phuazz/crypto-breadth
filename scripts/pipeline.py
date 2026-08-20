@@ -1003,12 +1003,16 @@ def main() -> int:
     breadth = breadth_pct_above_ma(close, p.breadth_ma_window, mask)
     target_exposure = breadth_to_tier(breadth, p.tier_thresholds, p.tier_exposures)
     monitor = current_state(close, volume, res, breadth, target_exposure, mask, p)
-    # Indicator history (last ~3 months) so the email digest can show
-    # week-over-week CHANGE and direction of travel, not just a snapshot, and
-    # plot the breadth trajectory against the deployment gates. The digest's
-    # week-over-week text only reads the last point and the ~7-day-back point,
-    # so a longer window here does not change it.
-    _ih_idx = breadth.index[-90:]
+    # Indicator history: the breadth trajectory against the deployment gates,
+    # plus the investable / eligible counts behind it. Two consumers.
+    #   - The dashboard's Monitor chart, which has a 3M/YTD/1Y/3Y/MAX selector
+    #     and therefore needs the FULL sample (widened from 90 days on
+    #     2026-08-20 at owner request). Costs ~105 KB of payload against the
+    #     equity block's ~286 KB, so it is proportionate rather than free.
+    #   - The email digest, which slices its own 90-day window for the inline
+    #     chart (notify.CHART_WINDOW_DAYS) and finds the ~7-day-back point by
+    #     scanning dates, so neither is affected by the length here.
+    _ih_idx = breadth.index
     _n_inv = mask.sum(axis=1)
     _n_elig = (per_coin_trend_entry_mask(close, p.per_coin_trend_window) & mask).sum(axis=1)
     indicator_history = {
