@@ -117,3 +117,73 @@ def test_live_coin_empty_while_behind_hard_fails(wired, monkeypatch):
     monkeypatch.setattr(fdu, "fetch_binance_daily",
                         _fake_fetch(empty_syms=set(fdu.DELISTED_ON_BINANCE) | {"BTC"}))
     assert fdu.main() == 1
+
+
+# ===== the closed-candle filter inside fetch_binance_daily =====
+# Everything above monkeypatches fetch_binance_daily wholesale, so its
+# `close_ms < now_ms` filter — the thing that stops a still-forming candle being
+# ingested as if it were final — was never exercised. That filter is what makes
+# the cron TIME irrelevant to data integrity: the workflow was moved to 00:07
+# UTC on 2026-08-20, only 7 minutes after the daily close, and the argument that
+# this is safe rests entirely on these four assertions. Dates use pandas
+# Timestamps throughout (Python months are 1-indexed).
+
+def _kline_row(day: str):
+    """One raw Binance daily kline for `day`, in the wire layout: openTime at
+    that day's UTC midnight, closeTime one millisecond before the next."""
+    open_ms = pd.Timestamp(day, tz="UTC").value // 1_000_000
+    close_ms = open_ms + fdu.MS_PER_DAY - 1
+    return [open_ms, "1.0", "2.0", "0.5", "1.5", "10.0",
+            close_ms, "15.0", 100, "5.0", "7.5", "0"]
+
+
+def _stub_klines(monkeypatch, days):
+    """Serve `days` as the endpoint's response, unconditionally."""
+    class _Resp:
+        @staticmethod
+        def raise_for_status():
+            return None
+
+        @staticmethod
+        def json():
+            return [_kline_row(d) for d in days]
+
+    monkeypatch.setattr(fdu.requests, "get", lambda *a, **k: _Resp())
+
+
+def _ms(ts: str) -> int:
+    return pd.Timestamp(ts, tz="UTC").value // 1_000_000
+
+
+@pytest.mark.parametrize("now, expected_last", [
+    # Ordinary day: run at 00:03 UTC on the 20th. The 19th closed at
+    # 23:59:59.999; the 20th is still forming and must be dropped.
+    ("2026-08-20 00:03:00", "2026-08-19"),
+    # MONTH boundary: 1 September picks up 31 August, not 1 September.
+    ("2026-09-01 00:03:00", "2026-08-31"),
+    # YEAR boundary: 1 January picks up 31 December of the prior year.
+    ("2027-01-01 00:03:00", "2026-12-31"),
+])
+def test_forming_candle_is_never_ingested(monkeypatch, now, expected_last):
+    days = ["2026-08-19", "2026-08-20", "2026-08-31", "2026-09-01",
+            "2026-12-31", "2027-01-01"]
+    _stub_klines(monkeypatch, days)
+    df = fdu.fetch_binance_daily("BTCUSDT", start_ms=_ms("2026-08-01"),
+                                 now_ms=_ms(now))
+    assert not df.empty
+    assert df["date"].max() == pd.Timestamp(expected_last)
+
+
+def test_close_time_boundary_is_strict(monkeypatch):
+    """close_ms == now_ms is NOT past — the candle is excluded at the exact
+    millisecond it closes, and included one millisecond later. This is the
+    assertion an early cron actually leans on."""
+    _stub_klines(monkeypatch, ["2026-08-19"])
+    close_ms = _ms("2026-08-20")  # = the 19th's close_ms + 1
+    at_close = fdu.fetch_binance_daily("BTCUSDT", start_ms=_ms("2026-08-19"),
+                                       now_ms=close_ms - 1)
+    assert at_close.empty, "candle taken while still forming"
+    just_after = fdu.fetch_binance_daily("BTCUSDT", start_ms=_ms("2026-08-19"),
+                                         now_ms=close_ms)
+    assert len(just_after) == 1
+    assert just_after["date"].iloc[0] == pd.Timestamp("2026-08-19")
