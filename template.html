@@ -1819,7 +1819,13 @@ const DATE_TICKSTOPS = [
   { dtickrange: [null, 86400000 * 20], value: "%d %b" },   // sub-3-week spacing
   { dtickrange: [86400000 * 20, null], value: "%b '%y" },  // monthly and coarser
 ];
-const DATE_XAXIS = Object.assign({}, LAYOUT_BASE.xaxis, { tickformatstops: DATE_TICKSTOPS });
+// hoverformat is set explicitly because the stops above govern TICKS only:
+// left to itself the unified hover title took the sub-3-week stop and read
+// "18 Aug" with no year on a multi-year chart. It is deliberately NOT on
+// LAYOUT_BASE.xaxis, which is also used by the linear-axis charts where a
+// date format would be read as a number format.
+const DATE_XAXIS = Object.assign({}, LAYOUT_BASE.xaxis,
+  { tickformatstops: DATE_TICKSTOPS, hoverformat: "%d %b %Y" });
 
 // Calendar window -> [x0, x1] ISO range over an ascending date-string array,
 // clamped to available history; null for "max" (caller switches to autorange).
@@ -2138,9 +2144,9 @@ function renderRecentPerf(d) {
     const x = dates.slice(i0);
     const traces = [
       { x, y: rebased(e.strategy), type: "scatter", mode: "lines", name: "Strategy (book)",
-        line: { color: "#1a1a18", width: 3 }, hovertemplate: "%{x}<br>Book %{y:+.1%}<extra></extra>" },
+        line: { color: "#1a1a18", width: 3 }, hovertemplate: "Book %{y:+.1%}<extra></extra>" },
       { x, y: rebased(e.btc), type: "scatter", mode: "lines", name: "BTC",
-        line: { color: "#f7931a", width: 1.3 }, hovertemplate: "%{x}<br>BTC %{y:+.1%}<extra></extra>" },
+        line: { color: "#f7931a", width: 1.3 }, hovertemplate: "BTC %{y:+.1%}<extra></extra>" },
     ];
     const layout = Object.assign({}, LAYOUT_BASE, {
       height: 220,
@@ -2211,7 +2217,7 @@ function renderBreadthGate(d) {
   const traces = [
     { x, y, type: "scatter", mode: "lines", name: "Breadth",
       line: { color: "#1a1a18", width: 2.4 },
-      hovertemplate: "%{x}<br>Breadth %{y:.0%}<extra></extra>" },
+      hovertemplate: "Breadth %{y:.0%}<extra></extra>" },
     { x: [lastX], y: [lastY], type: "scatter", mode: "markers", name: "Latest",
       marker: { size: 9, color: "#1d4ed8", line: { color: "#ffffff", width: 1.5 } },
       hoverinfo: "skip", showlegend: false },
@@ -2676,11 +2682,11 @@ function renderYearly(d) {
   const yearLabels = y.years.map(String);
   const traces = [
     { x: yearLabels, y: y.strategy, name: "Strategy v3.1", type: "bar",
-      marker: { color: "#1a1a18" }, hovertemplate: "%{x}<br>Strategy %{y:+.1%}<extra></extra>" },
+      marker: { color: "#1a1a18" }, hovertemplate: "Strategy %{y:+.1%}<extra></extra>" },
     { x: yearLabels, y: y.btc, name: "BTC HODL", type: "bar",
-      marker: { color: "#f7931a" }, hovertemplate: "%{x}<br>BTC %{y:+.1%}<extra></extra>" },
+      marker: { color: "#f7931a" }, hovertemplate: "BTC %{y:+.1%}<extra></extra>" },
     { x: yearLabels, y: y["6040"], name: "60/40 BTC/ETH", type: "bar",
-      marker: { color: "#2563eb" }, hovertemplate: "%{x}<br>60/40 %{y:+.1%}<extra></extra>" },
+      marker: { color: "#2563eb" }, hovertemplate: "60/40 %{y:+.1%}<extra></extra>" },
   ];
   // Cap the visible y-range at +500% so the 2021 monster bars do not
   // squash the other years to invisible. Outliers surfaced as a caption
@@ -3299,14 +3305,15 @@ async function renderExplorerChart(coin) {
     grid: { rows: 2, columns: 1, pattern: "independent", roworder: "top to bottom" },
     xaxis:  { domain: [0, 1], anchor: "y", showgrid: false, linecolor: "#d5d3ca", linewidth: 1,
               zeroline: false, tickfont: { size: 11 }, tickformatstops: DATE_TICKSTOPS,
-              range: defaultRange },
+              hoverformat: "%d %b %Y", range: defaultRange },
     yaxis:  { domain: [0.35, 1], anchor: "x", gridcolor: "#f0f0ea", linecolor: "#d5d3ca",
               side: "right", type: "log",
               title: { text: "price (USDT, log)", font: { size: 11 } },
               tickfont: { size: 11, family: "JetBrains Mono" },
               range: initialYRanges.priceRange, autorange: false },
     xaxis2: { domain: [0, 1], anchor: "y2", showgrid: false, linecolor: "#d5d3ca", linewidth: 1,
-              zeroline: false, tickfont: { size: 11 }, tickformatstops: DATE_TICKSTOPS, matches: "x" },
+              zeroline: false, tickfont: { size: 11 }, tickformatstops: DATE_TICKSTOPS,
+              hoverformat: "%d %b %Y", matches: "x" },
     yaxis2: { domain: [0, 0.28], anchor: "x2", gridcolor: "#f0f0ea", linecolor: "#d5d3ca",
               side: "right", zeroline: false,
               title: { text: "momentum score", font: { size: 11 } },
