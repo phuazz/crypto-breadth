@@ -150,6 +150,15 @@ then — not now, against a book that does not exist.
   link is handled by the delegated click handler, which switches tabs — do not add a
   competing handler; (3) the hiding is applied by JS on purpose, so with JS off the page
   degrades to the old long scroll rather than to a blank page.
+- **BTC reference tab (2026-09-24) is display-only.** Self-built replicas of vendor
+  BTC charts (`scripts/btc_reference.py`), lazy-loaded from
+  `docs/data/btc_reference.json` and drawn on the tab's FIRST show via the
+  `tab:shown` event that `setupTabs().show()` dispatches, so Plotly measures a
+  visible panel. Nothing there may feed the engine, gate or digest; the overlay
+  tests found no edge (README, "What was tested and explicitly rejected"). The
+  vendor's licensed series, screenshots and the study scripts live in the
+  gitignored `private/` folder; NEVER commit or publish them, because the repo is
+  public.
 - **Book vs gate.** The dashboard and the email digest must never conflate what is
   HELD with what the breadth gate TARGETS. They legitimately diverge: the gate is read
   at Monday's close and executes the next bar, so a mid-week crossing is not yet

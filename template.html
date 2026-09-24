@@ -83,6 +83,7 @@
 
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 body {
   font-family: var(--sans);
   color: var(--ink);
@@ -166,7 +167,7 @@ body {
   border-radius: 9px;
 }
 .plain-status .ps-label {
-  font-size: 10.5px; font-weight: 700; letter-spacing: 0.06em;
+  font-size: 11px; font-weight: 700; letter-spacing: 0.06em;
   text-transform: uppercase; color: var(--accent); margin-bottom: 6px;
 }
 .plain-status p { margin: 0 0 8px; font-size: 14.5px; line-height: 1.6; color: var(--ink); }
@@ -364,7 +365,7 @@ header.top .meta .sep { color: var(--border-strong); margin: 0 8px; }
 .hero-strip .number.good { color: var(--good); }
 .hero-strip .number.bad  { color: var(--bad); }
 .hero-strip .label {
-  font-size: 10.5px;
+  font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--ink-soft);
@@ -412,10 +413,10 @@ header.top .meta .sep { color: var(--border-strong); margin: 0 8px; }
 .ys-tile { border-radius: 8px; padding: 8px 4px 7px; text-align: center; border: 1px solid var(--border); background: #fff; }
 .ys-tile.win { background: var(--good-soft); border-color: rgba(29, 122, 58, 0.28); }
 .ys-tile.lag { background: var(--warn-soft); border-color: rgba(180, 83, 9, 0.32); }
-.ys-tile .yr { font-size: 10.5px; font-weight: 700; letter-spacing: 0.05em; color: var(--ink-faint); }
+.ys-tile .yr { font-size: 11px; font-weight: 700; letter-spacing: 0.05em; color: var(--ink-faint); }
 .ys-tile .sv { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 14px; font-weight: 700; color: var(--ink); margin-top: 3px; }
-.ys-tile .bv { font-size: 10.5px; color: var(--ink-soft); margin-top: 1px; font-variant-numeric: tabular-nums; }
-.ys-tile .ex { font-size: 10.5px; font-weight: 700; margin-top: 3px; }
+.ys-tile .bv { font-size: 11px; color: var(--ink-soft); margin-top: 1px; font-variant-numeric: tabular-nums; }
+.ys-tile .ex { font-size: 11px; font-weight: 700; margin-top: 3px; }
 .ys-tile.win .ex { color: var(--good); }
 .ys-tile.lag .ex { color: var(--warn); }
 .ys-note { font-size: 11.5px; color: var(--ink-faint); margin: 0 0 12px; }
@@ -609,7 +610,7 @@ section .section-sub {
 .window-card.is { border-left: 3px solid var(--ink-faint); }
 .window-card.oos { border-left: 3px solid var(--accent); }
 .window-card .lbl {
-  font-size: 10.5px;
+  font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--ink-soft);
@@ -699,7 +700,7 @@ table.simple .bad { color: var(--bad); }
   padding: 14px 16px;
 }
 .m-card .lbl {
-  font-size: 10.5px;
+  font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--ink-soft);
@@ -782,6 +783,23 @@ table.holdings tbody tr:last-child td { border-bottom: none; }
   border-left: 3px solid var(--accent);
   background: var(--accent-soft);
 }
+/* ===== BTC reference tab ===== */
+.br-strip { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (max-width: 540px) { .br-strip { grid-template-columns: repeat(2, 1fr); } }
+.br-asof { color: var(--t3-text); font-size: 12px; white-space: nowrap; }
+.br-chart-zs { min-height: 460px; }
+.br-chart-x { min-height: 400px; }
+.br-key { padding: 0 5px; border-radius: 3px; font-weight: 600; }
+.br-key-b { background: var(--g-bg2); color: var(--g-text); }
+.br-key-r { background: var(--r-bg2); color: var(--r-text); }
+.br-table { max-width: 560px; margin: 4px 0 6px; }
+.br-cap { font-size: 12px; color: var(--t3-text); line-height: 1.5; margin: 0 0 12px; max-width: 34em; }
+.br-more { margin: 0 0 28px; font-size: 13px; color: var(--t2); line-height: 1.6; max-width: 34em; }
+#btcref .section-sub { max-width: 34em; }  /* ~70 chars per line, measured */
+.br-more > summary { cursor: pointer; font-size: 12px; font-weight: 700; color: var(--warn);
+                     text-transform: uppercase; letter-spacing: 0.05em; }
+.br-more p { margin: 8px 0 0; }
+#btcref h3 { margin: 26px 0 4px; }
 /* section header row: h2 left, period selector right (perf-header pattern
    from breadth-thrust-etf) */
 .sec-head-row {
@@ -801,7 +819,7 @@ table.holdings tbody tr:last-child td { border-bottom: none; }
 .window-strip .cell .v.good { color: var(--good); }
 .window-strip .cell .v.bad { color: var(--bad); }
 .window-strip .cell .l {
-  font-size: 10.5px;
+  font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--ink-soft);
@@ -1036,7 +1054,7 @@ table.holdings tbody tr:last-child td { border-bottom: none; }
   border: 1px solid rgba(37,99,235,0.3);
 }
 .chip-cluster { line-height: 2.0; }
-.coin-chip .small { font-size: 10.5px; opacity: 0.75; font-weight: 500; }
+.coin-chip .small { font-size: 11px; opacity: 0.75; font-weight: 500; }
 
 /* wide tables scroll inside their own container, never the page.
    Measured at 390px before this: the momentum rank table pushed the page to
@@ -1460,6 +1478,7 @@ footer.bottom a:hover { text-decoration: underline; }
     <a href="#regimes" class="nav-link" data-target="regimes">Regimes</a>
     <a href="#attribution" class="nav-link" data-target="attribution">Attribution</a>
     <a href="#trades" class="nav-link" data-target="trades">Trade ledger</a>
+    <a href="#btcref" class="nav-link" data-target="btcref">BTC reference</a>
     <a href="#caveats" class="nav-link" data-target="caveats">Caveats</a>
   </div>
 </nav>
@@ -1708,6 +1727,49 @@ footer.bottom a:hover { text-decoration: underline; }
   <div class="ledger-table-wrap">
     <table class="ledger" id="ledger-table"></table>
   </div>
+</section>
+
+<section id="btcref">
+  <h2>BTC reference indicators</h2>
+  <p class="section-sub">Three Bitcoin charts rebuilt from the same Binance BTCUSDT closes the strategy uses, kept here as context. <strong>Reference only: none of them feeds the engine, the breadth gate or the digest.</strong> <span id="br-asof" class="br-asof">Loading…</span></p>
+  <div class="caveat-chips">
+    <span class="chip caveat" title="Constructions follow published third-party chart notes. The series here are computed independently from Binance data; they are not the vendor's data. Weekday rebuild vs the vendor's z-score series: correlation 0.980 (2,121 days to 2026-09-23); the three-state rule is inferred and agrees with the vendor's state on 94.8% of days.">Replica, not the vendor series</span>
+    <span class="chip caveat" title="Tested 2026-09-24 as overlays on the v3.2 engine: none improved it beyond a timing-shuffled placebo. See 'What the overlay test found' under each chart.">Tested as overlays: not adopted</span>
+    <span class="chip caveat" title="The 2026-09-24 test was discovery-grade: not pre-registered and not logged in results/trial_registry.jsonl.">Discovery-grade, not pre-registered</span>
+    <span class="chip caveat engine" title="Indicators are computed on weekday bars (Monday to Friday, UTC dates) to match the vendor's business-day construction; the state is carried over weekends. Return tables use the 7-day daily series.">Weekday bars, UTC closes</span>
+  </div>
+  <div class="window-strip br-strip" id="br-strip">
+    <div class="cell lead"><div class="v" id="br-z">—</div><div class="l">Short-term z-score</div><div class="sub" id="br-z-sub">—</div></div>
+    <div class="cell"><div class="v" id="br-s25">—</div><div class="l">25d vs 100d MA</div><div class="sub" id="br-s25-sub">—</div></div>
+    <div class="cell"><div class="v" id="br-s50">—</div><div class="l">50d vs 200d MA</div><div class="sub" id="br-s50-sub">—</div></div>
+    <div class="cell"><div class="v" id="br-px">—</div><div class="l">BTC close</div><div class="sub" id="br-px-sub">—</div></div>
+  </div>
+
+  <h3>Short-term indicator: z-score of the 63-day average</h3>
+  <p class="section-sub">The 63-day moving average of BTC, expressed as standard deviations from its own 15-day mean. A steady rise holds it near +1.6 and a steady fall near −1.6, so it reads as the direction and persistence of the three-month trend. Shading marks the reconstructed state: <span class="br-key br-key-b">bullish</span> after it turns up through the lower bracket (−1.25), <span class="br-key br-key-r">bearish</span> after it turns down through the upper bracket (+1.15), and neutral after it falls through the lower bracket.</p>
+  <div class="chart br-chart-zs" id="chart-br-zs"></div>
+  <table class="simple br-table" id="br-tbl-zs"></table>
+  <p class="br-cap" id="br-cap-zs"></p>
+  <details class="br-more">
+    <summary>What the overlay test found</summary>
+    <p>Measured 2026-09-24 on data to 2026-09-23, v3.2 engine, 10 bps a side. Base: Sharpe 1.380, MaxDD −39.7% on this extended sample (the filed v3.2 record is 1.359 / −39.5%). Cutting the book to cash in the bearish state: Sharpe 1.327, MaxDD −36.1%, which sits at the 65th percentile of 60 timing-shuffled placebos (median 1.262, 90th percentile 1.447), so it is not distinguishable from random timing. Cutting to half: 1.396, within noise, and weaker in 2019 and 2024. Cash in both bearish and neutral: 1.230.</p>
+    <p>It largely repeats the breadth gate: on neutral days the gate already holds cash 66% of the time, and on bullish days it is at full exposure 57% of the time. The bearish-state return is also fragile: the vendor's own series gives BTC −2% a year in that state on this window, the rebuild +36%, although the two disagree on only 5% of days.</p>
+  </details>
+
+  <h3>Moving-average crosses</h3>
+  <p class="section-sub">The 25-day average as a percentage above or below the 100-day (shorter term), and the 50-day against the 200-day (intermediate term). <span class="br-key br-key-b">Above zero</span> the faster average leads; <span class="br-key br-key-r">below</span> it trails.</p>
+  <div class="chart br-chart-x" id="chart-br-cross"></div>
+  <table class="simple br-table" id="br-tbl-cross"></table>
+  <p class="br-cap" id="br-cap-cross"></p>
+  <details class="br-more">
+    <summary>What the overlay test found</summary>
+    <p>Measured 2026-09-24, same basis as above. Cash whenever the cross is below: 25/100 Sharpe 1.253 (MaxDD −35.8%), 50/200 Sharpe 1.194 (−36.4%), against 1.380 for v3.2 alone. Half instead of cash: about 1.35 for either. Both give up return for a drawdown the gate already mostly handles; the strategy's own per-coin 50-day trend filter is the same family of signal. The 50/200 cross changed state only 10 times in the window.</p>
+  </details>
+
+  <h3>Seasonality</h3>
+  <p class="section-sub">Mean and median BTC return by calendar month, from month-end closes. The number above each pair is how many years that month has.</p>
+  <div class="chart chart-med" id="chart-br-season"></div>
+  <p class="br-cap" id="br-cap-season"></p>
 </section>
 
 <section id="caveats">
@@ -3789,6 +3851,225 @@ function wrapWideTables() {
   });
 }
 
+// ===== BTC reference tab (scripts/btc_reference.py; drawn on first show) =====
+const BR_STATE = {
+  B: { name: "Bullish", fill: "rgba(26,135,84,0.13)", cls: "good" },
+  N: { name: "Neutral", fill: null, cls: "" },
+  R: { name: "Bearish", fill: "rgba(192,57,43,0.13)", cls: "bad" },
+};
+let _brPromise = null;
+function loadBtcReference() {
+  if (!_brPromise) {
+    _brPromise = fetch("data/btc_reference.json").then(r => {
+      if (!r.ok) throw new Error("btc_reference.json fetch failed: " + r.status);
+      return r.json();
+    });
+  }
+  return _brPromise;
+}
+
+function brSegments(dates, states, key) {
+  const out = [];
+  let s0 = null;
+  for (let i = 0; i < dates.length; i++) {
+    const on = states[i] === key;
+    if (on && s0 === null) s0 = dates[i];
+    if (!on && s0 !== null) { out.push([s0, dates[i]]); s0 = null; }
+  }
+  if (s0 !== null) out.push([s0, dates[dates.length - 1]]);
+  return out;
+}
+
+function brWindowExtent(x, y, r) {
+  let lo = Infinity, hi = -Infinity;
+  for (let i = 0; i < x.length; i++) {
+    if (x[i] < r[0] || x[i] > r[1] || y[i] == null) continue;
+    if (y[i] < lo) lo = y[i];
+    if (y[i] > hi) hi = y[i];
+  }
+  return [lo, hi];
+}
+
+function brStatsTable(el, sets) {
+  const head = `<thead><tr><th>State</th><th>% of time</th><th>BTC gain / year while in state</th></tr></thead>`;
+  let body = "";
+  sets.forEach(s => {
+    if (s.title) body += `<tr><td colspan="3"><strong>${s.title}</strong></td></tr>`;
+    s.rows.forEach(r => {
+      const bh = r.state === "all";
+      const g = r.gain_pa;
+      body += `<tr><td>${bh ? "Buy and hold (same days)" : s.label(r.state)}</td>`
+            + `<td>${bh ? "—" : pct(r.pct_time, 1)}</td>`
+            + `<td class="${g >= 0 ? "good" : "bad"}">${(g >= 0 ? "+" : "") + pct(g, 1)}</td></tr>`;
+    });
+  });
+  el.innerHTML = head + "<tbody>" + body + "</tbody>";
+}
+
+function renderBtcReference(b) {
+  const m = b.meta, x = b.dates, L = b.latest;
+  const n = x.length;
+  document.getElementById("br-asof").textContent =
+    "Data to " + m.as_of + " close (Binance BTCUSDT, from " + m.sample_start + ").";
+
+  // --- latest-reading strip ---
+  const st = BR_STATE[L.state] || BR_STATE.N;
+  const zEl = document.getElementById("br-z");
+  zEl.textContent = (L.z >= 0 ? "+" : "") + L.z.toFixed(2);
+  document.getElementById("br-z-sub").innerHTML =
+    `State <strong class="${st.cls}">${st.name.toLowerCase()}</strong> · brackets ${m.zs.lower} / +${m.zs.upper}`;
+  [["25_100", "br-s25"], ["50_200", "br-s50"]].forEach(([k, id]) => {
+    const v = L.spread[k];
+    const el = document.getElementById(id);
+    el.textContent = (v >= 0 ? "+" : "") + pct(v, 1);
+    el.className = "v " + (v >= 0 ? "good" : "bad");
+    document.getElementById(id + "-sub").textContent =
+      (v >= 0 ? "Fast MA above slow" : "Fast MA below slow") + " · as of " + m.as_of;
+  });
+  document.getElementById("br-px").textContent =
+    "$" + Math.round(b.btc[n - 1]).toLocaleString();
+  document.getElementById("br-px-sub").textContent = m.as_of + " UTC daily close";
+
+  // --- chart 1: price (log) over z-score, state-shaded ---
+  const shapes1 = [];
+  ["B", "R"].forEach(k => brSegments(x, b.state, k).forEach(([a, e]) => shapes1.push({
+    type: "rect", xref: "x", x0: a, x1: e, yref: "paper", y0: 0, y1: 1,
+    fillcolor: BR_STATE[k].fill, line: { width: 0 }, layer: "below" })));
+  [m.zs.upper, m.zs.lower].forEach(v => shapes1.push({
+    type: "line", xref: "paper", x0: 0, x1: 1, yref: "y2", y0: v, y1: v,
+    line: { color: "#8a8a82", width: 1, dash: "dot" } }));
+  const stateTxt = b.state.map(s => (BR_STATE[s] || { name: "—" }).name);
+  const tr1 = [
+    { x, y: b.btc, type: "scatter", mode: "lines", name: "BTC", yaxis: "y",
+      line: { color: "#1a1a18", width: 1.6 },
+      hovertemplate: "BTC $%{y:,.0f}<extra></extra>" },
+    { x, y: b.z, type: "scatter", mode: "lines", name: "z-score", yaxis: "y2",
+      line: { color: "#b45309", width: 1.6 }, customdata: stateTxt,
+      hovertemplate: "z %{y:.2f} · %{customdata}<extra></extra>" },
+  ];
+  const el1 = document.getElementById("chart-br-zs");
+  const draw1 = (period) => {
+    const r = periodRangeIso(x, period) || [x[0], x[n - 1]];
+    const [lo, hi] = brWindowExtent(x, b.btc, r);
+    const layout = Object.assign({}, LAYOUT_BASE, {
+      height: 460, margin: { l: 12, r: 60, t: 10, b: 34 }, showlegend: false,
+      shapes: shapes1,
+      xaxis: Object.assign({}, DATE_XAXIS, { range: r, autorange: false, anchor: "y2" }),
+      yaxis: Object.assign({}, LAYOUT_BASE.yaxis, {
+        domain: [0.44, 1], type: "log", zeroline: false,
+        range: [Math.log10(lo * 0.92), Math.log10(hi * 1.08)], tickformat: "$,.0f" }),
+      yaxis2: Object.assign({}, LAYOUT_BASE.yaxis, {
+        domain: [0, 0.36], anchor: "x", range: [-3.1, 3.1], zeroline: true,
+        tickvals: [-2, m.zs.lower, 0, m.zs.upper, 2] }),
+      annotations: [
+        { xref: "paper", x: 0.005, xanchor: "left", yref: "paper", y: 0.37, yanchor: "bottom",
+          text: "z-score of the 63-day MA (15-day window)", showarrow: false,
+          bgcolor: "rgba(255,255,255,0.85)",
+          font: { size: 11, color: "#66665e" } }],
+    });
+    Plotly.react(el1, tr1, layout, PLOTLY_CFG);
+  };
+  _initPeriodSelectorForChart("chart-br-zs", "3y", draw1, ["1y", "3y", "5y", "max"]);
+  brStatsTable(document.getElementById("br-tbl-zs"), [
+    { rows: b.stats.zs, label: s => (BR_STATE[s] || { name: s }).name }]);
+  const all = b.stats.zs.find(r => r.state === "all");
+  document.getElementById("br-cap-zs").textContent =
+    "BTC return while each state is in force, " + m.sample_start + " to " + m.as_of + ": the state known at "
+    + "close T earns the T to T+1 return, compounded and annualised over " + all.n_days.toLocaleString()
+    + " days. Our Binance window only, so not comparable to the vendor's longer-history table. No costs.";
+
+  // --- chart 2: MA-cross spreads, two stacked panels ---
+  const tr2 = [], ann2 = [];
+  const panels = [["25_100", "y", [0.56, 1], "25-day vs 100-day MA"],
+                  ["50_200", "y2", [0, 0.44], "50-day vs 200-day MA"]];
+  panels.forEach(([k, ya, dom, lab]) => {
+    const y = b.spread[k];
+    tr2.push({ x, y: y.map(v => v == null ? null : Math.max(v, 0)), type: "scatter", mode: "none",
+               yaxis: ya, fill: "tozeroy", fillcolor: "rgba(26,135,84,0.35)", hoverinfo: "skip" });
+    tr2.push({ x, y: y.map(v => v == null ? null : Math.min(v, 0)), type: "scatter", mode: "none",
+               yaxis: ya, fill: "tozeroy", fillcolor: "rgba(192,57,43,0.35)", hoverinfo: "skip" });
+    tr2.push({ x, y, type: "scatter", mode: "lines", yaxis: ya, name: lab,
+               line: { color: "#5c5c56", width: 1 },
+               hovertemplate: lab.replace(" MA", "") + " %{y:+.1%}<extra></extra>" });
+    ann2.push({ xref: "paper", x: 0.005, xanchor: "left", yref: "paper", y: dom[1], yanchor: "top",
+                text: lab, showarrow: false, bgcolor: "rgba(255,255,255,0.85)",
+                font: { size: 11, color: "#66665e" } });
+  });
+  const el2 = document.getElementById("chart-br-cross");
+  const draw2 = (period) => {
+    const r = periodRangeIso(x, period) || [x[0], x[n - 1]];
+    const ax = (k, dom) => {
+      const [lo, hi] = brWindowExtent(x, b.spread[k], r);
+      const pad = Math.max((hi - lo) * 0.08, 0.01);
+      return Object.assign({}, LAYOUT_BASE.yaxis, {
+        domain: dom, anchor: "x", tickformat: ".0%",
+        range: [Math.min(lo, 0) - pad, Math.max(hi, 0) + pad] });
+    };
+    const layout = Object.assign({}, LAYOUT_BASE, {
+      height: 400, margin: { l: 12, r: 60, t: 10, b: 34 }, showlegend: false,
+      annotations: ann2,
+      xaxis: Object.assign({}, DATE_XAXIS, { range: r, autorange: false, anchor: "y2" }),
+      yaxis: ax("25_100", panels[0][2]),
+      yaxis2: ax("50_200", panels[1][2]),
+    });
+    Plotly.react(el2, tr2, layout, PLOTLY_CFG);
+  };
+  _initPeriodSelectorForChart("chart-br-cross", "3y", draw2, ["1y", "3y", "5y", "max"]);
+  const xl = s => s === "above" ? "Fast MA above slow" : "Fast MA below slow";
+  brStatsTable(document.getElementById("br-tbl-cross"), [
+    { title: "25-day vs 100-day", rows: b.stats["25_100"], label: xl },
+    { title: "50-day vs 200-day", rows: b.stats["50_200"], label: xl }]);
+  document.getElementById("br-cap-cross").textContent =
+    "Same basis as the table above: next-day attribution, compounded and annualised, Binance window "
+    + m.sample_start + " to " + m.as_of + ", no costs. Each cross needs its slow average's history first, "
+    + "so its buy-and-hold row covers slightly fewer days.";
+
+  // --- chart 3: seasonality ---
+  const s = b.seasonality;
+  const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const hov = s.month.map((mo, i) => `n ${s.n[i]} years · positive ${pct(s.pct_pos[i], 0)} · t ${s.t[i] == null ? "—" : s.t[i].toFixed(2)}`);
+  const top = s.month.map((mo, i) => Math.max(s.mean[i] || 0, s.median[i] || 0));
+  const tr3 = [
+    { x: MON, y: s.mean, type: "bar", name: "Mean", marker: { color: "#2563eb" },
+      customdata: hov, hovertemplate: "Mean %{y:+.1%}<br>%{customdata}<extra></extra>" },
+    { x: MON, y: s.median, type: "bar", name: "Median", marker: { color: "#b45309" },
+      hovertemplate: "Median %{y:+.1%}<extra></extra>" },
+  ];
+  const ann3 = MON.map((mo, i) => ({ x: mo, y: top[i], yanchor: "bottom", text: String(s.n[i]),
+    showarrow: false, font: { size: 11, color: "#66665e", family: "JetBrains Mono" } }));
+  Plotly.react(document.getElementById("chart-br-season"), tr3,
+    Object.assign({}, LAYOUT_BASE, {
+      height: 340, margin: { l: 12, r: 52, t: 30, b: 34 }, barmode: "group", bargap: 0.25,
+      hovermode: "x unified", annotations: ann3,
+      xaxis: Object.assign({}, LAYOUT_BASE.xaxis, { type: "category" }),
+      yaxis: Object.assign({}, LAYOUT_BASE.yaxis, { tickformat: ".0%" }),
+    }), PLOTLY_CFG);
+  const best = s.t.reduce((bi, t, i) => (t != null && Math.abs(t) > Math.abs(s.t[bi] || 0) ? i : bi), 0);
+  if (s.max_abs_t == null) {
+    document.getElementById("br-cap-season").textContent =
+      s.n_months + " months of history: too short to test whether any month stands out.";
+    return;
+  }
+  document.getElementById("br-cap-season").textContent =
+    s.n_months + " months, " + s.first_month + " to " + s.last_month + " (Binance window; the open month is excluded). "
+    + "The most extreme month is " + MON[best] + " (t " + s.max_abs_t.toFixed(2) + "), but with twelve months to "
+    + "choose from, a month that extreme turns up by chance in " + pct(s.p_max_t, 0)
+    + " of shuffles of the month labels, so no month stands out from noise. Where mean and median differ "
+    + "widely, one or two large years are driving the mean.";
+}
+
+let _brDrawn = false;
+document.addEventListener("tab:shown", ev => {
+  if (ev.detail.id !== "btcref" || _brDrawn) return;
+  _brDrawn = true;
+  loadBtcReference()
+    .then(renderBtcReference)
+    .catch(e => {
+      _brDrawn = false;   // allow a retry on the next show
+      document.getElementById("br-asof").textContent = "Could not load BTC reference data: " + e;
+    });
+});
+
 // ===== tab navigation =====
 // The strip used to be a scrollspy over one ~14-section page; it now switches
 // real panels, so only one section is mounted at a time. Runs LAST in boot,
@@ -3847,6 +4128,9 @@ function setupTabs() {
           try { Plotly.Plots.resize(el); } catch (e) {}
         });
       }
+      // Lets a lazily-drawn tab (BTC reference) draw on first show, while its
+      // panel is visible and Plotly can measure it.
+      document.dispatchEvent(new CustomEvent("tab:shown", { detail: { id } }));
     }
     if (o.hash !== false) {
       const url = "#" + id;

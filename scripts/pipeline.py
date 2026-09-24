@@ -41,6 +41,7 @@ from backtest import (
     benchmark_hodl, benchmark_equal_weight, benchmark_60_40_btc_eth,
     summary_stats, regime_segments,
 )
+from btc_reference import build_payload as build_btc_reference
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -138,6 +139,10 @@ def _build_provenance(close: pd.DataFrame) -> dict:
 # and docs/data/ (for production when GitHub Pages serves docs/).
 COIN_SIGNALS_DATA_JSON = PROJECT_ROOT / "data" / "coin_signals.json"
 COIN_SIGNALS_DOCS_JSON = PROJECT_ROOT / "docs" / "data" / "coin_signals.json"
+# BTC reference tab (self-built replicas of published BTC indicators; display
+# only, see scripts/btc_reference.py). Lazy-loaded the same way, ~100 KB.
+BTC_REFERENCE_DATA_JSON = PROJECT_ROOT / "data" / "btc_reference.json"
+BTC_REFERENCE_DOCS_JSON = PROJECT_ROOT / "docs" / "data" / "btc_reference.json"
 
 
 # ----- production pipeline --------------------------------------------------
@@ -1164,6 +1169,21 @@ def main() -> int:
     COIN_SIGNALS_DOCS_JSON.write_text(coin_signals_json, encoding="utf-8")
     print(f"  wrote {COIN_SIGNALS_DATA_JSON} and {COIN_SIGNALS_DOCS_JSON} "
           f"({COIN_SIGNALS_DATA_JSON.stat().st_size / 1024:.1f} KB each)")
+
+    # ----- write BTC reference replicas (lazy-loaded, NOT inlined) -----
+    # Display-only; a failure here must not stop the daily build, and the tab
+    # prints its own as-of date, so a stale file is visible rather than silent.
+    try:
+        btc_ref = build_btc_reference(close["BTC"])
+        btc_ref["meta"]["generated_at"] = payload["meta"]["generated_at"]
+        btc_ref_json = json.dumps(btc_ref, separators=(",", ":"))
+        for path in (BTC_REFERENCE_DATA_JSON, BTC_REFERENCE_DOCS_JSON):
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(btc_ref_json, encoding="utf-8")
+        print(f"  wrote {BTC_REFERENCE_DOCS_JSON} ({len(btc_ref_json) / 1024:.1f} KB), "
+              f"as of {btc_ref['meta']['as_of']}")
+    except Exception as e:
+        print(f"  WARN: BTC reference build failed, tab keeps its last file: {e!r}")
 
     # ----- inject into template -----
     print("Injecting into template -> docs/index.html ...")

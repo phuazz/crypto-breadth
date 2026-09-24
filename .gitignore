@@ -22,3 +22,6 @@ desktop.ini
 
 # Office lock/owner files
 ~$*
+
+# Licensed third-party reference material (internal use only) — never commit
+private/

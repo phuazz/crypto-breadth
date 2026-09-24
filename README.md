@@ -186,6 +186,7 @@ crypto-breadth/
 │   ├── walk_forward.py        # year-by-year + block-bootstrap Sharpe CI
 │   ├── sensitivity.py         # OAT parameter robustness check
 │   ├── generate_tearsheet.py  # one-page PNG summary
+│   ├── btc_reference.py       # display-only BTC reference replicas (dashboard tab)
 │   ├── requirements.txt
 │   └── research/
 │       ├── backtest_v0.py     # bug-fixed v0 archive (fixed-10 universe)
@@ -279,6 +280,18 @@ to avoid `cp1252` console errors.
   (1.05 vs 1.20, −0.16). The relationship between IS and OOS Sharpe across
   the grid was *inverted*. Honest IS-only protocol rejected the overlay.
   See `scripts/research/vol_target_search.py`.
+- **BTC timing overlays from vendor reference charts (2026-09-24,
+  discovery-grade, not pre-registered, nothing added to the trial registry).**
+  A 15-day z-score of BTC's 63-day MA with a bracket-reversal state, 25/100 and
+  50/200 MA crosses, and calendar-month seasonality. None improved v3.2 beyond
+  noise: the z-score bearish-to-cash arm sat at the 65th percentile of 60
+  timing-shuffled placebos, the crosses cost 0.13–0.19 Sharpe, and no month
+  stands out once all twelve are allowed for (shuffle p = 0.31 on data to
+  2026-08). They are kept as display-only replicas on the dashboard's
+  **BTC reference** tab (`scripts/btc_reference.py`,
+  `tests/test_btc_reference.py`, lazy-loaded `docs/data/btc_reference.json`).
+  The licensed vendor material and the study scripts are in the gitignored
+  `private/` folder.
 
 ---
 
