@@ -1,0 +1,1161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Crypto cross-sectional scanner — Crypto-Breadth</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!-- Same Plotly version the main dashboard pins. -->
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<style>
+/* Token block copied verbatim from C:\dev\design.md — do not fork these
+   values here. If a value is missing, add it to design.md first. */
+:root {
+  /* surfaces */
+  --bg: #fafaf8;        /* page background — warm off-white */
+  --bg2: #ffffff;       /* cards, raised surfaces */
+  --bg3: #f5f5f0;       /* table headers, inset chips */
+  --bg4: #eeeee8;       /* progress tracks, deep insets */
+  --bg-hover: #f0f0ea;  /* row / cell hover */
+  /* borders */
+  --bd: #e2e0d8;        /* default hairline */
+  --bd2: #d5d3ca;       /* medium */
+  --bd-strong: #c0beb5; /* emphasis / axis lines */
+  /* text */
+  --t1: #1a1a18;        /* primary — near-black */
+  --t2: #5c5c56;        /* secondary */
+  --t3: #8a8a82;        /* tertiary / labels */
+  --t4: #b0b0a8;        /* disabled / faint */
+  /* semantic: green = gain/long, red = loss/short */
+  --g: #1a8754;  --g2: #22a366;  --g-bg: rgba(26,135,84,0.07);  --g-bg2: rgba(26,135,84,0.14);
+  --r: #c0392b;  --r2: #e74c3c;  --r-bg: rgba(192,57,43,0.07);  --r-bg2: rgba(192,57,43,0.14);
+  /* accents: blue = neutral/benchmark, amber = caution, purple = cost, cyan = info, pink = alt */
+  --b: #2563eb;  --b2: #3b82f6;  --b-bg: rgba(37,99,235,0.06);  --b-bg2: rgba(37,99,235,0.12);
+  --a: #b45309;  --a-bg: rgba(180,83,9,0.07);
+  --p: #7c3aed;  --p-bg: rgba(124,58,237,0.06);
+  --c: #0891b2;  --c-bg: rgba(8,145,178,0.06);
+  --pk: #be185d; --pk-bg: rgba(190,24,93,0.06);
+  /* -text variants — use these for TEXT; the values above are for fills,
+     borders, chart lines and large type. */
+  --g-text: #146c43;  --r-text: #a93226;  --b-text: #1d4ed8;  --a-text: #92400e;
+  --p-text: #7c3aed;  --c-text: #0e7490;  --pk-text: #be185d;
+  --t3-text: #66665e;
+  /* type */
+  --serif: 'Instrument Serif', Georgia, serif;
+  --sans: 'DM Sans', -apple-system, sans-serif;
+  --mono: 'JetBrains Mono', 'SF Mono', 'Menlo', monospace;
+  /* elevation */
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+  --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md: 0 4px 6px rgba(0,0,0,0.05), 0 2px 4px rgba(0,0,0,0.04);
+  --shadow-lg: 0 10px 15px rgba(0,0,0,0.06), 0 4px 6px rgba(0,0,0,0.04);
+  /* radius */
+  --radius: 8px;
+  --radius-lg: 12px;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--t1);
+  font-family: var(--sans); font-size: 14px; line-height: 1.5;
+  -webkit-font-smoothing: antialiased; -webkit-text-size-adjust: 100%;
+}
+.shell { max-width: 1520px; margin: 0 auto; padding: 20px 32px 60px; }
+
+/* ---- masthead: serif title, italic muted clause, 2px --t1 underline ---- */
+.masthead {
+  padding: 28px 0 22px; border-bottom: 2px solid var(--t1);
+  display: flex; justify-content: space-between; align-items: flex-end;
+  flex-wrap: wrap; gap: 12px;
+}
+.masthead-left h1 {
+  font-family: var(--serif); font-size: 32px; font-weight: 400;
+  letter-spacing: -0.5px; margin: 0;
+}
+.masthead-left h1 em { font-style: italic; color: var(--t3); }
+.masthead-left p { margin: 6px 0 0; font-size: 13px; color: var(--t2); max-width: 70ch; }
+.masthead-left .back { font-size: 12px; color: var(--b-text); text-decoration: none; }
+.masthead-left .back:hover { text-decoration: underline; }
+.pills { display: flex; gap: 6px; flex-wrap: wrap; }
+.pill {
+  font-size: 11px; font-weight: 600; letter-spacing: 0.4px;
+  padding: 4px 10px; border-radius: 999px; font-family: var(--mono);
+  border: 1px solid transparent; white-space: nowrap;
+}
+.pill-date { background: var(--bg3); color: var(--t3-text); border-color: var(--bd); }
+.pill-live { background: var(--g-bg); color: var(--g-text); border-color: rgba(26,135,84,0.2); }
+.pill-off  { background: var(--r-bg); color: var(--r-text); border-color: rgba(192,57,43,0.2); }
+.pill-warn { background: var(--a-bg); color: var(--a-text); border-color: rgba(180,83,9,0.2); }
+
+/* ---- section labels: 11px upper, --t3-text (never --t3 at this size) ---- */
+.lbl {
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.9px;
+  font-weight: 700; color: var(--t3-text);
+}
+
+.striprow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 18px 0 0; }
+.striprow .lbl { min-width: 74px; }
+
+/* inline-block: a chip that wraps on a phone wraps as one box, rather than
+   splitting its border across two lines like an inline span. */
+.chip {
+  display: inline-block; margin: 2px 0;
+  font-size: 11.5px; padding: 4px 10px; border-radius: var(--radius);
+  white-space: nowrap; border: 1px solid var(--bd); background: var(--bg2);
+  color: var(--t2);
+}
+.chip b { font-weight: 600; }
+.chip.good { background: var(--g-bg); color: var(--g-text); border-color: rgba(26,135,84,0.2); }
+.chip.bad  { background: var(--r-bg); color: var(--r-text); border-color: rgba(192,57,43,0.2); }
+.chip.warn { background: var(--a-bg); color: var(--a-text); border-color: rgba(180,83,9,0.2); }
+.chip.info { background: var(--p-bg); color: var(--p-text); border-color: rgba(124,58,237,0.2); }
+.chip.book { background: var(--b-bg); color: var(--b-text); border-color: rgba(37,99,235,0.2); }
+.chip.mute { background: var(--bg3); color: var(--t3-text); }
+.chip .tk { font-family: var(--mono); font-weight: 600; }
+.chip .fund {
+  font-weight: 600; color: var(--t1);
+  display: inline-block; max-width: 30ch; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom;
+}
+/* On a phone the chip wraps rather than clipping: there is no hover on
+   touch, so an ellipsis would hide the name permanently. */
+@media (max-width: 768px) {
+  .chip { white-space: normal; max-width: 100%; }
+  .chip .fund { max-width: 100%; white-space: normal; }
+}
+.chip.good .fund, .chip.bad .fund, .chip.warn .fund, .chip.info .fund { color: inherit; }
+.chip-btn {
+  cursor: pointer; font-family: inherit; font-size: 11.5px; font-weight: 600;
+  background: var(--bg3); color: var(--t2); border: 1px solid var(--bd);
+}
+.chip-btn:hover { background: var(--bg-hover); color: var(--t1); }
+.chip-jump { cursor: pointer; font-family: inherit; font-size: 11.5px; text-align: left; }
+.chip-jump:hover { filter: brightness(0.97); border-color: var(--bd-strong); }
+.chip-jump:focus-visible { outline: 2px solid var(--b-text); outline-offset: 1px; }
+@media (pointer: coarse) { .chip-btn, .chip-jump { min-height: 44px; } }
+
+.jumpnote {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin: 10px 0 0; padding: 8px 12px; font-size: 12px;
+  border: 1px solid rgba(180,83,9,0.25); border-radius: var(--radius);
+  background: var(--a-bg); color: var(--a-text);
+}
+.jumpnote .tk { font-family: var(--mono); font-weight: 600; }
+.jumpnote button { background: var(--bg2); }
+[hidden] { display: none !important; }
+
+.filter {
+  font-size: 11.5px; font-weight: 600; padding: 5px 12px; border-radius: 999px;
+  border: 1px solid var(--bd); background: var(--bg2); color: var(--t2);
+  cursor: pointer; font-family: inherit; min-height: 28px;
+}
+.filter:hover { background: var(--bg-hover); }
+.filter.active { background: var(--t1); color: var(--bg2); border-color: var(--t1); }
+
+/* ---- reader's guide: collapsed so the page opens on the table ---- */
+.guide {
+  margin-top: 16px; border: 1px solid var(--bd); border-radius: var(--radius-lg);
+  background: var(--bg2); box-shadow: var(--shadow-sm);
+}
+.guide > summary {
+  cursor: pointer; padding: 11px 16px; font-size: 13px; color: var(--t2);
+  list-style: none; display: flex; gap: 8px; flex-wrap: wrap;
+  align-items: center; min-height: 44px;
+}
+.guide > summary::-webkit-details-marker { display: none; }
+.guide > summary::before { content: '\25B8'; color: var(--t3-text); font-size: 11px; }
+.guide[open] > summary::before { content: '\25BE'; }
+.guide > summary:hover { background: var(--bg-hover); border-radius: var(--radius-lg); }
+.guide > summary b { color: var(--t1); font-weight: 600; }
+.guide-body { padding: 2px 16px 18px; border-top: 1px solid var(--bd); }
+.guide-body > p { margin: 12px 0; font-size: 13px; color: var(--t2); max-width: 62ch; }
+.guide-body b { color: var(--t1); font-weight: 600; }
+.guide-grid {
+  display: grid; gap: 12px; margin-top: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(285px, 1fr));
+}
+.gcard {
+  border: 1px solid var(--bd); border-left: 3px solid var(--bd2);
+  border-radius: var(--radius); background: var(--bg); padding: 12px 14px;
+}
+.gcard h4 {
+  margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 0.9px;
+  font-weight: 700; color: var(--t3-text);
+}
+.gcard .gnote { margin: 4px 0 0; font-size: 12px; color: var(--t3-text); }
+.gcard.gdir   { border-left-color: var(--c); }
+.gcard.grisk  { border-left-color: var(--p); }
+.gcard.gstate { border-left-color: var(--bd-strong); }
+.gcard.gcal   { border-left-color: var(--a); }
+.gcard.gwarn  { border-left-color: var(--r); }
+.gcard dl { margin: 4px 0 0; font-size: 12.5px; }
+.gcard dt {
+  font-family: var(--mono); font-size: 11.5px; font-weight: 600;
+  color: var(--t1); margin-top: 9px;
+}
+.gcard dd { margin: 2px 0 0; color: var(--t2); }
+.gcard ul, .gcard ol { margin: 7px 0 0; padding-left: 17px; font-size: 12.5px; color: var(--t2); }
+.gcard li { margin-bottom: 5px; }
+.gcard li:last-child { margin-bottom: 0; }
+.gcard b { color: var(--t1); font-weight: 600; }
+.gk { font-family: var(--mono); font-size: 11.5px; color: var(--t1); }
+
+/* ---- card + table ---- */
+.card {
+  background: var(--bg2); border: 1px solid var(--bd); border-radius: var(--radius-lg);
+  box-shadow: var(--shadow); margin-top: 14px; overflow: hidden;
+}
+.tblwrap { overflow-x: auto; }
+table { border-collapse: separate; border-spacing: 0; width: 100%; min-width: 1180px; }
+
+thead th { position: sticky; background: var(--bg3); }
+thead tr.zones th {
+  top: 0; z-index: 3; font-size: 11px; text-transform: uppercase;
+  letter-spacing: 1px; font-weight: 700; text-align: center; padding: 6px 8px;
+  border-bottom: 1px solid var(--bd);
+}
+thead tr.zones th.zdir   { background: var(--c-bg);  color: var(--c-text); }
+thead tr.zones th.zrisk  { background: var(--p-bg);  color: var(--p-text); }
+thead tr.zones th.zstate { background: var(--bg3);   color: var(--t3-text); }
+thead tr.cols th {
+  top: 27px; z-index: 2; font-size: 11px; text-transform: uppercase;
+  letter-spacing: 0.6px; font-weight: 700; color: var(--t3-text);
+  text-align: right; padding: 8px; white-space: nowrap;
+  border-bottom: 2px solid var(--bd-strong); cursor: pointer; user-select: none;
+}
+thead tr.cols th:hover { color: var(--t1); background: var(--bg4); }
+thead tr.cols th.l { text-align: left; }
+thead tr.cols th.c { text-align: center; }
+thead tr.cols th.gb { border-left: 1px solid var(--bd); }
+thead tr.cols th .arrow { opacity: 0.35; font-size: 11px; margin-left: 2px; }
+thead tr.cols th.sorted .arrow { opacity: 1; }
+thead tr.cols th.sorted { color: var(--t1); }
+
+tbody td {
+  padding: 7px 8px; text-align: right; font-family: var(--mono);
+  font-size: 12px; font-variant-numeric: tabular-nums;
+  border-bottom: 1px solid var(--bd); white-space: nowrap;
+}
+tbody tr:hover td { background: var(--bg-hover); }
+tbody tr:last-child td { border-bottom: none; }
+td.gb { border-left: 1px solid var(--bd); }
+td.tk { text-align: left; font-weight: 600; letter-spacing: -0.2px; }
+td.nm {
+  text-align: left; font-family: var(--sans); font-size: 11.5px; color: var(--t2);
+  max-width: 180px; overflow: hidden; text-overflow: ellipsis;
+}
+td.c { text-align: center; }
+td.rk { font-weight: 700; }
+
+/* Cell text uses the -text variants: cells are 12px, where the base
+   --g / --r fail AA. */
+.pos { color: var(--g-text); }
+.neg { color: var(--r-text); }
+.mut { color: var(--t3-text); }
+.hl-warn  { background: var(--a-bg); color: var(--a-text); font-weight: 600; }
+.hl-info  { background: var(--p-bg); color: var(--p-text); font-weight: 600; }
+.hl-good  { background: var(--g-bg); color: var(--g-text); font-weight: 600; }
+
+.badge {
+  font-size: 11px; font-family: var(--sans); font-weight: 600;
+  padding: 3px 8px; border-radius: 999px; display: inline-block; white-space: nowrap;
+}
+.badge.b-up   { background: var(--g-bg2); color: var(--g-text); }
+.badge.b-up1  { background: var(--g-bg);  color: var(--g-text); }
+.badge.b-rng  { background: var(--bg3);   color: var(--t3-text); }
+.badge.b-dn1  { background: var(--r-bg);  color: var(--r-text); }
+.badge.b-dn   { background: var(--r-bg2); color: var(--r-text); }
+
+/* Held in the book: a word, not a colour, so it survives greyscale and
+   cannot be mistaken for a return tint. */
+.held {
+  font-family: var(--sans); font-size: 11px; font-weight: 700; letter-spacing: 0.4px;
+  text-transform: uppercase; color: var(--b-text); background: var(--b-bg2);
+  padding: 1px 5px; border-radius: 4px; margin-left: 5px; vertical-align: 1px;
+}
+
+tr.stale td { background: var(--bg3); color: var(--t3-text); }
+tr.stale td.tk::after { content: ' \25CF'; color: var(--a-text); font-size: 11px; }
+.trunc { color: var(--t3-text); font-size: 11px; vertical-align: super; }
+.lag { color: var(--a-text); font-size: 11px; vertical-align: super; cursor: help;
+       font-weight: 600; margin-left: 1px; }
+
+/* ---- expandable row chart (pattern lifted from Portfolio Command Centre) ---- */
+tbody tr.data-row { cursor: pointer; }
+tbody tr.row-selected td { background: var(--b-bg2); }
+tbody tr.chart-row td { padding: 0; background: var(--bg3); border-bottom: 2px solid var(--bd-strong); }
+tbody tr.chart-row:hover td { background: var(--bg3); }
+/* Pinned to the left of the scroll container and sized to its visible width
+   in JS, so the chart stays in view while the wide table scrolls behind it. */
+.chart-panel { padding: 14px 16px 16px; position: sticky; left: 0; box-sizing: border-box; }
+.chart-panel-head {
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 12px; flex-wrap: wrap; margin-bottom: 10px;
+}
+.chart-panel-title { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.chart-panel-title .tk { font-family: var(--mono); font-size: 14px; font-weight: 700; letter-spacing: -0.3px; }
+.chart-panel-title .nm { font-size: 12px; color: var(--t2); }
+.chart-panel-stats { display: flex; gap: 6px; flex-wrap: wrap; }
+.stat {
+  font-size: 11px; font-family: var(--mono); padding: 2px 7px;
+  border-radius: 4px; background: var(--bg2); border: 1px solid var(--bd); color: var(--t2);
+}
+.stat b { font-weight: 600; color: var(--t1); }
+.chart-panel-close {
+  cursor: pointer; font-size: 15px; color: var(--t3-text); line-height: 1;
+  padding: 4px 8px; border-radius: 4px; user-select: none;
+}
+.chart-panel-close:hover { background: var(--bg4); color: var(--t1); }
+.chart-box { height: 320px; width: 100%; }
+.chart-note { font-size: 11px; color: var(--t3-text); margin-top: 8px; }
+/* Period selector per design.md, trimmed to the 730-day published horizon. */
+.period-selector {
+  display: inline-flex; border: 1px solid var(--bd); border-radius: 4px;
+  overflow: hidden; background: var(--bg2);
+}
+.period-selector button {
+  padding: 5px 11px; background: var(--bg2); border: none;
+  border-right: 1px solid var(--bd); cursor: pointer;
+  font-size: 11.5px; font-weight: 600; color: var(--t2); font-family: inherit;
+}
+.period-selector button:last-child { border-right: none; }
+.period-selector button.active { background: var(--b-text); color: #fff; }
+@media (pointer: coarse) { .period-selector button { min-height: 44px; padding: 0 14px; } }
+
+.foot {
+  margin-top: 18px; font-size: 11.5px; color: var(--t3-text); line-height: 1.75;
+  border-top: 1px solid var(--bd); padding-top: 14px;
+}
+.foot b { color: var(--t2); font-weight: 600; }
+.foot code { font-family: var(--mono); font-size: 11px; }
+.foot .warn { color: var(--a-text); }
+.foot a { color: var(--b-text); }
+
+.empty { padding: 40px; text-align: center; color: var(--t3-text); font-size: 13px; }
+
+@media (max-width: 1200px) { .shell { padding: 16px 20px 48px; } }
+@media (max-width: 768px) {
+  .shell { padding: 12px 14px 40px; }
+  .masthead { padding: 18px 0 14px; }
+  .masthead-left h1 { font-size: 24px; }
+  .striprow .lbl { min-width: 0; }
+}
+@media (pointer: coarse) {
+  .filter { min-height: 44px; padding: 0 16px; }
+  thead tr.cols th { padding: 12px 8px; }
+}
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <div class="masthead">
+    <div class="masthead-left">
+      <a class="back" href="index.html">&larr; Crypto-Breadth dashboard</a>
+      <h1>Crypto cross-sectional scanner <em>— monitoring, not a strategy</em></h1>
+      <p id="sub">Loading…</p>
+    </div>
+    <div class="pills" id="pills"></div>
+  </div>
+
+  <!-- Reader's guide. Static markup so it reads in the source and survives a
+       page that failed to load its data. Figures that come from the build are
+       spans filled in renderChrome(); the text between the tags is the
+       fallback for a data-less load. Thresholds quoted here are pinned to the
+       engine constants by tests/test_scanner.py. -->
+  <details class="guide">
+    <summary><b>How to read this page</b>
+      <span>— how the ranking is scored, what every column measures, and what the page cannot tell you</span>
+    </summary>
+    <div class="guide-body">
+
+      <p><b>The rank is a relative momentum score and nothing else.</b> For each
+      coin the scanner measures total return over four windows — 1, 3, 6 and 12
+      months (30, 91, 182 and 365 days). Each window is scored against the other
+      <span class="g-n">21</span> coins on the page (a percentile from 0 to 100),
+      the four percentiles are averaged with equal weight, and the table is sorted
+      on that average. Rank 1 is the strongest, rank <span class="g-n1">22</span>
+      the weakest. A rank improves either because the coin rose or because its
+      peers fell.</p>
+
+      <p><b>This is not the engine's ranking.</b> The Crypto-Breadth book is
+      chosen by the engine's own momentum, trend and liquidity rules at Monday's
+      close. A coin can rank highly here and not be held, or be held and rank in
+      the middle. The <span class="gk">HELD</span> tag marks what the book
+      actually holds.</p>
+
+      <p><b>Percentile columns, written p0 to p100, compare a coin with its own
+      past</b> — <span class="g-pctl">730</span> days of its own history, roughly
+      <span class="g-pctl-y">2</span> years — never with the other rows.
+      <span class="gk">RV p85</span> means today is more volatile than 85% of that
+      coin's own past two years.</p>
+
+      <div class="guide-grid">
+
+        <section class="gcard gdir">
+          <h4>Directional signals</h4>
+          <p class="gnote">Where price and momentum point. Read these first.</p>
+          <dl>
+            <dt>Trend</dt>
+            <dd>Where price sits against its 50- and 200-day averages.
+            <b>Strong up</b> = price above MA50 above MA200 with both averages
+            rising; <b>Up</b> = above MA200 but the alignment is incomplete;
+            <b>Range</b> = price between the two averages, or the two within 1% of
+            each other; <b>Down</b> and <b>Strong down</b> mirror the two upward
+            states.</dd>
+            <dt>Rank</dt>
+            <dd>The four-horizon momentum rank described above. 1 is strongest.</dd>
+            <dt>ΔR 28D</dt>
+            <dd>Change in that rank over the past <span class="g-dr">28</span>
+            days. ↑ is climbing the table.</dd>
+            <dt>12-1%</dt>
+            <dd>The twelve-month return with the most recent month (30 days) left
+            out, the standard momentum convention.</dd>
+            <dt>vs 52W hi</dt>
+            <dd>Distance below the highest daily close of the past 365 days. 0.0 is
+            a fresh one-year closing high. The figure can never be positive.</dd>
+          </dl>
+        </section>
+
+        <section class="gcard grisk">
+          <h4>Risk signals</h4>
+          <p class="gnote">These describe how large the moves are, not which way
+          they go. A high reading is not bearish.</p>
+          <dl>
+            <dt>RV pctl</dt>
+            <dd>Realised volatility — 20 days of daily log returns, annualised by
+            √365 — ranked against the coin's own history.</dd>
+            <dt>BBW pctl</dt>
+            <dd>Bollinger bandwidth: how wide the 20-day price band is, ranked the
+            same way. RV below p25 <em>and</em> BBW below p10 together is a
+            <b>squeeze</b> — a compressed range. It says nothing about the direction
+            of the next move.</dd>
+            <dt>Squeeze release</dt>
+            <dd>Replaces <b>Squeeze</b> when a compressed coin moves more than 1.5
+            standard deviations of the 20 days before it. It says the quiet period
+            broke, not which way or that it will continue.</dd>
+            <dt>ATR%</dt>
+            <dd>The average daily range over 14 days as a percentage of price — a
+            sizing and stop-distance input.</dd>
+          </dl>
+        </section>
+
+        <section class="gcard gstate">
+          <h4>State &amp; confirmation</h4>
+          <p class="gnote">Today's context. None of these carries standalone
+          predictive power; they confirm or contradict the directional zone.</p>
+          <dl>
+            <dt>1D%</dt>
+            <dd>The last UTC day's return.</dd>
+            <dt>Vol ×20D</dt>
+            <dd>The day's traded volume against its own 20-day average. Above 3× is
+            flagged as an alert chip.</dd>
+            <dt>RS 1M</dt>
+            <dd>The past 30 days' log return minus <span class="g-bench">BTC</span>'s
+            over the same 30 days, in percentage points; positive means the coin
+            outpaced bitcoin. With a single benchmark this orders the rows exactly
+            as the raw one-month return does. Click the header to switch to the raw
+            return. BTC's own row is blank.</dd>
+            <dt>Dev 200D</dt>
+            <dd>How far price sits above or below its 200-day average.</dd>
+          </dl>
+        </section>
+
+        <section class="gcard gcal">
+          <h4>Crypto calendar and universe</h4>
+          <p class="gnote">Where this page differs from the ETF scanner it is
+          ported from.</p>
+          <ul>
+            <li>Crypto trades every day, so every look-back that means a span of
+            <b>time</b> is converted to calendar days: 1M/3M/6M/12M = 30/91/182/365,
+            52 weeks = 365, the percentile window = 730. Look-backs quoted as a
+            <b>bar count</b> are kept, as crypto charting quotes them: MA 20/50/200,
+            RSI 14, ATR 14. MA200 therefore spans about 6.6 months here, against
+            about 9.5 months on an equity chart.</li>
+            <li>The panel is the project's live Binance USDT universe. EOS, MATIC
+            and LUNA are frozen in the data (rebranded or reassigned tickers) and
+            are left off the page.</li>
+            <li>That universe is a fixed list chosen with hindsight: coins that
+            faded out of the market before selection are absent, although some in
+            it collapsed later (FTT). It suits a monitoring panel of current state;
+            it would not suit a backtest.</li>
+            <li>There is no fund-wrapper layer: premium/discount and share-count
+            flows have no spot-crypto counterpart.</li>
+          </ul>
+        </section>
+
+        <section class="gcard">
+          <h4>Marks, colours and the strips above the table</h4>
+          <ul>
+            <li>Green is above zero, red below. An <b>amber</b> cell is an unusual
+            risk reading — realised volatility above p80, or volume above 3× its
+            20-day average. <b>Purple</b> marks a squeeze.</li>
+            <li>A <b>grey row ending in ●</b> is more than
+            <span class="g-stale">3</span> days behind the rest of the panel; it
+            raises no alerts and is left out of the ranking, because its returns
+            end on an older date than its peers'. A row
+            inside that threshold but still behind carries a
+            <span class="gk">T-1</span> marker.</li>
+            <li><span class="gk">^</span> means the percentile used a shorter window
+            than the full one (a coin with under two years of history).</li>
+            <li><b>Overlays</b> are kept separate on purpose. The <b>gate</b> chip
+            carries two readings, each named by its basis: the breadth tier at the
+            <b>latest close</b>, and the tier at the <b>last Monday read</b>, which
+            is the one the book was last rebalanced to (it trades on the next day).
+            The latest-close tier only acts if it still holds at the next Monday
+            close; it is marked <i>differs</i> when the two disagree. The
+            <b>book</b> chip is what is actually held. The
+            <b>ETH/BTC</b> chip is the 50-day average of the ETH/BTC price ratio
+            against its 200-day average — a display-only read of whether ether is
+            leading bitcoin, used by nothing.</li>
+            <li><b>Alerts</b> are events on the latest day: 52-week highs and lows,
+            MA200 crossings, daily moves beyond 2 standard deviations, volume above
+            3× normal, squeezes and their releases, RSI at or beyond 75 / 25, and
+            rows crossing into or out of the top <span class="g-cut">5</span> of
+            the ranking. <b>Click any chip</b> to jump to that coin's row and open
+            its chart.</li>
+            <li>A <b>rank crossing</b> needs the row inside the top
+            <span class="g-cut">5</span> today and outside it on each of the
+            <span class="g-confirm">7</span> days before, or the mirror. The cut is
+            deliberately not 4, so it cannot be read as the engine's four-coin
+            book.</li>
+            <li>A <b>sigma move</b> is one day against the standard deviation of the
+            20 daily returns before it; the window stops at the previous day so a
+            large move cannot inflate its own yardstick.</li>
+            <li>The <b>filter buttons</b> narrow the table to the coins held in the
+            book, or to those passing the engine's liquidity and history screen
+            today (<b>investable</b>).</li>
+          </ul>
+        </section>
+
+        <section class="gcard gwarn">
+          <h4>What this page is not</h4>
+          <ul>
+            <li>Monitoring, not a strategy: no buy list, no position sizes, no
+            transaction costs, and no backtest behind any threshold shown.</li>
+            <li>Every parameter is an unvalidated industry default, converted to
+            the crypto calendar. None has been tested on this universe.</li>
+            <li>Ranks are relative. Rank 1 in a falling market is still losing
+            money — read it alongside 12-1% and Trend, which are absolute.</li>
+            <li>Nothing here changes what the Crypto-Breadth engine holds. The
+            engine's rules are on the main dashboard.</li>
+          </ul>
+        </section>
+
+      </div>
+    </div>
+  </details>
+
+  <div class="striprow"><span class="lbl">Overlays</span><span id="overlays"></span></div>
+  <div class="striprow"><span class="lbl">Alerts</span><span id="alerts"></span></div>
+  <div class="striprow"><span class="lbl">Show</span><span id="filters"></span></div>
+
+  <div class="jumpnote" id="jumpnote" role="status" aria-live="polite" hidden></div>
+
+  <div class="card">
+    <div class="tblwrap">
+      <table>
+        <thead>
+          <tr class="zones">
+            <th colspan="2"></th>
+            <th colspan="5" class="zdir">Directional signals</th>
+            <th colspan="3" class="zrisk">Risk signals</th>
+            <th colspan="4" class="zstate">State &amp; confirmation</th>
+          </tr>
+          <tr class="cols" id="head"></tr>
+        </thead>
+        <tbody id="body"></tbody>
+      </table>
+    </div>
+    <div class="empty" id="empty" style="display:none;">No rows match this filter.</div>
+  </div>
+
+  <div class="foot" id="foot"></div>
+</div>
+
+<script>
+// __SCANNER_DATA_START__
+const SCANNER_DATA_INLINE = {"built_at_utc":"2026-09-24T22:24:39+00:00","as_of":"2026-09-23","as_of_mixed":false,"expected_close":"2026-09-23","panel_days_behind":0,"n_rows":22,"benchmark":"BTC","percentile_window":730,"days_year":365,"rank_horizons":[30,91,182,365],"rank_delta_lookback":28,"rank_cross_cut":5,"rank_cross_confirm":7,"frozen_excluded":["EOS","LUNA","MATIC"],"parameters_validated":false,"parameter_note":"All parameters are industry defaults (RSI 14, MA 20/50/200, ATR 14, BBW 20/2sigma, equal-weight four-horizon momentum composite), with the time-based look-backs converted to the 365-day crypto calendar (1M/3M/6M/12M = 30/91/182/365 days, percentile window 730 days). NONE has been validated on this universe.","overlays":[{"kind":"breadth_gate","state":"RISK_ON","monday_state":"RISK_ON","differs_from_monday":false,"value":1.0,"exposure":1.0,"monday_read":{"date":"2026-09-21","exposure":1.0,"breadth":1.0},"label":"Gate tier at latest close (2026-09-23) · 100% breadth → 100% · last Monday read (2026-09-21) 100%","as_of":"2026-09-23","engine_version":"v3.2"},{"kind":"book","state":"HELD","held":["NEAR","BNB","SOL","UNI"],"label":"Book · NEAR, BNB, SOL, UNI","as_of":"2026-09-23","last_rebal":"2026-09-22"},{"kind":"eth_btc","state":"ON","value":0.0585827994148147,"ratio":0.03181026474686484,"label":"ETH/BTC · 50D above 200D (+5.9%)","as_of":"2026-09-23"}],"alerts":[{"ticker":"TRX","kind":"squeeze","label":"Squeeze (RV & BBW low)","value":"RV p2 / BBW p5"},{"ticker":"ATOM","kind":"ma200_cross","label":"Crossed below MA200","value":""},{"ticker":"BCH","kind":"rsi","label":"RSI 76 overbought","value":""},{"ticker":"NEAR","kind":"rsi","label":"RSI 80 overbought","value":""},{"ticker":"BCH","kind":"volume","label":"Volume 3.8x 20D","value":""}],"alerts_display_cap":12,"rows":[{"ticker":"NEAR","name":"NEAR Protocol","held":true,"investable":true,"as_of":"2026-09-23","sessions_behind":0,"stale":false,"rank":1,"rank_delta":9,"rank_truncated":false,"trend":"Strong up","mom_12_1":-0.3302500856457691,"vs_52w_high":-0.02123813827383647,"rv_pctl":95.82191780821918,"rv_truncated":false,"bbw_pctl":99.93150684931507,"bbw_truncated":false,"atr_pct":0.08809319618811934,"ret_1d":-0.02123813827383647,"vol_ratio":2.651875312473818,"ret_1m":1.215856777493606,"rs_1m":0.7294562466265732,"dev_200d":1.3597598840819707,"rsi14":80.27896043592372,"n_bars":2171},{"ticker":"UNI","name":"Uniswap","held":true,"investable":true,"as_of":"2026-09-23","sessions_behind":0,"stale":false,"rank":2,"rank_delta":6,"rank_truncated":false,"trend":"Strong up","mom_12_1":-0.46220677671589927,"vs_52w_high":-0.09622530803833362,"rv_pctl":89.38356164383562,"rv_truncated":false,"bbw_pctl":96.91780821917808,"bbw_truncated":false,"atr_pct":0.093537977152614,"ret_1d":-0.09622530803833362,"vol_ratio":1.7171729488809384,"ret_1m":1.1329333025617356,"rs_1m":0.6913152806154605,"dev_200d":1.3786543950542938,"rsi14":68.78399563276629,"n_bars":2198},{"ticker":"SOL","name":"Solana","held":true,"investable":true,"as_of":"2026-09-23","sessions_behind":0,"stale":false,"rank":3,"rank_delta":0,"rank_truncated":false,"trend":"Strong up","mom_12_1":-0.5360056258790437,"vs_52w_high":-0.5101388770554657,"rv_pctl":52.12328767123287,"rv_truncated":false,"bbw_pctl":56.50684931506849,"bbw_truncated":false,"atr_pct":0.0466287248785569,"ret_1d":-0.030193134857046444,"vol_ratio":1.433057735435432,"ret_1m":0.16186723249469526,"rs_1m":0.08384550507713177,"dev_200d":0.3638458103460851,"rsi14":63.64043773811381,"n_bars":2235},{"ticker":"ETH","name":"Ethereum","held":false,"investable":true,"as_of":"2026-09-23","sessions_behind":0,"stale":false,"rank":4,"rank_delta":-2,"rank_truncated":false,"trend":"Strong up","mom_12_1":-0.4039012933870604,"vs_52w_high":-0.4268351263127107,"rv_pctl":22.397260273972602,"rv_truncated":false,"bbw_pctl":35.68493150684932,"bbw_truncated":false,"atr_pct":0.0394501525994428,"ret_1d":-0.02502878019196486,"vol_ratio":1.036291042580591,"ret_1m":0.0815369554970975,"rs_1m":0.012200247346043275,"dev_200d":0.2855828267422258,"rsi14":63.2491028201171,"n_bars":3188},{"ticker":"LINK","name":"Chainlink","held":false,"investable":true,"as_of":"2026-09-23","sessions_behind":0,"stale":false,"rank":5,"rank_delta":-4,"rank_truncated":false,"trend":"Strong up","mom_12_1":-0.4596189591078067,"vs_52w_high":-0.4713307659392384,"rv_pctl":57.19178082191781,"rv_truncated":false,"bbw_pctl":48.56164383561644,"bbw_truncated":false,"atr_pct":0.05695408891471167,"ret_1d":-0.05296642649087835,"vol_ratio":1.5574385644883888,"ret_1m":0.062430131567632774,"rs_1m":-0.005624027945174449,"dev_200d":0.33052044833854555,"rsi14":56.23377467226587,"n_bars":2808},{"ticker":"BCH","name":"Bitcoin Cash","held":false,"investable":false,"as_of":"2026-09-23","sessions_behind":0,"stale":false,"rank":6,"rank_delta":7,"rank_truncated":false,"trend":"Up","mom_12_1":-0.5132028022274115,"vs_52w_high":-0.48433919022154315,"rv_pctl":99.93150684931507,"rv_truncated":false,"bbw_pctl":97.73972602739725,"bbw_truncated":false,"atr_pct":0.06691554683112969,"ret_1d":-0.02202260214430607,"vol_ratio":3.7964344897655065,"ret_1m":0.24538745387453864,"rs_1m":0.1532638003580417,"dev_200d":0.06934402951959862,"rsi14":75.91093857570652,"n_bars":2492},{"ticker":"LTC","name":"Litecoin","held":false,"investable":false,"as_of":"2026-09-23","sessions_behind":0,"stale":false,"rank":7,"rank_delta":7,"rank_truncated":false,"trend":"Strong up","mom_12_1":-0.512963137550674,"vs_52w_high":-0.5088165210484512,"rv_pctl":49.38356164383562,"rv_truncated":false,"bbw_pctl":67.46575342465754,"bbw_truncated":false,"atr_pct":0.0474374611541851,"ret_1d":-0.018100984439504475,"vol_ratio":1.921598586627738,"ret_1m":0.19705768486256314,"rs_1m":0.11368372753663046,"dev_200d":0.2229198595936126,"rsi14":72.27371139985442,"n_bars":3188},{"ticker":"BNB","name":"BNB","held":true,"investable":true,"as_of":"2026-09-23","sessions_behind":0,"stale":false,"rank":8,"rank_delta":-4,"rank_truncated":false,"trend":"Strong up","mom_12_1":-0.30676784976082216,"vs_52w_high":-0.4130487991433379,"rv_pctl":57.602739726027394,"rv_truncated":false,"bbw_pctl":56.0958904109589,"bbw_truncated":false,"atr_pct":0.03421686719246763,"ret_1d":-0.0266369009868338,"vol_ratio":1.2190014106253226,"ret_1m":0.0895486362539224,"rs_1m":0.0195806262252375,"dev_200d":0.2145004753910451,"rsi14":60.42265428095123,"n_bars":3188},{"ticker":"AAVE","name":"Aave","held":false,"investable":false,"as_of":"2026-09-23","sessions_behind":0,"stale":false,"rank":9,"rank_delta":-3,"rank_truncated":false,"trend":"Strong up","mom_12_1":-0.5180477144418139,"vs_52w_high":-0.5322900891805485,"rv_pctl":36.36986301369863,"rv_truncated":false,"bbw_pctl":36.36986301369863,"bbw_truncated":false,"atr_pct":0.06774236076177395,"ret_1d":-0.061326489261110395,"vol_ratio":1.9660142605519604,"ret_1m":0.050332527206771394,"rs_1m":-0.01707608246404177,"dev_200d":0.41401860363373677,"rsi14":57.861158390414865,"n_bars":2170},{"ticker":"BTC","name":"Bitcoin","held":false,"investable":true,"as_of":"2026-09-23","sessions_behind":0,"stale":false,"rank":10,"rank_delta":-5,"rank_truncated":false,"trend":"Strong up","mom_12_1":-0.29470003250034826,"vs_52w_high":-0.3229697700614814,"rv_pctl":67.73972602739725,"rv_truncated":false,"bbw_pctl":69.52054794520548,"bbw_truncated":false,"atr_pct":0.030097427513715448,"ret_1d":-0.021006730654125172,"vol_ratio":1.406056190224083,"ret_1m":0.06842210202835086,"rs_1m":null,"dev_200d":0.19165232674452892,"rsi14":65.49062740260034,"n_bars":3188},{"ticker":"AVAX","name":"Avalanche","held":false,"investable":true,"as_of":"2026-09-23","sessions_behind":0,"stale":false,"rank":11,"rank_delta":7,"rank_truncated":false,"trend":"Up","mom_12_1":-0.7755429931567985,"vs_52w_high":-0.6823274528009904,"rv_pctl":91.3013698630137,"rv_truncated":false,"bbw_pctl":99.38356164383562,"bbw_truncated":false,"atr_pct":0.06811628910441059,"ret_1d":-0.09272518341730762,"vol_ratio":1.330058286944681,"ret_1m":0.36055143160127257,"rs_1m":0.2417071929073371,"dev_200d":0.27876011100694265,"rsi14":67.14141945997196,"n_bars":2193},{"ticker":"ALGO","name":"Algorand","held":false,"investable":false,"as_of":"2026-09-23","sessions_behind":0,"stale":false,"rank":12,"rank_delta":5,"rank_truncated":false,"trend":"Up","mom_12_1":-0.564516129032258,"vs_52w_high":-0.5451373746184038,"rv_pctl":54.58904109589041,"rv_truncated":false,"bbw_pctl":63.21917808219178,"bbw_truncated":false,"atr_pct":0.07045771239022025,"ret_1d":-0.06958073148974131,"vol_ratio":1.1491195421410687,"ret_1m":0.13616557734204782,"rs_1m":0.06147617530544007,"dev_200d":0.07708989518252718,"rsi14":58.325865870623836,"n_bars":2651},{"ticker":"FIL","name":"Filecoin","held":false,"investable":false,"as_of":"2026-09-23","sessions_behind":0,"stale":false,"rank":13,"rank_delta":9,"rank_truncated":false,"trend":"Up","mom_12_1":-0.6631367292225201,"vs_52w_high":-0.7240271226415094,"rv_pctl":91.57534246575342,"rv_truncated":false,"bbw_pctl":77.6027397260274,"bbw_truncated":false,"atr_pct":0.0932207592826179,"ret_1d":-0.10335249042145589,"vol_ratio":1.384288095663574,"ret_1m":0.24167661493566794,"rs_1m":0.1502796860852011,"dev_200d":0.1122094722559519,"rsi14":56.844135911217585,"n_bars":2170},{"ticker":"ETC","name":"Ethereum Classic","held":false,"investable":false,"as_of":"2026-09-23","sessions_behind":0,"stale":false,"rank":14,"rank_delta":1,"rank_truncated":false,"trend":"Up","mom_12_1":-0.5872340425531914,"vs_52w_high":-0.5645241654210265,"rv_pctl":77.05479452054794,"rv_truncated":false,"bbw_pctl":77.1917808219178,"bbw_truncated":false,"atr_pct":0.06346331095346411,"ret_1d":-0.07415254237288127,"vol_ratio":2.150255069243046,"ret_1m":0.12628865979381443,"rs_1m":0.052744966397474904,"dev_200d":0.12168051869381968,"rsi14":60.149274308431394,"n_bars":3026},{"ticker":"XRP","name":"XRP","held":false,"investable":true,"as_of":"2026-09-23","sessions_behind":0,"stale":false,"rank":15,"rank_delta":-8,"rank_truncated":false,"trend":"Strong up","mom_12_1":-0.47544872021807627,"vs_52w_high":-0.5062662412420644,"rv_pctl":70.34246575342466,"rv_truncated":false,"bbw_pctl":55.54794520547945,"bbw_truncated":false,"atr_pct":0.0630875861485102,"ret_1d":-0.045590385960450286,"vol_ratio":1.8393539577236357,"ret_1m":0.01302557872713761,"rs_1m":-0.05324141365606883,"dev_200d":0.1770444187235536,"rsi14":59.85712522774802,"n_bars":3065},{"ticker":"TRX","name":"TRON","held":false,"investable":true,"as_of":"2026-09-23","sessions_behind":0,"stale":false,"rank":16,"rank_delta":-7,"rank_truncated":false,"trend":"Strong up","mom_12_1":0.026488095238095033,"vs_52w_high":-0.08892438764643229,"rv_pctl":2.1232876712328768,"rv_truncated":false,"bbw_pctl":4.863013698630137,"bbw_truncated":false,"atr_pct":0.015049385427626606,"ret_1d":0.00029231218941827564,"vol_ratio":1.3105931715807657,"ret_1m":-0.007828356045230467,"rs_1m":-0.0740420475595439,"dev_200d":0.03856058295358511,"rsi14":57.94388899734891,"n_bars":3027},{"ticker":"XLM","name":"Stellar","held":false,"investable":false,"as_of":"2026-09-23","sessions_behind":0,"stale":false,"rank":17,"rank_delta":-6,"rank_truncated":false,"trend":"Strong up","mom_12_1":-0.4683127572016461,"vs_52w_high":-0.5055052605823342,"rv_pctl":69.52054794520548,"rv_truncated":false,"bbw_pctl":58.97260273972603,"bbw_truncated":false,"atr_pct":0.06310857676855533,"ret_1d":-0.06521739130434778,"vol_ratio":1.5479166771405155,"ret_1m":0.042827657378740946,"rs_1m":-0.024246964121932363,"dev_200d":0.1384247941146648,"rsi14":57.59671592056478,"n_bars":3038},{"ticker":"ADA","name":"Cardano","held":false,"investable":true,"as_of":"2026-09-23","sessions_behind":0,"stale":false,"rank":18,"rank_delta":-2,"rank_truncated":false,"trend":"Up","mom_12_1":-0.7251861042183623,"vs_52w_high":-0.7264486517498565,"rv_pctl":55.41095890410959,"rv_truncated":false,"bbw_pctl":58.6986301369863,"bbw_truncated":false,"atr_pct":0.06473353498305175,"ret_1d":-0.06252457727093996,"vol_ratio":1.365894076990684,"ret_1m":0.07629796839729108,"rs_1m":0.007344456631162455,"dev_200d":0.11323578511374022,"rsi14":61.14064409699567,"n_bars":3082},{"ticker":"DOT","name":"Polkadot","held":false,"investable":false,"as_of":"2026-09-23","sessions_behind":0,"stale":false,"rank":19,"rank_delta":2,"rank_truncated":false,"trend":"Up","mom_12_1":-0.7733232476046394,"vs_52w_high":-0.749431559799909,"rv_pctl":88.6986301369863,"rv_truncated":false,"bbw_pctl":74.58904109589041,"bbw_truncated":false,"atr_pct":0.07612236254078929,"ret_1d":-0.09598031173092703,"vol_ratio":1.1142977534211622,"ret_1m":0.22580645161290325,"rs_1m":0.13741606616639773,"dev_200d":0.023228778912944836,"rsi14":55.781354360836424,"n_bars":2228},{"ticker":"ATOM","name":"Cosmos","held":false,"investable":false,"as_of":"2026-09-23","sessions_behind":0,"stale":false,"rank":20,"rank_delta":-1,"rank_truncated":false,"trend":"Range","mom_12_1":-0.6309668039738309,"vs_52w_high":-0.6064889918887602,"rv_pctl":79.65753424657534,"rv_truncated":false,"bbw_pctl":66.64383561643835,"bbw_truncated":false,"atr_pct":0.065664664721556,"ret_1d":-0.08017334777898166,"vol_ratio":1.0903665064083936,"ret_1m":0.11490479317137225,"rs_1m":0.04258612490128898,"dev_200d":-0.006799736784382504,"rsi14":54.04199782745217,"n_bars":2705},{"ticker":"DOGE","name":"Dogecoin","held":false,"investable":true,"as_of":"2026-09-23","sessions_behind":0,"stale":false,"rank":21,"rank_delta":-9,"rank_truncated":false,"trend":"Up","mom_12_1":-0.6199333586401788,"vs_52w_high":-0.6514678795624553,"rv_pctl":64.17808219178082,"rv_truncated":false,"bbw_pctl":45.273972602739725,"bbw_truncated":false,"atr_pct":0.06531010379180732,"ret_1d":-0.07686180804460374,"vol_ratio":1.9192597014368866,"ret_1m":0.02896459882365998,"rs_1m":-0.037629836290291485,"dev_200d":0.05526783168751215,"rsi14":57.817577396734016,"n_bars":2638},{"ticker":"FTT","name":"FTX Token","held":false,"investable":false,"as_of":"2026-09-23","sessions_behind":0,"stale":false,"rank":22,"rank_delta":-2,"rank_truncated":false,"trend":"Up","mom_12_1":-0.7956819378620327,"vs_52w_high":-0.74002599740026,"rv_pctl":88.28767123287672,"rv_truncated":false,"bbw_pctl":84.17808219178082,"bbw_truncated":false,"atr_pct":0.09671985612422049,"ret_1d":-0.013282732447817858,"vol_ratio":1.0627418504106763,"ret_1m":0.11683848797250862,"rs_1m":0.044319026083403185,"dev_200d":0.002100556936655451,"rsi14":62.299085461479564,"n_bars":2160}],"data_health":{"failures":[],"stale":[],"notes":["naive-recompute check passed on LINK, LTC, NEAR","date-indexed recompute passed: columns on 22 coins, rank and delta-R on 22 coins"],"stale_threshold_days":3}};
+// __SCANNER_DATA_END__
+
+const PCT1 = (v) => v == null || !isFinite(v) ? null : (v * 100).toFixed(1);
+const signed = (v) => { const s = PCT1(v); return s == null ? null : (v > 0 ? '+' + s : s); };
+
+// `t` is the one-line definition shown on header hover; the reader's guide is
+// the full statement and wins on any disagreement.
+const COLS = [
+  { k:'ticker',      h:'Coin',       cls:'tk', align:'l' },
+  { k:'name',        h:'Name',       cls:'nm', align:'l' },
+  { k:'trend',       h:'Trend',      cls:'c',  align:'c', gb:true,
+    t:'Price against its own 50- and 200-day averages' },
+  { k:'rank',        h:'Rank',       n:true,
+    t:'Equal-weight 1M/3M/6M/12M momentum rank across the panel; 1 = strongest' },
+  { k:'rank_delta',  h:'\u0394R 28D', n:true,
+    t:'Change in that rank over the past 28 days; \u2191 = climbing' },
+  { k:'mom_12_1',    h:'12-1%',      n:true,
+    t:'Twelve-month return with the most recent 30 days skipped' },
+  { k:'vs_52w_high', h:'vs 52W hi',  n:true,
+    t:'Distance below the highest close of the past 365 days; 0.0 = a fresh high' },
+  { k:'rv_pctl',     h:'RV pctl',    n:true,   gb:true,
+    t:'Realised volatility (20D, annualised) ranked against its own 730-day history' },
+  { k:'bbw_pctl',    h:'BBW pctl',   n:true,
+    t:'Bollinger bandwidth (20D) ranked the same way; low with a low RV is a squeeze' },
+  { k:'atr_pct',     h:'ATR%',       n:true,
+    t:'Average 14-day daily range as a percentage of price' },
+  { k:'ret_1d',      h:'1D%',        n:true,   gb:true,
+    t:'The last UTC day\u2019s return' },
+  { k:'vol_ratio',   h:'Vol \u00D720D', n:true,
+    t:'Day volume against its own 20-day average' },
+  { k:'rs_1m',       h:'RS 1M',      n:true,   toggle:true,
+    t:'30-day log return minus BTC\u2019s over the same 30 days' },
+  { k:'dev_200d',    h:'Dev 200D',   n:true,
+    t:'How far price sits above or below its 200-day average' },
+];
+
+const TREND_CLS = {
+  'Strong up': 'b-up', 'Up': 'b-up1', 'Range': 'b-rng',
+  'Down': 'b-dn1', 'Strong down': 'b-dn',
+};
+
+// Green/red only where the event itself is directional.
+function alertClass(a) {
+  const L = (a.label || '').toLowerCase();
+  if (a.kind === '52w')         return L.includes('high') ? 'good' : 'bad';
+  if (a.kind === 'ma200_cross') return L.includes('above') ? 'good' : 'bad';
+  if (a.kind === 'rank_cross')  return L.includes('entered') ? 'good' : 'bad';
+  if (a.kind === 'sigma_move')  return (a.value || '').startsWith('-') ? 'bad' : 'good';
+  if (a.kind === 'volume')      return 'warn';
+  if (a.kind === 'rsi')         return 'warn';
+  return 'info';   // squeeze, squeeze_release
+}
+
+let DATA = null, FILTER = 'ALL', SORT = { k:'rank', asc:true }, RS_MODE = 'rs_1m';
+let ALERTS_EXPANDED = true;
+
+const FILTERS = [
+  ['ALL', 'All coins', () => true],
+  ['HELD', 'Held in the book', r => r.held],
+  ['INV', 'Investable today', r => r.investable],
+];
+const filterFn = (key) => (FILTERS.find(f => f[0] === key) || FILTERS[0])[2];
+const filterLabel = (key) => (FILTERS.find(f => f[0] === key) || FILTERS[0])[1];
+
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g,
+    c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+}
+function num(v, d) { return v == null || !isFinite(v) ? null : v.toLocaleString('en-US',
+  { minimumFractionDigits:d, maximumFractionDigits:d }); }
+
+// A missing reading renders an em dash, never a zero.
+function cell(row, col) {
+  const dash = '<span class="mut">\u2014</span>';
+  const k = col.toggle ? RS_MODE : col.k;
+  const v = row[k];
+
+  switch (k) {
+    case 'ticker': {
+      const lag = row.sessions_behind;
+      const lagMark = (!row.stale && lag > 0)
+        ? `<span class="lag" title="this row is as of ${esc(row.as_of)}, `
+          + `${lag} day${lag > 1 ? 's' : ''} behind the panel">T-${lag}</span>`
+        : '';
+      const held = row.held
+        ? `<span class="held" title="held in the Crypto-Breadth book">held</span>` : '';
+      return `<span title="as of ${esc(row.as_of)}">${esc(v)}</span>${lagMark}${held}`;
+    }
+    case 'name':
+      return `<span title="${esc(v)}">${esc(v)}</span>`;
+    case 'trend':
+      return v == null ? dash
+        : `<span class="badge ${TREND_CLS[v] || 'b-rng'}">${esc(v)}</span>`;
+    case 'rank':
+      return v == null ? dash : `<b>${v}</b>`;
+    case 'rank_delta': {
+      if (v == null) return dash;
+      if (v === 0) return `<span class="mut">\u2014</span>`;
+      const up = v > 0;
+      return `<span class="${up ? 'pos' : 'neg'}">${up ? '\u2191' : '\u2193'}${Math.abs(v)}</span>`;
+    }
+    case 'rv_pctl': case 'bbw_pctl': {
+      if (v == null) return dash;
+      const t = (k === 'rv_pctl' ? row.rv_truncated : row.bbw_truncated)
+        ? '<span class="trunc" title="shortened percentile window">^</span>' : '';
+      return `p${v.toFixed(0)}${t}`;
+    }
+    case 'atr_pct': {
+      const s = PCT1(v); return s == null ? dash : s;
+    }
+    case 'vol_ratio': {
+      const s = num(v, 1); return s == null ? dash : s + '\u00D7';
+    }
+    case 'mom_12_1': case 'vs_52w_high': case 'ret_1d':
+    case 'rs_1m': case 'ret_1m': case 'dev_200d': {
+      const s = signed(v);
+      if (s == null) return dash;
+      const c = v > 0 ? 'pos' : (v < 0 ? 'neg' : 'mut');
+      return `<span class="${c}">${s}</span>`;
+    }
+    default:
+      return v == null ? dash : esc(v);
+  }
+}
+
+// Highlights mirror the alert rules so a chip and its cell agree.
+function cellClass(row, col) {
+  const k = col.toggle ? RS_MODE : col.k;
+  if (k === 'vs_52w_high' && row.vs_52w_high === 0) return 'hl-good';
+  if (k === 'vol_ratio' && row.vol_ratio > 3) return 'hl-warn';
+  if (k === 'rv_pctl' && row.rv_pctl != null && row.rv_pctl > 80) return 'hl-warn';
+  if ((k === 'rv_pctl' || k === 'bbw_pctl') &&
+      row.rv_pctl != null && row.bbw_pctl != null &&
+      row.rv_pctl < 25 && row.bbw_pctl < 10) return 'hl-info';
+  return '';
+}
+
+function renderHead() {
+  document.getElementById('head').innerHTML = COLS.map(c => {
+    const h = c.toggle ? (RS_MODE === 'rs_1m' ? 'RS 1M' : '1M%') : c.h;
+    const key = c.toggle ? RS_MODE : c.k;
+    const on = SORT.k === key;
+    const action = c.toggle
+      ? 'Click the label to switch between RS versus BTC and the raw 1M return'
+      : 'Click to sort';
+    const title = c.t ? `${c.t} · ${action}` : action;
+    return `<th class="${c.align === 'l' ? 'l' : (c.align === 'c' ? 'c' : '')}`
+      + `${c.gb ? ' gb' : ''}${on ? ' sorted' : ''}" data-k="${key}"`
+      + `${c.toggle ? ' data-toggle="1"' : ''} title="${esc(title)}">`
+      + `${esc(h)}<span class="arrow">${on ? (SORT.asc ? '\u25B2' : '\u25BC') : '\u25B4'}</span></th>`;
+  }).join('');
+}
+
+function renderBody() {
+  let rows = DATA.rows.filter(filterFn(FILTER));
+
+  const k = SORT.k, asc = SORT.asc ? 1 : -1;
+  rows.sort((x, y) => {
+    let a = x[k], b = y[k];
+    if (typeof a === 'string' || typeof b === 'string')
+      return String(a ?? '').localeCompare(String(b ?? '')) * asc;
+    // Missing values sort last in both directions — a blank is not a low value.
+    if (a == null || !isFinite(a)) return 1;
+    if (b == null || !isFinite(b)) return -1;
+    return (a - b) * asc;
+  });
+
+  document.getElementById('empty').style.display = rows.length ? 'none' : 'block';
+  openTicker = null;   // the rows are being replaced; no chart survives a re-render
+  document.getElementById('body').innerHTML = rows.map(r =>
+    `<tr class="data-row${r.stale ? ' stale' : ''}" data-ticker="${esc(r.ticker)}"`
+    + ` title="${r.stale ? `data ${r.sessions_behind} day(s) behind the panel — ` : ''}`
+    + `click for the price chart">`
+    + COLS.map(c => {
+        const extra = [c.align === 'l' ? c.cls : (c.align === 'c' ? 'c' : ''),
+                       c.gb ? 'gb' : '', c.k === 'rank' ? 'rk' : '',
+                       cellClass(r, c)].filter(Boolean).join(' ');
+        return `<td class="${extra}">${cell(r, c)}</td>`;
+      }).join('')
+    + '</tr>'
+  ).join('');
+}
+
+function overlayClass(o) {
+  if (o.kind === 'breadth_gate') {
+    if (o.differs_from_monday) return 'warn';
+    return o.state === 'RISK_ON' ? 'good' : (o.state === 'PARTIAL' ? 'warn' : (o.state ? 'bad' : 'mute'));
+  }
+  if (o.kind === 'book') return 'book';
+  return o.state === 'ON' ? 'good' : 'mute';   // eth_btc
+}
+
+function overlayTitle(o) {
+  if (o.kind === 'breadth_gate')
+    return `Engine (${o.engine_version || 'current engine'}) breadth tier at the latest close, `
+      + `${o.as_of || 'n/a'}. The book acts on the tier read at Monday's close, executed the `
+      + `next day; the latest-close tier acts only if it still holds at the next Monday read.`;
+  if (o.kind === 'book')
+    return `Actual holdings as of ${o.as_of || 'n/a'}; last rebalance ${o.last_rebal || 'n/a'}.`;
+  return `ETH/BTC price ratio, 50-day SMA against 200-day SMA, as of ${o.as_of || 'n/a'}. `
+    + `Display only; used by nothing.`;
+}
+
+function renderChrome() {
+  const d = DATA;
+  document.getElementById('sub').innerHTML =
+    `${d.n_rows} live coins on Binance USDT spot, ranked on an equal-weight `
+    + `1M/3M/6M/12M momentum composite (30/91/182/365 days). `
+    + `<b>Parameters are unvalidated industry defaults.</b>`;
+
+  // Guide figures come from the payload, never from prose typed twice.
+  const fill = (cls, v) => document.querySelectorAll('.' + cls)
+    .forEach(el => { el.textContent = v; });
+  fill('g-n', d.n_rows - 1);
+  fill('g-n1', d.n_rows);
+  fill('g-pctl', d.percentile_window);
+  fill('g-pctl-y', (d.percentile_window / d.days_year).toFixed(1).replace(/\.0$/, ''));
+  fill('g-bench', d.benchmark);
+  fill('g-stale', (d.data_health || {}).stale_threshold_days);
+  fill('g-cut', d.rank_cross_cut);
+  fill('g-confirm', d.rank_cross_confirm);
+  fill('g-dr', d.rank_delta_lookback);
+
+  const pills = [`<span class="pill pill-date" title="latest daily close (UTC)">PRICES ${esc(d.as_of)}</span>`];
+  if (d.panel_days_behind > 0) {
+    pills.push(`<span class="pill pill-warn" title="the last closed daily candle is `
+      + `${esc(d.expected_close)}">DATA ${d.panel_days_behind}D BEHIND</span>`);
+  }
+  if (d.as_of_mixed) {
+    const behind = d.rows.filter(r => r.sessions_behind > 0).length;
+    pills.push(`<span class="pill pill-warn" title="${behind} row${behind === 1 ? '' : 's'} `
+      + `behind the panel, marked T-n in the table">MIXED DATES</span>`);
+  }
+  const gate = (d.overlays || []).find(o => o.kind === 'breadth_gate');
+  if (gate && gate.state) {
+    const cls = gate.state === 'RISK_ON' ? 'pill-live' : (gate.state === 'PARTIAL' ? 'pill-warn' : 'pill-off');
+    pills.push(`<span class="pill ${cls}" title="breadth tier at the latest close — not the `
+      + `book, and not necessarily the Monday read the book acts on">TIER AT CLOSE `
+      + `${esc(gate.state)}</span>`);
+    if (gate.differs_from_monday) {
+      pills.push(`<span class="pill pill-warn" title="the last Monday read was `
+        + `${esc(gate.monday_state)}; the book stays on it until the next Monday close">`
+        + `MONDAY READ ${esc(gate.monday_state)}</span>`);
+    }
+  }
+  if ((d.data_health.failures || []).length || (d.data_health.stale || []).length) {
+    pills.push(`<span class="pill pill-warn">DATA HEALTH</span>`);
+  }
+  document.getElementById('pills').innerHTML = pills.join('');
+
+  // BTC's own 1M return sits with the overlays: with a single benchmark the
+  // RS column is each row's 1M return shifted by this one constant.
+  const bench = d.rows.find(r => r.ticker === d.benchmark);
+  const chips = (d.overlays || []).map(o =>
+    `<span class="chip ${overlayClass(o)}" title="${esc(overlayTitle(o))}">${esc(o.label)}</span>`);
+  if (bench && bench.ret_1m != null) {
+    chips.push(`<span class="chip mute" title="the anchor for the RS column">`
+      + `<span class="tk">${esc(d.benchmark)}</span> 1M ${esc(signed(bench.ret_1m))}%</span>`);
+  }
+  document.getElementById('overlays').innerHTML = chips.join(' ');
+
+  renderAlerts();
+
+  document.getElementById('filters').innerHTML = FILTERS.map(([k, lbl, fn]) =>
+    `<button class="filter ${FILTER === k ? 'active' : ''}" data-s="${k}">${esc(lbl)}`
+    + `${k === 'ALL' ? '' : ` (${d.rows.filter(fn).length})`}</button>`
+  ).join(' ');
+
+  const h = d.data_health || {};
+  const parts = [
+    `<b>Data</b> — Binance USDT spot daily closes (UTC), the project substrate `
+    + `<code>data/prices.parquet</code>, latest bar ${esc(d.as_of)}. Each row carries its `
+    + `own as-of; rows more than ${h.stale_threshold_days} days behind are greyed and marked \u25CF. `
+    + `Frozen tickers left off the page: ${esc((d.frozen_excluded || []).join(', ') || 'none')}.`,
+    `<b>Click any row</b> for a price chart with MA50 and MA200 over the same `
+    + `${d.percentile_window}-day window the percentile columns are measured against.`,
+    `<b>Percentile window</b> ${d.percentile_window} days, each indicator against its own `
+    + `history. <code>^</code> marks a shortened window.`,
+    `<b class="warn">Parameters are unvalidated.</b> ${esc(d.parameter_note)} `
+    + `No threshold here should be read as calibrated.`,
+    `<b>Universe caveat.</b> The coin list is fixed and was chosen with hindsight: coins that `
+    + `faded out before selection are absent. Fine for reading current state, not a basis for `
+    + `backtesting any column.`,
+  ];
+  if ((h.stale || []).length) parts.push(`<b class="warn">Stale</b> — ${esc(h.stale.join('; '))}.`);
+  if ((h.failures || []).length) parts.push(`<b class="warn">Failed</b> — ${esc(h.failures.join('; '))}.`);
+  if ((h.notes || []).length) parts.push(`<b>Notes</b> — ${esc(h.notes.join('; '))}.`);
+  parts.push(`Built ${esc(d.built_at_utc)} \u00B7 `
+    + `<a href="index.html">Main dashboard</a> \u00B7 `
+    + `<a href="https://github.com/phuazz/crypto-breadth">Methodology &amp; source</a>`);
+  document.getElementById('foot').innerHTML = parts.map(p => `<div>${p}</div>`).join('');
+}
+
+function alertChip(a) {
+  const r = (DATA.rows || []).find(x => x.ticker === a.ticker) || {};
+  const name = r.name || a.ticker;
+  return `<button class="chip chip-jump ${alertClass(a)}" data-jump="${esc(a.ticker)}"`
+    + ` title="${esc(a.ticker)} · ${esc(name)} · click for its row and chart">`
+    + `<span class="fund">${esc(name)}</span> ${esc(a.label)}`
+    + `${a.value ? ' ' + esc(a.value) : ''}</button>`;
+}
+
+// A chip can address a row the filter is hiding. The filter is the reader's
+// setting, so the page says so and offers the change rather than making it.
+function showJumpNote(row) {
+  const el = document.getElementById('jumpnote');
+  el.innerHTML =
+    `<span><b>${esc(row.name)}</b> (<span class="tk">${esc(row.ticker)}</span>) is hidden by `
+    + `the \u201C${esc(filterLabel(FILTER))}\u201D filter. Filter unchanged.</span>`
+    + `<button class="chip chip-btn" data-showjump="${esc(row.ticker)}">Show it anyway</button>`;
+  el.hidden = false;
+}
+
+function clearJumpNote() {
+  const el = document.getElementById('jumpnote');
+  if (el) { el.hidden = true; el.innerHTML = ''; }
+}
+
+function jumpToRow(ticker) {
+  const row = (DATA.rows || []).find(x => x.ticker === ticker);
+  if (row && !filterFn(FILTER)(row)) { showJumpNote(row); return; }
+  clearJumpNote();
+  const tr = document.querySelector(`tbody tr.data-row[data-ticker="${ticker}"]`);
+  if (!tr) return;
+  if (openTicker !== ticker) toggleChart(ticker, tr);
+  tr.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+// Every alert is shown on load; the cap survives as a collapse.
+function renderAlerts() {
+  const all = DATA.alerts || [];
+  const cap = DATA.alerts_display_cap || all.length;
+  const hidden = Math.max(0, all.length - cap);
+  const chips = (ALERTS_EXPANDED ? all : all.slice(0, cap)).map(alertChip);
+  if (hidden) {
+    chips.push(`<button class="chip chip-btn" id="alerts-toggle">`
+      + (ALERTS_EXPANDED ? 'Show fewer' : `+${hidden} more`) + `</button>`);
+  }
+  document.getElementById('alerts').innerHTML =
+    chips.length ? chips.join(' ') : '<span class="chip mute">No alerts today</span>';
+}
+
+function render() { renderChrome(); renderHead(); renderBody(); }
+
+// =====================================================================
+// Expandable row chart
+// =====================================================================
+// Shared layout from design.md. Do not fork these values here.
+const CHART_LAYOUT = {
+  paper_bgcolor: 'transparent',
+  plot_bgcolor: '#fafaf8',
+  font: { family: 'DM Sans', size: 11, color: '#4a4a44' },
+  margin: { t: 10, b: 30, l: 10, r: 64 },
+  xaxis: {
+    gridcolor: '#eeeee8', linecolor: '#d5d3ca', linewidth: 1, showgrid: false,
+    tickformat: "%b '%y", dtick: 'M2', tickfont: { size: 11 },
+    hoverformat: '%d %b %Y',
+  },
+  yaxis: {
+    gridcolor: '#f0f0ea', linecolor: '#d5d3ca', linewidth: 1, showgrid: true,
+    gridwidth: 1, side: 'right',
+    tickfont: { size: 11, family: 'JetBrains Mono' },
+  },
+  showlegend: true,
+  legend: { x: 0, y: 1.02, orientation: 'h', font: { size: 11, color: '#2b2b28' },
+            bgcolor: 'transparent' },
+  hovermode: 'x unified',
+  hoverlabel: { bgcolor: '#fff', bordercolor: '#d5d3ca',
+                font: { size: 11, family: 'DM Sans' } },
+};
+
+// The published history is 730 days, so the window set stops at 2Y.
+const WINDOWS = [['1M', 30], ['3M', 91], ['6M', 182], ['1Y', 365], ['2Y', 730]];
+const DEFAULT_WINDOW = 365;
+
+let HISTORY = null, historyPromise = null, openTicker = null, chartWindow = DEFAULT_WINDOW;
+
+function loadHistory() {
+  if (HISTORY) return Promise.resolve(HISTORY);
+  if (historyPromise) return historyPromise;
+  // Built page sits in docs/ beside the file; dev serves the project root.
+  const paths = ['scanner_history.json', 'docs/scanner_history.json'];
+  historyPromise = paths.reduce(
+    (chain, p) => chain.catch(() =>
+      fetch(p).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })),
+    Promise.reject()
+  ).then(j => { HISTORY = j; return j; })
+   .catch(err => { historyPromise = null; throw err; });
+  return historyPromise;
+}
+
+// O(n) rolling mean, null until the window fills — the same shape as the
+// server-side SMA, so the chart cannot show a partial-window average.
+function sma(values, period) {
+  const out = new Array(values.length).fill(null);
+  let sum = 0, count = 0;
+  for (let i = 0; i < values.length; i++) {
+    const v = values[i];
+    if (v != null) { sum += v; count++; }
+    if (i >= period) { const drop = values[i - period]; if (drop != null) { sum -= drop; count--; } }
+    if (i >= period - 1 && count === period) out[i] = sum / period;
+  }
+  return out;
+}
+
+function sizeChartPanel() {
+  const panel = document.querySelector('.chart-panel');
+  const wrap = document.querySelector('.tblwrap');
+  if (panel && wrap) panel.style.width = wrap.clientWidth + 'px';
+}
+
+function renderChart(boxId, ticker) {
+  const box = document.getElementById(boxId);
+  if (!box) return;
+  sizeChartPanel();
+  const s = HISTORY && HISTORY.series[ticker];
+  if (!s) {
+    box.innerHTML = `<div style="padding:28px;text-align:center;color:var(--t3-text);`
+      + `font-size:12px;">No published history for ${esc(ticker)}.</div>`;
+    return;
+  }
+  const dates = HISTORY.calendars[s.calendar];
+  // MAs on the FULL series, then sliced, so a 1M window shows a true MA200.
+  const ma50 = sma(s.close, 50), ma200 = sma(s.close, 200);
+  const n = Math.min(chartWindow, dates.length);
+  const cut = dates.length - n;
+  const x = dates.slice(cut);
+  // Five significant figures serves BTC near 100,000 and DOGE near 0.2 alike.
+  const fmt = '%{y:,.5~g}';
+
+  const traces = [
+    { x, y: s.close.slice(cut), name: 'Close', type: 'scatter', mode: 'lines',
+      line: { color: '#1a1a18', width: 3.0 }, connectgaps: true,
+      hovertemplate: fmt + '<extra>Close</extra>' },
+    { x, y: ma50.slice(cut), name: 'MA50', type: 'scatter', mode: 'lines',
+      line: { color: '#f59e0b', width: 1.8 }, connectgaps: true,
+      hovertemplate: fmt + '<extra>MA50</extra>' },
+    { x, y: ma200.slice(cut), name: 'MA200', type: 'scatter', mode: 'lines',
+      line: { color: '#e879a0', width: 1.8, dash: 'dashdot' }, connectgaps: true,
+      hovertemplate: fmt + '<extra>MA200</extra>' },
+  ];
+  Plotly.newPlot(box, traces, CHART_LAYOUT,
+    { displayModeBar: false, responsive: true, scrollZoom: true });
+}
+
+function closeChart() {
+  const row = document.querySelector('tr.chart-row');
+  if (row) { const box = row.querySelector('.chart-box'); if (box) Plotly.purge(box); row.remove(); }
+  document.querySelectorAll('.row-selected').forEach(r => r.classList.remove('row-selected'));
+  openTicker = null;
+}
+
+function toggleChart(ticker, tr) {
+  if (openTicker === ticker) { closeChart(); return; }
+  closeChart();
+  openTicker = ticker;
+  chartWindow = DEFAULT_WINDOW;
+  tr.classList.add('row-selected');
+
+  const r = DATA.rows.find(x => x.ticker === ticker) || {};
+  const boxId = 'chart-box';
+  const stat = (label, v) => v == null || v === ''
+    ? '' : `<span class="stat">${esc(label)} <b>${esc(v)}</b></span>`;
+
+  const chartRow = document.createElement('tr');
+  chartRow.className = 'chart-row';
+  chartRow.innerHTML = `<td colspan="${COLS.length}">
+    <div class="chart-panel">
+      <div class="chart-panel-head">
+        <div class="chart-panel-title">
+          <span class="tk">${esc(ticker)}</span>
+          <span class="nm">${esc(r.name || '')}${r.held ? ' \u00B7 held in the book' : ''}</span>
+        </div>
+        <div class="chart-panel-stats">
+          ${stat('Rank', r.rank)}
+          ${stat('Trend', r.trend)}
+          ${stat('12-1', signed(r.mom_12_1) == null ? null : signed(r.mom_12_1) + '%')}
+          ${stat('vs 52W hi', signed(r.vs_52w_high) == null ? null : signed(r.vs_52w_high) + '%')}
+          ${stat('RV', r.rv_pctl == null ? null : 'p' + r.rv_pctl.toFixed(0))}
+          ${stat('BBW', r.bbw_pctl == null ? null : 'p' + r.bbw_pctl.toFixed(0))}
+          ${stat('As of', r.as_of)}
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span class="period-selector" id="chart-periods">${WINDOWS.map(([lbl, n]) =>
+            `<button data-n="${n}" class="${n === DEFAULT_WINDOW ? 'active' : ''}">${lbl}</button>`
+          ).join('')}</span>
+          <span class="chart-panel-close" title="Close">&#x2715;</span>
+        </div>
+      </div>
+      <div class="chart-box" id="${boxId}"></div>
+      <div class="chart-note">Daily close, MA50 and MA200 in USDT (Binance spot, UTC
+        days). Moving averages are computed on the full published history and then
+        sliced, so a short window still shows a true MA200.</div>
+    </div></td>`;
+  tr.after(chartRow);
+  sizeChartPanel();
+
+  const box = document.getElementById(boxId);
+  box.innerHTML = `<div style="padding:28px;text-align:center;`
+    + `color:var(--t3-text);font-size:12px;">Loading history…</div>`;
+  loadHistory()
+    .then(() => { if (openTicker === ticker) renderChart(boxId, ticker); })
+    .catch(err => {
+      if (openTicker !== ticker) return;
+      box.innerHTML = `<div style="padding:28px;text-align:center;`
+        + `color:var(--a-text);font-size:12px;">Could not load scanner_history.json `
+        + `(${esc(err)}). Run <code>python scripts/run_scanner.py</code>.</div>`;
+    });
+}
+
+document.addEventListener('click', (e) => {
+  if (e.target.closest('#alerts-toggle')) {
+    ALERTS_EXPANDED = !ALERTS_EXPANDED;
+    renderAlerts();
+    return;
+  }
+  const show = e.target.closest('[data-showjump]');
+  if (show) {
+    const t = show.dataset.showjump;
+    FILTER = 'ALL';
+    render();
+    jumpToRow(t);
+    return;
+  }
+  const jump = e.target.closest('#alerts .chip-jump');
+  if (jump) { jumpToRow(jump.dataset.jump); return; }
+  const f = e.target.closest('.filter');
+  if (f) { FILTER = f.dataset.s; clearJumpNote(); render(); return; }
+
+  // Chart-panel controls first: they live inside a <tr>, so letting the row
+  // handler see them would collapse the chart being adjusted.
+  if (e.target.closest('.chart-panel-close')) { closeChart(); return; }
+  const pb = e.target.closest('#chart-periods button');
+  if (pb) {
+    chartWindow = parseInt(pb.dataset.n, 10);
+    pb.parentElement.querySelectorAll('button')
+      .forEach(b => b.classList.toggle('active', b === pb));
+    if (openTicker) renderChart('chart-box', openTicker);
+    return;
+  }
+  if (e.target.closest('tr.chart-row')) return;
+
+  const tr = e.target.closest('tbody tr.data-row');
+  if (tr) { toggleChart(tr.dataset.ticker, tr); return; }
+
+  const th = e.target.closest('thead tr.cols th');
+  if (!th) return;
+  if (th.dataset.toggle) {
+    RS_MODE = RS_MODE === 'rs_1m' ? 'ret_1m' : 'rs_1m';
+    if (SORT.k === 'rs_1m' || SORT.k === 'ret_1m') SORT.k = RS_MODE;
+    render();
+    return;
+  }
+  const k = th.dataset.k;
+  if (SORT.k === k) SORT.asc = !SORT.asc;
+  else { SORT.k = k; SORT.asc = (k === 'rank' || k === 'ticker' || k === 'name'); }
+  render();
+});
+
+// Keep an open chart matched to its container (window resize, a scrollbar
+// appearing after the chart opened, late web-font reflow).
+(function () {
+  const wrap = document.querySelector('.tblwrap');
+  if (!wrap || typeof ResizeObserver === 'undefined') return;
+  new ResizeObserver(() => { if (openTicker) sizeChartPanel(); }).observe(wrap);
+})();
+
+// Inlined at build time by scripts/build_scanner_page.py. The fetch fallback
+// keeps this file usable standalone during development (`npx serve .`).
+(function () {
+  if (SCANNER_DATA_INLINE) { DATA = SCANNER_DATA_INLINE; render(); return; }
+  fetch('data/scanner_latest.json')
+    .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+    .then(j => { DATA = j; render(); })
+    .catch(err => {
+      document.getElementById('sub').textContent =
+        'No scanner data. Run `python scripts/run_scanner.py`, then serve the '
+        + 'project root so data/scanner_latest.json resolves. (' + err + ')';
+    });
+})();
+</script>
+</body>
+</html>

@@ -187,6 +187,9 @@ crypto-breadth/
 │   ├── sensitivity.py         # OAT parameter robustness check
 │   ├── generate_tearsheet.py  # one-page PNG summary
 │   ├── btc_reference.py       # display-only BTC reference replicas (dashboard tab)
+│   ├── scanner_indicators.py  # scanner: pure indicator library (frozen params)
+│   ├── run_scanner.py         # scanner: parquet -> data/scanner_latest.json + docs/scanner_history.json
+│   ├── build_scanner_page.py  # scanner: scanner_template.html + JSON -> docs/scanner.html
 │   ├── requirements.txt
 │   └── research/
 │       ├── backtest_v0.py     # bug-fixed v0 archive (fixed-10 universe)
@@ -224,7 +227,52 @@ python scripts/walk_forward.py      # periodic monitoring
 python scripts/sensitivity.py       # if Params change
 python scripts/generate_tearsheet.py  # produces data/tearsheet.png
 python scripts/pipeline.py          # rebuilds docs/index.html for Pages
+python scripts/run_scanner.py       # scanner data (after pipeline.py: reads its monitor block)
+python scripts/build_scanner_page.py  # rebuilds docs/scanner.html
 ```
+
+### Cross-sectional scanner (`docs/scanner.html`, added 2026-09-25)
+
+A monitoring page, not a strategy: a crypto port of the breadth-thrust-etf
+ETF scanner (`etf_scanner_spec_en.md` in that repo). It ranks the live
+parquet coins on an equal-weight 1M/3M/6M/12M momentum composite and shows trend
+state, 12-1 momentum, distance from the 52-week high, RV and Bollinger-width
+percentiles, ATR%, RS against BTC and event alerts. It feeds nothing: the
+engine, the gate and the digest never read it. It runs daily in
+`daily-check.yml` after `pipeline.py`, under continue-on-error, so a scanner
+fault turns the run red but cannot block the digest or the dashboard commit.
+
+Port decisions (owner, 2026-09-24): look-backs that mean a span of time
+are converted to the 365-day calendar (1M/3M/6M/12M = 30/91/182/365 days,
+52 weeks = 365, percentile window 730, delta-R 28 days, RV annualised by
+√365). Bar-count conventions are kept (MA 20/50/200, RSI 14, ATR 14). The
+ETF layer (P/D, flows) is dropped, and the EM-tilt chip is replaced by an
+ETH/BTC 50D/200D chip that is display-only. The universe is the live parquet
+coins, with the frozen EOS / MATIC / LUNA excluded. The rank-crossing cut
+is the top 5 over a 7-day confirmation: the ETF page's top 10 of 54 scaled
+to 22 coins, and deliberately not 4, so it cannot be read as the engine's
+book. Every parameter is an unvalidated default; changing one needs a named,
+pre-registered out-of-sample process.
+
+The gate chip carries two readings, each named by its basis: the breadth tier
+at the latest close (`monitor.exposure`, which is `target_exposure.iloc[-1]`)
+and the tier at the last Monday read (from `indicator_history`), which is the
+reading the book acts on. They differ on about 23% of days across the sample. A
+row more than 3 days stale is greyed, raises no alerts, and is left out of
+the ranking.
+
+Guards (all abort the build):
+- cross-sectional invariants;
+- a naive-loop recompute of SMA, RSI and ATR on three date-rotated coins;
+- an independent DATE-indexed recompute of 12-1, vs 52W, 1M, RS, rank and
+  ΔR for every gap-free coin, which catches calendar-constant, off-by-one
+  and alignment errors in the positional path;
+- a page-builder gate that refuses frozen-ticker rows.
+
+A missing day inside a coin's last 750 bars is disclosed in data health. In
+CI, a scanner failure restores the three published files from HEAD, so a new
+JSON is never committed beside an old page. `tests/test_scanner.py` kills the
+six mutants the 2026-09-25 red-team review found surviving.
 
 ### Local preview of the dashboard
 

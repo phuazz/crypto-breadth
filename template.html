@@ -492,6 +492,7 @@ nav.tabs a {
   white-space: nowrap;
 }
 nav.tabs a:hover { color: var(--ink); }
+nav.tabs a.nav-ext { margin-left: auto; color: var(--b-text); }
 nav.tabs a.active {
   color: var(--t1);
   border-bottom-color: var(--t1);
@@ -1480,6 +1481,9 @@ footer.bottom a:hover { text-decoration: underline; }
     <a href="#trades" class="nav-link" data-target="trades">Trade ledger</a>
     <a href="#btcref" class="nav-link" data-target="btcref">BTC reference</a>
     <a href="#caveats" class="nav-link" data-target="caveats">Caveats</a>
+    <!-- A separate page, not a tab: deliberately NOT .nav-link, so setupTabs()
+         and its click handler never see it. -->
+    <a href="scanner.html" class="nav-ext" title="Cross-sectional technical scanner of the live coin universe — monitoring only">Scanner &#8599;</a>
   </div>
 </nav>
 

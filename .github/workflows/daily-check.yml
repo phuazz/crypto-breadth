@@ -91,6 +91,27 @@ jobs:
           PYTHONIOENCODING: utf-8
         run: python scripts/pipeline.py
 
+      # Cross-sectional scanner page (docs/scanner.html). Monitoring only: it
+      # reads the refreshed parquet and the monitor block pipeline.py just
+      # wrote, and touches nothing the engine or the digest reads. Kept
+      # continue-on-error so a scanner fault can never block the digest or
+      # the commit of the dashboard; "Fail if scanner broke" below turns the
+      # run red instead, after both have gone out. On failure the previous
+      # docs/scanner.html stays published with its own dated PRICES pill.
+      - name: Build scanner page
+        id: scanner
+        continue-on-error: true
+        env:
+          PYTHONIOENCODING: utf-8
+        # run_scanner.py writes its JSON before build_scanner_page.py
+        # validates it. On any failure, restore all three published files from
+        # HEAD so the commit step cannot pair a new JSON with the old page.
+        run: |
+          if ! { python scripts/run_scanner.py && python scripts/build_scanner_page.py; }; then
+            git checkout HEAD -- data/scanner_latest.json docs/scanner_history.json docs/scanner.html || true
+            exit 1
+          fi
+
       - name: Send email alerts + regular digest
         env:
           PYTHONIOENCODING: utf-8
@@ -134,4 +155,10 @@ jobs:
         if: steps.fetch.outcome != 'success'
         run: |
           echo "::error::Daily fetch step failed — data may be stale. See data/fetch_status.json."
+          exit 1
+
+      - name: Fail if scanner broke
+        if: steps.scanner.outcome != 'success'
+        run: |
+          echo "::error::Scanner build failed; docs/scanner.html was not refreshed. See the 'Build scanner page' step."
           exit 1
