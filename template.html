@@ -1767,7 +1767,7 @@ footer.bottom a:hover { text-decoration: underline; }
   </details>
 
   <h3>Seasonality</h3>
-  <p class="section-sub">Mean and median BTC return by calendar month, from month-end closes. The number above each pair is how many years that month has.</p>
+  <p class="section-sub">Mean and median BTC return by calendar month, from month-end closes. Each bar is labelled with its return; the count under each month is how many years of that month the average rests on.</p>
   <div class="chart chart-med" id="chart-br-season"></div>
   <p class="br-cap" id="br-cap-season"></p>
 </section>
@@ -4028,21 +4028,42 @@ function renderBtcReference(b) {
   const s = b.seasonality;
   const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   const hov = s.month.map((mo, i) => `n ${s.n[i]} years · positive ${pct(s.pct_pos[i], 0)} · t ${s.t[i] == null ? "—" : s.t[i].toFixed(2)}`);
-  const top = s.month.map((mo, i) => Math.max(s.mean[i] || 0, s.median[i] || 0));
+  // Each bar carries its own value (1 dp, matching the hover) and each month
+  // its year count, all at 11px. Desktop: vertical bars, labels stood on end,
+  // because two horizontal labels collide within a month's pair even at 1280px.
+  // Phone: 24 vertical labels cannot fit 342px, so the bars turn horizontal,
+  // months down the left and values at the bar ends.
+  const elS = document.getElementById("chart-br-season");
+  const horiz = elS.offsetWidth < 600;
+  const cat = MON.map((mo, i) => mo + (horiz ? " · " : "<br>") + s.n[i] + " yrs");
+  const vt = horiz ? "%{x:+.1%}" : "%{y:+.1%}";
+  const lab = { texttemplate: vt, textposition: "outside", cliponaxis: false,
+                constraintext: "none", textangle: horiz ? 0 : -90,
+                textfont: { size: 11, family: "JetBrains Mono", color: "#1a1a18" } };
+  const bar = (name, v, color, extra) => Object.assign(horiz
+    ? { y: cat, x: v, orientation: "h" } : { x: cat, y: v },
+    { type: "bar", name, marker: { color } }, lab, extra);
   const tr3 = [
-    { x: MON, y: s.mean, type: "bar", name: "Mean", marker: { color: "#2563eb" },
-      customdata: hov, hovertemplate: "Mean %{y:+.1%}<br>%{customdata}<extra></extra>" },
-    { x: MON, y: s.median, type: "bar", name: "Median", marker: { color: "#b45309" },
-      hovertemplate: "Median %{y:+.1%}<extra></extra>" },
+    bar("Mean", s.mean, "#2563eb",
+        { customdata: hov, hovertemplate: "Mean " + vt + "<br>%{customdata}<extra></extra>" }),
+    bar("Median", s.median, "#b45309", { hovertemplate: "Median " + vt + "<extra></extra>" }),
   ];
-  const ann3 = MON.map((mo, i) => ({ x: mo, y: top[i], yanchor: "bottom", text: String(s.n[i]),
-    showarrow: false, font: { size: 11, color: "#66665e", family: "JetBrains Mono" } }));
-  Plotly.react(document.getElementById("chart-br-season"), tr3,
-    Object.assign({}, LAYOUT_BASE, {
-      height: 340, margin: { l: 12, r: 52, t: 30, b: 34 }, barmode: "group", bargap: 0.25,
-      hovermode: "x unified", annotations: ann3,
+  const vals = s.mean.concat(s.median).filter(v => v != null);
+  const hi = Math.max(0, ...vals), lo = Math.min(0, ...vals);
+  const pad = (hi - lo) * (horiz ? 0.30 : 0.32);   // room for outside labels
+  const valAxis = { tickformat: ".0%", range: [lo - pad, hi + pad] };
+  Plotly.react(elS, tr3,
+    Object.assign({}, LAYOUT_BASE, horiz ? {
+      height: 620, margin: { l: 88, r: 12, t: 30, b: 34 }, barmode: "group", bargap: 0.22,
+      hovermode: "y unified",
+      xaxis: Object.assign({}, LAYOUT_BASE.xaxis, valAxis, { zeroline: true, zerolinecolor: "#c0beb5" }),
+      yaxis: Object.assign({}, LAYOUT_BASE.yaxis, { type: "category", side: "left",
+        autorange: "reversed", zeroline: false, automargin: true, tickfont: { size: 11 } }),
+    } : {
+      height: 360, margin: { l: 12, r: 52, t: 30, b: 48 }, barmode: "group", bargap: 0.25,
+      hovermode: "x unified",
       xaxis: Object.assign({}, LAYOUT_BASE.xaxis, { type: "category" }),
-      yaxis: Object.assign({}, LAYOUT_BASE.yaxis, { tickformat: ".0%" }),
+      yaxis: Object.assign({}, LAYOUT_BASE.yaxis, valAxis),
     }), PLOTLY_CFG);
   const best = s.t.reduce((bi, t, i) => (t != null && Math.abs(t) > Math.abs(s.t[bi] || 0) ? i : bi), 0);
   if (s.max_abs_t == null) {
