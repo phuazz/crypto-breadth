@@ -320,6 +320,7 @@ tbody tr.chart-row:hover td { background: var(--bg3); }
 }
 .period-selector button:last-child { border-right: none; }
 .period-selector button.active { background: var(--b-text); color: #fff; }
+.period-selector button:disabled { background: var(--bg3); color: var(--t3-text); cursor: not-allowed; }
 @media (pointer: coarse) { .period-selector button { min-height: 44px; padding: 0 14px; } }
 
 .foot {
@@ -514,6 +515,12 @@ tbody tr.chart-row:hover td { background: var(--bg3); }
             rows crossing into or out of the top <span class="g-cut">5</span> of
             the ranking. <b>Click any chip</b> to jump to that coin's row and open
             its chart.</li>
+            <li><b>Charts in</b> sets one price basis for every row chart, remembered
+            in this browser. <b>USD</b> is the default; <b>BTC</b> or <b>ETH</b>
+            re-prices each chart as a ratio (the coin's close divided by bitcoin's
+            or ether's on the same day), with MA50 and MA200 taken on the ratio. A
+            rising ratio means the coin is outperforming that base, which is the
+            chart form of the RS 1M column.</li>
             <li>A <b>rank crossing</b> needs the row inside the top
             <span class="g-cut">5</span> today and outside it on each of the
             <span class="g-confirm">7</span> days before, or the mirror. The cut is
@@ -549,6 +556,7 @@ tbody tr.chart-row:hover td { background: var(--bg3); }
   <div class="striprow"><span class="lbl">Overlays</span><span id="overlays"></span></div>
   <div class="striprow"><span class="lbl">Alerts</span><span id="alerts"></span></div>
   <div class="striprow"><span class="lbl">Show</span><span id="filters"></span></div>
+  <div class="striprow"><span class="lbl">Charts in</span><span id="bases"></span></div>
 
   <div class="jumpnote" id="jumpnote" role="status" aria-live="polite" hidden></div>
 
@@ -843,6 +851,7 @@ function renderChrome() {
     `<button class="filter ${FILTER === k ? 'active' : ''}" data-s="${k}">${esc(lbl)}`
     + `${k === 'ALL' ? '' : ` (${d.rows.filter(fn).length})`}</button>`
   ).join(' ');
+  renderBases();
 
   const h = d.data_health || {};
   const parts = [
@@ -851,7 +860,10 @@ function renderChrome() {
     + `own as-of; rows more than ${h.stale_threshold_days} days behind are greyed and marked \u25CF. `
     + `Frozen tickers left off the page: ${esc((d.frozen_excluded || []).join(', ') || 'none')}.`,
     `<b>Click any row</b> for a price chart with MA50 and MA200 over the same `
-    + `${d.percentile_window}-day window the percentile columns are measured against.`,
+    + `${d.percentile_window}-day window the percentile columns are measured against. `
+    + `<b>Charts in USD / BTC / ETH</b> sets the price basis for every chart at once (the `
+    + `same buttons sit inside an open chart) and is remembered in this browser. The table's `
+    + `columns stay in USD.`,
     `<b>Percentile window</b> ${d.percentile_window} days, each indicator against its own `
     + `history. <code>^</code> marks a shortened window.`,
     `<b class="warn">Parameters are unvalidated.</b> ${esc(d.parameter_note)} `
@@ -951,7 +963,59 @@ const CHART_LAYOUT = {
 const WINDOWS = [['1M', 30], ['3M', 91], ['6M', 182], ['1Y', 365], ['2Y', 730]];
 const DEFAULT_WINDOW = 365;
 
+// Price basis for the row chart. BTC and ETH are rows in the same history
+// file on the same UTC calendar, so a ratio is one division per date — no
+// new data. The basis is sticky across rows (comparing coins against BTC is
+// the use case); the window resets per row as before.
+const BASES = [['USD', null], ['BTC', 'BTC'], ['ETH', 'ETH']];
+// One page-level setting for every chart. The page strip is the control; the
+// buttons inside an open chart mirror it (so a phone reader need not scroll
+// back up). Remembered per browser; storage can be absent or throw (private
+// mode), in which case the page simply starts in USD.
+const BASIS_KEY = 'cb-scanner-chart-basis';
+let chartBasis = null;
+try {
+  const saved = localStorage.getItem(BASIS_KEY);
+  if (BASES.some(([, b]) => b === saved)) chartBasis = saved;
+} catch (e) { /* no storage: default USD */ }
+
+function renderBases() {
+  const el = document.getElementById('bases');
+  if (!el) return;
+  el.innerHTML = BASES.map(([lbl, b]) =>
+    `<button class="filter ${b === chartBasis ? 'active' : ''}" data-basis="${b || ''}"`
+    + ` title="${b ? `Price every chart as a ratio to ${b}` : 'Price every chart in USD'}">`
+    + `${lbl}</button>`).join(' ');
+}
+
+function setBasis(b) {
+  chartBasis = b || null;
+  try { localStorage.setItem(BASIS_KEY, chartBasis || ''); } catch (e) { /* ignore */ }
+  renderBases();
+  document.querySelectorAll('#chart-bases button').forEach(btn =>
+    btn.classList.toggle('active', (btn.dataset.b || null) === chartBasis));
+  if (openTicker) renderChart('chart-box', openTicker);
+}
+
 let HISTORY = null, historyPromise = null, openTicker = null, chartWindow = DEFAULT_WINDOW;
+
+// Coin close / base close, date by date. Null where either leg is missing or
+// the base is zero, so a gap in one leg never pairs a price with another day.
+function ratioSeries(num, den) {
+  return num.map((v, i) => {
+    const d = den[i];
+    return (v == null || d == null || d === 0) ? null : v / d;
+  });
+}
+
+// The series actually drawn: USD closes, or the ratio to the chosen base. A
+// coin against itself is identically 1, so that case falls back to USD.
+function chartSeries(ticker) {
+  const s = HISTORY.series[ticker];
+  const base = chartBasis && chartBasis !== ticker ? HISTORY.series[chartBasis] : null;
+  if (!base) return { y: s.close, basis: null };
+  return { y: ratioSeries(s.close, base.close), basis: chartBasis };
+}
 
 function loadHistory() {
   if (HISTORY) return Promise.resolve(HISTORY);
@@ -998,18 +1062,45 @@ function renderChart(boxId, ticker) {
     return;
   }
   const dates = HISTORY.calendars[s.calendar];
-  // MAs on the FULL series, then sliced, so a 1M window shows a true MA200.
-  const ma50 = sma(s.close, 50), ma200 = sma(s.close, 200);
+  const { y, basis } = chartSeries(ticker);
+  const lineName = basis ? `${ticker}/${basis}` : 'Close';
+  // MAs on the FULL series (of the chosen basis), then sliced, so a 1M window
+  // shows a true MA200 — and on a ratio they are MAs OF THE RATIO, not a
+  // ratio of MAs.
+  const ma50 = sma(y, 50), ma200 = sma(y, 200);
   const n = Math.min(chartWindow, dates.length);
   const cut = dates.length - n;
   const x = dates.slice(cut);
-  // Five significant figures serves BTC near 100,000 and DOGE near 0.2 alike.
+  // Five significant figures serves BTC near 100,000, DOGE near 0.2 and a
+  // DOGE/BTC ratio near 0.000001 alike.
   const fmt = '%{y:,.5~g}';
 
+  // Change over the visible window, in the chosen basis: first to last
+  // non-null point. In BTC terms this is the coin's return relative to BTC.
+  const shown = y.slice(cut).filter(v => v != null);
+  const chg = document.getElementById('chart-chg');
+  if (chg) {
+    const lbl = (WINDOWS.find(w => w[1] === chartWindow) || ['', 0])[0];
+    chg.innerHTML = shown.length > 1
+      ? `${esc(basis ? `vs ${basis}` : 'USD')} ${esc(lbl)} <b>`
+        + `${esc(signed(shown[shown.length - 1] / shown[0] - 1))}%</b>`
+      : '';
+  }
+  const note = document.getElementById('chart-basis-note');
+  if (note) {
+    note.textContent = basis
+      ? `Price of ${ticker} in ${basis}: its USDT close divided by ${basis}'s USDT close on `
+        + `the same UTC day. Rising means ${ticker} is outperforming ${basis}. MA50 and `
+        + `MA200 are averages of the ratio.`
+      : (chartBasis === ticker
+        ? `${ticker} against itself is constant, so this chart stays in USDT.`
+        : 'Daily close, MA50 and MA200 in USDT (Binance spot, UTC days).');
+  }
+
   const traces = [
-    { x, y: s.close.slice(cut), name: 'Close', type: 'scatter', mode: 'lines',
+    { x, y: y.slice(cut), name: lineName, type: 'scatter', mode: 'lines',
       line: { color: '#1a1a18', width: 3.0 }, connectgaps: true,
-      hovertemplate: fmt + '<extra>Close</extra>' },
+      hovertemplate: fmt + `<extra>${esc(lineName)}</extra>` },
     { x, y: ma50.slice(cut), name: 'MA50', type: 'scatter', mode: 'lines',
       line: { color: '#f59e0b', width: 1.8 }, connectgaps: true,
       hovertemplate: fmt + '<extra>MA50</extra>' },
@@ -1057,8 +1148,13 @@ function toggleChart(ticker, tr) {
           ${stat('RV', r.rv_pctl == null ? null : 'p' + r.rv_pctl.toFixed(0))}
           ${stat('BBW', r.bbw_pctl == null ? null : 'p' + r.bbw_pctl.toFixed(0))}
           ${stat('As of', r.as_of)}
+          <span class="stat" id="chart-chg"></span>
         </div>
-        <div style="display:flex;align-items:center;gap:10px;">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <span class="period-selector" id="chart-bases" title="Price the chart in USD or as a ratio to BTC / ETH">${BASES.map(([lbl, b]) =>
+            `<button data-b="${b || ''}" class="${b === chartBasis ? 'active' : ''}"`
+            + `${b === ticker ? ' disabled title="a coin against itself is constant"' : ''}>${lbl}</button>`
+          ).join('')}</span>
           <span class="period-selector" id="chart-periods">${WINDOWS.map(([lbl, n]) =>
             `<button data-n="${n}" class="${n === DEFAULT_WINDOW ? 'active' : ''}">${lbl}</button>`
           ).join('')}</span>
@@ -1066,9 +1162,10 @@ function toggleChart(ticker, tr) {
         </div>
       </div>
       <div class="chart-box" id="${boxId}"></div>
-      <div class="chart-note">Daily close, MA50 and MA200 in USDT (Binance spot, UTC
-        days). Moving averages are computed on the full published history and then
-        sliced, so a short window still shows a true MA200.</div>
+      <div class="chart-note"><span id="chart-basis-note"></span> Moving averages are
+        computed on the full published history and then sliced, so a short window still
+        shows a true MA200. Closes are published to five significant figures, so a ratio
+        carries a relative error of about 0.01%.</div>
     </div></td>`;
   tr.after(chartRow);
   sizeChartPanel();
@@ -1102,7 +1199,9 @@ document.addEventListener('click', (e) => {
   }
   const jump = e.target.closest('#alerts .chip-jump');
   if (jump) { jumpToRow(jump.dataset.jump); return; }
-  const f = e.target.closest('.filter');
+  const gb = e.target.closest('#bases [data-basis]');
+  if (gb) { setBasis(gb.dataset.basis); return; }
+  const f = e.target.closest('#filters .filter');
   if (f) { FILTER = f.dataset.s; clearJumpNote(); render(); return; }
 
   // Chart-panel controls first: they live inside a <tr>, so letting the row
@@ -1116,6 +1215,8 @@ document.addEventListener('click', (e) => {
     if (openTicker) renderChart('chart-box', openTicker);
     return;
   }
+  const bb = e.target.closest('#chart-bases button');
+  if (bb) { if (!bb.disabled) setBasis(bb.dataset.b); return; }
   if (e.target.closest('tr.chart-row')) return;
 
   const tr = e.target.closest('tbody tr.data-row');

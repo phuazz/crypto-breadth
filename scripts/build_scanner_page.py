@@ -32,6 +32,7 @@ HISTORY_PATH = ROOT / "docs" / "scanner_history.json"
 PLACEHOLDER_START = "// __SCANNER_DATA_START__"
 PLACEHOLDER_END = "// __SCANNER_DATA_END__"
 MAX_TEMPLATE_BYTES = 200 * 1024      # vault rule for source files
+CHART_BASES = ("BTC", "ETH")          # must match BASES in scanner_template.html
 CONFLICT_MARKERS = ("<<<<<<<", ">>>>>>>")
 
 
@@ -112,6 +113,10 @@ def assert_history_covers(payload: dict, history_path: Path = HISTORY_PATH) -> s
     missing = [r["ticker"] for r in payload.get("rows", []) if r["ticker"] not in series]
     if missing:
         problems.append(f"no chart history for: {', '.join(missing[:8])}")
+    # The chart's BTC / ETH price-basis buttons divide by these two series.
+    absent_bases = [b for b in CHART_BASES if b not in series]
+    if absent_bases:
+        problems.append(f"chart price bases missing from history: {absent_bases}")
     for ticker, s in series.items():
         axis = calendars.get(s.get("calendar"))
         if axis is None:

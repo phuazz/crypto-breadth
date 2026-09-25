@@ -394,6 +394,22 @@ def test_page_guard_rejects_frozen_leak_and_validated_flag(synthetic):
         bsp.assert_payload_usable(claimed)
 
 
+def test_chart_bases_match_template_and_are_guarded(synthetic, tmp_path):
+    html = TEMPLATE.read_text(encoding="utf-8")
+    for b in bsp.CHART_BASES:
+        assert f"['{b}', '{b}']" in html
+    prices, dash, today = synthetic
+    payload, panel = rs.build(prices, dash, today)
+    hist = rs.build_history(panel)
+    path = tmp_path / "h.json"
+    path.write_text(json.dumps(hist), encoding="utf-8")
+    bsp.assert_history_covers(payload, path)
+    del hist["series"]["ETH"]
+    path.write_text(json.dumps(hist), encoding="utf-8")
+    with pytest.raises(bsp.ScannerPageError, match="price bases"):
+        bsp.assert_history_covers(payload, path)
+
+
 def test_inject_escapes_script_close():
     out = bsp.inject(
         "x\n// __SCANNER_DATA_START__\nconst SCANNER_DATA_INLINE = null;\n// __SCANNER_DATA_END__\ny",
