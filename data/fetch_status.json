@@ -1,119 +1,8 @@
 {
-  "generated_at": "2026-09-25T00:06:36Z",
+  "generated_at": "2026-09-25T00:12:27Z",
   "today_utc": "2026-09-25",
   "source": "binance_data_vision",
-  "updated": [
-    {
-      "symbol": "BTC",
-      "n_appended": 1,
-      "new_last_date": "2026-09-24"
-    },
-    {
-      "symbol": "ETH",
-      "n_appended": 1,
-      "new_last_date": "2026-09-24"
-    },
-    {
-      "symbol": "BNB",
-      "n_appended": 1,
-      "new_last_date": "2026-09-24"
-    },
-    {
-      "symbol": "SOL",
-      "n_appended": 1,
-      "new_last_date": "2026-09-24"
-    },
-    {
-      "symbol": "XRP",
-      "n_appended": 1,
-      "new_last_date": "2026-09-24"
-    },
-    {
-      "symbol": "ADA",
-      "n_appended": 1,
-      "new_last_date": "2026-09-24"
-    },
-    {
-      "symbol": "DOGE",
-      "n_appended": 1,
-      "new_last_date": "2026-09-24"
-    },
-    {
-      "symbol": "AVAX",
-      "n_appended": 1,
-      "new_last_date": "2026-09-24"
-    },
-    {
-      "symbol": "DOT",
-      "n_appended": 1,
-      "new_last_date": "2026-09-24"
-    },
-    {
-      "symbol": "LINK",
-      "n_appended": 1,
-      "new_last_date": "2026-09-24"
-    },
-    {
-      "symbol": "LTC",
-      "n_appended": 1,
-      "new_last_date": "2026-09-24"
-    },
-    {
-      "symbol": "BCH",
-      "n_appended": 1,
-      "new_last_date": "2026-09-24"
-    },
-    {
-      "symbol": "TRX",
-      "n_appended": 1,
-      "new_last_date": "2026-09-24"
-    },
-    {
-      "symbol": "ETC",
-      "n_appended": 1,
-      "new_last_date": "2026-09-24"
-    },
-    {
-      "symbol": "XLM",
-      "n_appended": 1,
-      "new_last_date": "2026-09-24"
-    },
-    {
-      "symbol": "ATOM",
-      "n_appended": 1,
-      "new_last_date": "2026-09-24"
-    },
-    {
-      "symbol": "UNI",
-      "n_appended": 1,
-      "new_last_date": "2026-09-24"
-    },
-    {
-      "symbol": "AAVE",
-      "n_appended": 1,
-      "new_last_date": "2026-09-24"
-    },
-    {
-      "symbol": "NEAR",
-      "n_appended": 1,
-      "new_last_date": "2026-09-24"
-    },
-    {
-      "symbol": "ALGO",
-      "n_appended": 1,
-      "new_last_date": "2026-09-24"
-    },
-    {
-      "symbol": "FIL",
-      "n_appended": 1,
-      "new_last_date": "2026-09-24"
-    },
-    {
-      "symbol": "FTT",
-      "n_appended": 1,
-      "new_last_date": "2026-09-24"
-    }
-  ],
+  "updated": [],
   "skipped": [
     {
       "symbol": "EOS",
@@ -129,7 +18,7 @@
     }
   ],
   "n_total": 25,
-  "n_updated": 22,
+  "n_updated": 0,
   "n_skipped": 3,
   "n_hard_fail": 0
 }
