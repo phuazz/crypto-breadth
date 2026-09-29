@@ -1008,6 +1008,18 @@ table.holdings tbody tr:last-child td { border-bottom: none; }
   font-weight: 700;
   margin: 12px 0 6px;
 }
+/* step 1: excluded candidates collapsed behind a count */
+.excl-more > summary {
+  display: flex; align-items: baseline; gap: 8px;
+  cursor: pointer; list-style: none;
+}
+.excl-more > summary::-webkit-details-marker { display: none; }
+.excl-more > summary h4 { margin: 12px 0 6px; }
+.excl-more > summary h4::before { content: "\25B8\00A0"; }
+.excl-more[open] > summary h4::before { content: "\25BE\00A0"; }
+.excl-hint { font-size: 12px; color: var(--t3-text); }
+.excl-more > summary:hover .excl-hint { text-decoration: underline; }
+.excl-more[open] .excl-hint { display: none; }
 /* distance-from-50d-MA bars inside step 2 */
 #chart-deviation-wrap {
   margin: 14px 0 2px;
@@ -3517,12 +3529,16 @@ function renderWalkthrough(d) {
     s1 += `<span class="coin-chip pass" title="${c.reason}">${c.coin} <span class="small">$${(c.adv_usd/1e6).toFixed(0)}M</span></span>`;
   });
   s1 += `</div>`;
+  // Excluded names sit behind a count: they are the survivorship record (dead
+  // coins such as LUNA / FTT stay in the candidate pool), not something to read
+  // every day, so they are collapsed rather than dropped.
   if (failed1.length > 0) {
-    s1 += `<h4>Excluded (${failed1.length})</h4><div class="chip-cluster">`;
+    s1 += `<details class="excl-more"><summary><h4>Excluded (${failed1.length})</h4>`
+        + `<span class="excl-hint">show names</span></summary><div class="chip-cluster">`;
     failed1.forEach(c => {
       s1 += `<span class="coin-chip fail" title="${c.reason}"><span class="strike">${c.coin}</span> <span class="small">${c.reason}</span></span>`;
     });
-    s1 += `</div>`;
+    s1 += `</div></details>`;
   }
   s1 += `</div>`;
   document.getElementById("signal-step1").innerHTML = s1;
