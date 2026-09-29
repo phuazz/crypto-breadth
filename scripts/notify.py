@@ -431,18 +431,41 @@ def render_breadth_chart(ih: dict) -> bytes | None:
     return buf.getvalue()
 
 
-def render_deviation_chart(coin_signals: dict) -> bytes | None:
+def investable_ma_distances(coin_signals: dict, investable_names=None) -> list[tuple[str, float]]:
+    """(coin, close/MA - 1) for the coins investable on the LATEST date.
+
+    Each coin's series ends at its own last row, so reading `investable[-1]` per
+    coin tests investability on THAT coin's last date, not today's. LUNA's series
+    ends 2022-05-13 (post-death rows purged 2026-07-18) with investable=True, so
+    the old per-row test drew it at -100% and put it in the denominator — the
+    2026-09-29 digest read "12 of 14" against an engine breadth of 12 of 13.
+    `investable_names` is the monitor's list, taken from the engine mask at the
+    last date, and is authoritative. Without it, fall back to coins whose series
+    reaches the latest date, are not frozen, and are flagged investable there."""
+    cs = coin_signals or {}
+    if investable_names is not None:
+        keep = set(investable_names)
+    else:
+        last = max((cd.get("dates") or [""])[-1] for cd in cs.values()) if cs else ""
+        keep = {c for c, cd in cs.items()
+                if (cd.get("dates") or [""])[-1] == last and not cd.get("frozen")
+                and (not cd.get("investable") or cd["investable"][-1])}
+    rows = []
+    for coin, cd in cs.items():
+        cl, ma = cd.get("close") or [], cd.get("ma") or []
+        if coin in keep and cl and ma and cl[-1] and ma[-1]:
+            rows.append((coin, cl[-1] / ma[-1] - 1.0))
+    return rows
+
+
+def render_deviation_chart(coin_signals: dict, investable_names=None) -> bytes | None:
     """Horizontal bars: each investable coin's % distance from its own 50d MA,
     green above / red below. The cross-sectional make-up behind the one breadth
     number — who is leading, who is lagging, and who is on the cusp."""
     plt = _mpl()
     if plt is None:
         return None
-    rows = []
-    for coin, cd in (coin_signals or {}).items():
-        cl, ma, iv = cd.get("close") or [], cd.get("ma") or [], cd.get("investable") or []
-        if cl and ma and cl[-1] and ma[-1] and (not iv or iv[-1]):
-            rows.append((coin, cl[-1] / ma[-1] - 1.0))
+    rows = investable_ma_distances(coin_signals, investable_names)
     if not rows:
         return None
     rows.sort(key=lambda r: r[1])  # ascending → largest lands at the top of barh
@@ -690,13 +713,9 @@ def build_digest(dash: dict, *, window_days: int, cadence: str, coin_signals: di
         rel_tag = " — ahead" if rel7 >= 0 else " — behind"
 
     # ---- on the cusp: investable coins within 4% of their own 50d MA
-    cusp = []
-    for coin, cd in (coin_signals or {}).items():
-        cl, ma, iv = cd.get("close") or [], cd.get("ma") or [], cd.get("investable") or []
-        if cl and ma and cl[-1] and ma[-1] and (not iv or iv[-1]):
-            dist = cl[-1] / ma[-1] - 1.0
-            if abs(dist) <= 0.04:
-                cusp.append((coin, dist))
+    inv_names = mon.get("investable_names")
+    ma_dist = investable_ma_distances(coin_signals, inv_names)
+    cusp = [(c, d) for c, d in ma_dist if abs(d) <= 0.04]
     cusp.sort(key=lambda x: abs(x[1]))
     cusp = cusp[:6]
 
@@ -705,7 +724,7 @@ def build_digest(dash: dict, *, window_days: int, cadence: str, coin_signals: di
     _breadth_png = render_breadth_chart(ih)
     if _breadth_png:
         charts.append(("digest-breadth", _breadth_png))
-    _dev_png = render_deviation_chart(coin_signals or {})
+    _dev_png = render_deviation_chart(coin_signals or {}, inv_names)
     if _dev_png:
         charts.append(("digest-deviation", _dev_png))
 
